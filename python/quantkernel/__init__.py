@@ -1,0 +1,45 @@
+"""QuantKernel — high-performance derivative pricing engine."""
+
+from .engine import QuantKernel
+from ._abi import (
+    QK_CALL,
+    QK_PUT,
+    QK_OK,
+    QK_ERR_NULL_PTR,
+    QK_ERR_BAD_SIZE,
+    QK_ERR_ABI_MISMATCH,
+    QK_ERR_RUNTIME_INIT,
+    QK_ROW_OK,
+    QK_ROW_ERR_NEGATIVE_S,
+    QK_ROW_ERR_NEGATIVE_K,
+    QK_ROW_ERR_NEGATIVE_T,
+    QK_ROW_ERR_NEGATIVE_V,
+    QK_ROW_ERR_BAD_TYPE,
+    QK_ROW_ERR_IV_NO_CONV,
+    QK_ROW_ERR_BAD_PRICE,
+    QK_ROW_ERR_NON_FINITE,
+    ABI_MAJOR,
+    ABI_MINOR,
+)
+
+__all__ = [
+    "QuantKernel",
+    "QK_CALL",
+    "QK_PUT",
+    "QK_OK",
+    "QK_ERR_NULL_PTR",
+    "QK_ERR_BAD_SIZE",
+    "QK_ERR_ABI_MISMATCH",
+    "QK_ERR_RUNTIME_INIT",
+    "QK_ROW_OK",
+    "QK_ROW_ERR_NEGATIVE_S",
+    "QK_ROW_ERR_NEGATIVE_K",
+    "QK_ROW_ERR_NEGATIVE_T",
+    "QK_ROW_ERR_NEGATIVE_V",
+    "QK_ROW_ERR_BAD_TYPE",
+    "QK_ROW_ERR_IV_NO_CONV",
+    "QK_ROW_ERR_BAD_PRICE",
+    "QK_ROW_ERR_NON_FINITE",
+    "ABI_MAJOR",
+    "ABI_MINOR",
+]
