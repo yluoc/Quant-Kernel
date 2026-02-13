@@ -16,6 +16,7 @@ extern "C" {
 QK_EXPORT void    qk_abi_version(int32_t* major, int32_t* minor);
 QK_EXPORT int32_t qk_bs_price(const QKBSInput* input, QKBSOutput* output);
 QK_EXPORT int32_t qk_iv_solve(const QKIVInput* input, QKIVOutput* output);
+QK_EXPORT int32_t qk_mc_price(const QKMCInput* input, QKMCOutput* output);
 QK_EXPORT int32_t qk_plugin_get_api(int32_t host_abi_major,
                                     int32_t host_abi_minor,
                                     const QKPluginAPI** out_api);

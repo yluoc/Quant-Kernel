@@ -1,6 +1,6 @@
 #include "iv_solver.h"
-#include "../black_scholes/bs_pricer.h"
-#include "../../common/math_util.h"
+#include "algorithms/black_scholes/bs_pricer.h"
+#include "common/math_util.h"
 #include <cmath>
 
 namespace qk {

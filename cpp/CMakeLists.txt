@@ -3,9 +3,13 @@ add_library(quantkernel SHARED
     src/qk_api.cpp
     src/algorithms/black_scholes/bs_pricer.cpp
     src/algorithms/implied_vol/iv_solver.cpp
+    src/algorithms/monte_carlo/mc_pricer.cpp
 )
 
-target_include_directories(quantkernel PUBLIC include)
+target_include_directories(quantkernel
+    PUBLIC include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 target_compile_options(quantkernel PRIVATE
     -Wall -Wextra -Wpedantic

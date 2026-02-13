@@ -18,6 +18,7 @@ from ._abi import (
     QK_ROW_ERR_IV_NO_CONV,
     QK_ROW_ERR_BAD_PRICE,
     QK_ROW_ERR_NON_FINITE,
+    QK_ROW_ERR_BAD_PATHS,
     ABI_MAJOR,
     ABI_MINOR,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "QK_ROW_ERR_IV_NO_CONV",
     "QK_ROW_ERR_BAD_PRICE",
     "QK_ROW_ERR_NON_FINITE",
+    "QK_ROW_ERR_BAD_PATHS",
     "ABI_MAJOR",
     "ABI_MINOR",
 ]

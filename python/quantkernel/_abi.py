@@ -4,7 +4,7 @@ import ctypes as ct
 
 # ABI version expected by this Python wrapper
 ABI_MAJOR = 1
-ABI_MINOR = 0
+ABI_MINOR = 1
 
 # Batch-level return codes
 QK_OK = 0
@@ -23,6 +23,7 @@ QK_ROW_ERR_BAD_TYPE = 5
 QK_ROW_ERR_IV_NO_CONV = 6
 QK_ROW_ERR_BAD_PRICE = 7
 QK_ROW_ERR_NON_FINITE = 8
+QK_ROW_ERR_BAD_PATHS = 9
 
 # Option types
 QK_CALL = 0
@@ -73,5 +74,29 @@ class QKIVOutput(ct.Structure):
     _fields_ = [
         ("implied_vol", ct.POINTER(ct.c_double)),
         ("iterations", ct.POINTER(ct.c_int32)),
+        ("error_codes", ct.POINTER(ct.c_int32)),
+    ]
+
+
+class QKMCInput(ct.Structure):
+    _fields_ = [
+        ("n", ct.c_int64),
+        ("spot", ct.POINTER(ct.c_double)),
+        ("strike", ct.POINTER(ct.c_double)),
+        ("time_to_expiry", ct.POINTER(ct.c_double)),
+        ("volatility", ct.POINTER(ct.c_double)),
+        ("risk_free_rate", ct.POINTER(ct.c_double)),
+        ("dividend_yield", ct.POINTER(ct.c_double)),
+        ("option_type", ct.POINTER(ct.c_int32)),
+        ("num_paths", ct.POINTER(ct.c_int32)),
+        ("rng_seed", ct.POINTER(ct.c_uint64)),
+    ]
+
+
+class QKMCOutput(ct.Structure):
+    _fields_ = [
+        ("price", ct.POINTER(ct.c_double)),
+        ("std_error", ct.POINTER(ct.c_double)),
+        ("paths_used", ct.POINTER(ct.c_int32)),
         ("error_codes", ct.POINTER(ct.c_int32)),
     ]

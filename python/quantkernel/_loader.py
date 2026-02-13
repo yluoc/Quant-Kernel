@@ -5,7 +5,17 @@ import os
 import sys
 from pathlib import Path
 
-from ._abi import ABI_MAJOR, ABI_MINOR, QKBSInput, QKBSOutput, QKIVInput, QKIVOutput, QK_OK
+from ._abi import (
+    ABI_MAJOR,
+    ABI_MINOR,
+    QKBSInput,
+    QKBSOutput,
+    QKIVInput,
+    QKIVOutput,
+    QKMCInput,
+    QKMCOutput,
+    QK_OK,
+)
 
 
 def _project_root() -> Path:
@@ -22,6 +32,7 @@ def _search_dirs() -> list[Path]:
     root = _project_root()
     search_dirs.append(root / "build" / "cpp")
     search_dirs.append(root / "build")
+    search_dirs.append(root / "target" / "release")
     search_dirs.append(root / "rust" / "runtime" / "target" / "release")
     search_dirs.append(root)
     return search_dirs
@@ -73,6 +84,9 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
 
     lib.qk_iv_solve.restype = ct.c_int32
     lib.qk_iv_solve.argtypes = [ct.POINTER(QKIVInput), ct.POINTER(QKIVOutput)]
+
+    lib.qk_mc_price.restype = ct.c_int32
+    lib.qk_mc_price.argtypes = [ct.POINTER(QKMCInput), ct.POINTER(QKMCOutput)]
 
     if hasattr(lib, "qk_runtime_load_plugin"):
         lib.qk_runtime_load_plugin.restype = ct.c_int32

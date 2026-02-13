@@ -1,5 +1,5 @@
 #include "bs_pricer.h"
-#include "../../common/math_util.h"
+#include "common/math_util.h"
 #include <cmath>
 
 namespace qk {

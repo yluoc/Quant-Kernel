@@ -5,7 +5,17 @@ from typing import Dict
 
 import numpy as np
 
-from ._abi import QKBSInput, QKBSOutput, QKIVInput, QKIVOutput, QK_OK, QK_CALL, QK_PUT
+from ._abi import (
+    QKBSInput,
+    QKBSOutput,
+    QKIVInput,
+    QKIVOutput,
+    QKMCInput,
+    QKMCOutput,
+    QK_OK,
+    QK_CALL,
+    QK_PUT,
+)
 from ._loader import load_library
 
 
@@ -17,6 +27,11 @@ def _as_double_ptr(arr: np.ndarray) -> ct.POINTER(ct.c_double):
 def _as_int32_ptr(arr: np.ndarray) -> ct.POINTER(ct.c_int32):
     """Get a ctypes int32 pointer from a contiguous int32 array."""
     return arr.ctypes.data_as(ct.POINTER(ct.c_int32))
+
+
+def _as_uint64_ptr(arr: np.ndarray) -> ct.POINTER(ct.c_uint64):
+    """Get a ctypes uint64 pointer from a contiguous uint64 array."""
+    return arr.ctypes.data_as(ct.POINTER(ct.c_uint64))
 
 
 def _as_1d_contiguous(arr: np.ndarray, dtype: np.dtype, name: str) -> np.ndarray:
@@ -228,5 +243,79 @@ class QuantKernel:
         return {
             "implied_vol": implied_vol,
             "iterations": iterations,
+            "error_codes": error_codes,
+        }
+
+    def mc_price(
+        self,
+        spot: np.ndarray,
+        strike: np.ndarray,
+        time_to_expiry: np.ndarray,
+        volatility: np.ndarray,
+        risk_free_rate: np.ndarray,
+        dividend_yield: np.ndarray,
+        option_type: np.ndarray,
+        num_paths: np.ndarray,
+        rng_seed: np.ndarray,
+    ) -> Dict[str, np.ndarray]:
+        """Batch Monte Carlo pricing for European vanilla options."""
+        spot = _as_1d_contiguous(spot, np.float64, "spot")
+        strike = _as_1d_contiguous(strike, np.float64, "strike")
+        time_to_expiry = _as_1d_contiguous(time_to_expiry, np.float64, "time_to_expiry")
+        volatility = _as_1d_contiguous(volatility, np.float64, "volatility")
+        risk_free_rate = _as_1d_contiguous(risk_free_rate, np.float64, "risk_free_rate")
+        dividend_yield = _as_1d_contiguous(dividend_yield, np.float64, "dividend_yield")
+        option_type = _as_1d_contiguous(option_type, np.int32, "option_type")
+        num_paths = _as_1d_contiguous(num_paths, np.int32, "num_paths")
+        rng_seed = _as_1d_contiguous(rng_seed, np.uint64, "rng_seed")
+
+        n = spot.shape[0]
+        _validate_same_length(
+            n,
+            (
+                ("strike", strike),
+                ("time_to_expiry", time_to_expiry),
+                ("volatility", volatility),
+                ("risk_free_rate", risk_free_rate),
+                ("dividend_yield", dividend_yield),
+                ("option_type", option_type),
+                ("num_paths", num_paths),
+                ("rng_seed", rng_seed),
+            ),
+        )
+
+        price = np.empty(n, dtype=np.float64)
+        std_error = np.empty(n, dtype=np.float64)
+        paths_used = np.empty(n, dtype=np.int32)
+        error_codes = np.empty(n, dtype=np.int32)
+
+        mc_in = QKMCInput(
+            n=n,
+            spot=_as_double_ptr(spot),
+            strike=_as_double_ptr(strike),
+            time_to_expiry=_as_double_ptr(time_to_expiry),
+            volatility=_as_double_ptr(volatility),
+            risk_free_rate=_as_double_ptr(risk_free_rate),
+            dividend_yield=_as_double_ptr(dividend_yield),
+            option_type=_as_int32_ptr(option_type),
+            num_paths=_as_int32_ptr(num_paths),
+            rng_seed=_as_uint64_ptr(rng_seed),
+        )
+
+        mc_out = QKMCOutput(
+            price=_as_double_ptr(price),
+            std_error=_as_double_ptr(std_error),
+            paths_used=_as_int32_ptr(paths_used),
+            error_codes=_as_int32_ptr(error_codes),
+        )
+
+        rc = self._lib.qk_mc_price(ct.byref(mc_in), ct.byref(mc_out))
+        if rc != QK_OK:
+            raise RuntimeError(f"qk_mc_price failed with return code {rc}")
+
+        return {
+            "price": price,
+            "std_error": std_error,
+            "paths_used": paths_used,
             "error_codes": error_codes,
         }

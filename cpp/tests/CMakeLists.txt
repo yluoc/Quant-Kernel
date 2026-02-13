@@ -2,6 +2,7 @@ add_executable(qk_tests
     test_main.cpp
     test_bs_pricer.cpp
     test_iv_solver.cpp
+    test_mc_pricer.cpp
 )
 
 target_link_libraries(qk_tests PRIVATE quantkernel)

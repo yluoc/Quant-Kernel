@@ -1,15 +1,17 @@
 #include <quantkernel/qk_api.h>
 #include "algorithms/black_scholes/bs_pricer.h"
 #include "algorithms/implied_vol/iv_solver.h"
+#include "algorithms/monte_carlo/mc_pricer.h"
 
 namespace {
 
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.bs_iv.v1",
+    "quantkernel.cpp.bs_iv_mc.v1",
     qk_bs_price,
-    qk_iv_solve
+    qk_iv_solve,
+    qk_mc_price
 };
 
 } /* namespace */
@@ -53,6 +55,24 @@ int32_t qk_iv_solve(const QKIVInput* input, QKIVOutput* output) {
         return QK_ERR_NULL_PTR;
 
     qk::iv_solve_batch(*input, *output);
+    return QK_OK;
+}
+
+int32_t qk_mc_price(const QKMCInput* input, QKMCOutput* output) {
+    if (!input || !output) return QK_ERR_NULL_PTR;
+    if (input->n <= 0)     return QK_ERR_BAD_SIZE;
+
+    if (!input->spot || !input->strike || !input->time_to_expiry ||
+        !input->volatility || !input->risk_free_rate ||
+        !input->dividend_yield || !input->option_type ||
+        !input->num_paths || !input->rng_seed)
+        return QK_ERR_NULL_PTR;
+
+    if (!output->price || !output->std_error || !output->paths_used ||
+        !output->error_codes)
+        return QK_ERR_NULL_PTR;
+
+    qk::mc_price_batch(*input, *output);
     return QK_OK;
 }
 

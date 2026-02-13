@@ -9,7 +9,11 @@ from quantkernel import QK_CALL, QK_ROW_OK, QuantKernel
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-RUNTIME_LIB = PROJECT_ROOT / "rust" / "runtime" / "target" / "release" / "libquantkernel_runtime.so"
+RUNTIME_CANDIDATES = [
+    PROJECT_ROOT / "target" / "release" / "libquantkernel_runtime.so",
+    PROJECT_ROOT / "rust" / "runtime" / "target" / "release" / "libquantkernel_runtime.so",
+]
+RUNTIME_LIB = next((p for p in RUNTIME_CANDIDATES if p.exists()), RUNTIME_CANDIDATES[0])
 CPP_PLUGIN = PROJECT_ROOT / "build" / "cpp" / "libquantkernel.so"
 
 

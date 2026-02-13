@@ -170,6 +170,7 @@ TEST_BS(plugin_api_export) {
     ASSERT_TRUE(api->plugin_name != nullptr);
     ASSERT_TRUE(api->bs_price != nullptr);
     ASSERT_TRUE(api->iv_solve != nullptr);
+    ASSERT_TRUE(api->mc_price != nullptr);
 
     double S = 100.0, K = 100.0, T = 1.0, vol = 0.20, r = 0.05, q = 0.0;
     int32_t ot = QK_CALL;

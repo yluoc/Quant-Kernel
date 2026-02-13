@@ -66,10 +66,12 @@ void test_registry_add(const char* name, void (*func)()) {
 /* Declare tests from other TUs */
 extern void register_bs_tests();
 extern void register_iv_tests();
+extern void register_mc_tests();
 
 int main() {
     register_bs_tests();
     register_iv_tests();
+    register_mc_tests();
 
     std::printf("Running %d tests...\n", g_test_count);
     for (int i = 0; i < g_test_count; ++i) {

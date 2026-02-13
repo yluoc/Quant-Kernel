@@ -5,7 +5,7 @@ use std::ptr;
 use std::sync::{OnceLock, RwLock};
 
 const QK_ABI_MAJOR: i32 = 1;
-const QK_ABI_MINOR: i32 = 0;
+const QK_ABI_MINOR: i32 = 1;
 
 const QK_OK: i32 = 0;
 const QK_ERR_NULL_PTR: i32 = -1;
@@ -57,8 +57,31 @@ pub struct QKIVOutput {
     error_codes: *mut i32,
 }
 
+#[repr(C)]
+pub struct QKMCInput {
+    n: i64,
+    spot: *const f64,
+    strike: *const f64,
+    time_to_expiry: *const f64,
+    volatility: *const f64,
+    risk_free_rate: *const f64,
+    dividend_yield: *const f64,
+    option_type: *const i32,
+    num_paths: *const i32,
+    rng_seed: *const u64,
+}
+
+#[repr(C)]
+pub struct QKMCOutput {
+    price: *mut f64,
+    std_error: *mut f64,
+    paths_used: *mut i32,
+    error_codes: *mut i32,
+}
+
 type QKBSPriceFn = unsafe extern "C" fn(*const QKBSInput, *mut QKBSOutput) -> i32;
 type QKIVSolveFn = unsafe extern "C" fn(*const QKIVInput, *mut QKIVOutput) -> i32;
+type QKMCPriceFn = unsafe extern "C" fn(*const QKMCInput, *mut QKMCOutput) -> i32;
 type QKPluginGetApiFn = unsafe extern "C" fn(i32, i32, *mut *const QKPluginAPI) -> i32;
 
 #[repr(C)]
@@ -68,6 +91,7 @@ pub struct QKPluginAPI {
     plugin_name: *const c_char,
     bs_price: Option<QKBSPriceFn>,
     iv_solve: Option<QKIVSolveFn>,
+    mc_price: Option<QKMCPriceFn>,
 }
 
 struct PluginHandle {
@@ -132,7 +156,7 @@ unsafe fn load_plugin_internal(path: *const c_char) -> Result<PluginHandle, i32>
         close_plugin(dl_handle);
         return Err(QK_ERR_ABI_MISMATCH);
     }
-    if api.bs_price.is_none() || api.iv_solve.is_none() {
+    if api.bs_price.is_none() || api.iv_solve.is_none() || api.mc_price.is_none() {
         close_plugin(dl_handle);
         return Err(QK_ERR_RUNTIME_INIT);
     }
@@ -244,6 +268,42 @@ fn validate_iv(input: *const QKIVInput, output: *mut QKIVOutput) -> i32 {
     QK_OK
 }
 
+fn validate_mc(input: *const QKMCInput, output: *mut QKMCOutput) -> i32 {
+    if input.is_null() || output.is_null() {
+        return QK_ERR_NULL_PTR;
+    }
+
+    let in_ref = unsafe { &*input };
+    let out_ref = unsafe { &*output };
+
+    if in_ref.n <= 0 {
+        return QK_ERR_BAD_SIZE;
+    }
+
+    if in_ref.spot.is_null()
+        || in_ref.strike.is_null()
+        || in_ref.time_to_expiry.is_null()
+        || in_ref.volatility.is_null()
+        || in_ref.risk_free_rate.is_null()
+        || in_ref.dividend_yield.is_null()
+        || in_ref.option_type.is_null()
+        || in_ref.num_paths.is_null()
+        || in_ref.rng_seed.is_null()
+    {
+        return QK_ERR_NULL_PTR;
+    }
+
+    if out_ref.price.is_null()
+        || out_ref.std_error.is_null()
+        || out_ref.paths_used.is_null()
+        || out_ref.error_codes.is_null()
+    {
+        return QK_ERR_NULL_PTR;
+    }
+
+    QK_OK
+}
+
 #[no_mangle]
 pub extern "C" fn qk_abi_version(major: *mut i32, minor: *mut i32) {
     if !major.is_null() {
@@ -344,6 +404,23 @@ pub extern "C" fn qk_iv_solve(input: *const QKIVInput, output: *mut QKIVOutput) 
                 return QK_ERR_RUNTIME_INIT;
             };
             unsafe { iv_solve(input, output) }
+        })
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn qk_mc_price(input: *const QKMCInput, output: *mut QKMCOutput) -> i32 {
+    ffi_guard(|| {
+        let rc = validate_mc(input, output);
+        if rc != QK_OK {
+            return rc;
+        }
+
+        with_plugin(|api| {
+            let Some(mc_price) = api.mc_price else {
+                return QK_ERR_RUNTIME_INIT;
+            };
+            unsafe { mc_price(input, output) }
         })
     })
 }
