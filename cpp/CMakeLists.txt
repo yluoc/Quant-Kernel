@@ -1,9 +1,14 @@
 # QuantKernel shared library
 add_library(quantkernel SHARED
     src/qk_api.cpp
-    src/algorithms/black_scholes/bs_pricer.cpp
-    src/algorithms/implied_vol/iv_solver.cpp
-    src/algorithms/monte_carlo/mc_pricer.cpp
+    src/algorithms/closed_form_semi_analytical/black_scholes_merton/black_scholes_merton.cpp
+    src/algorithms/closed_form_semi_analytical/black_1976/black_1976.cpp
+    src/algorithms/closed_form_semi_analytical/bachelier/bachelier.cpp
+    src/algorithms/closed_form_semi_analytical/heston/heston.cpp
+    src/algorithms/closed_form_semi_analytical/merton_jump_diffusion/merton_jump_diffusion.cpp
+    src/algorithms/closed_form_semi_analytical/variance_gamma/variance_gamma.cpp
+    src/algorithms/closed_form_semi_analytical/sabr/sabr.cpp
+    src/algorithms/closed_form_semi_analytical/dupire/dupire.cpp
 )
 
 target_include_directories(quantkernel

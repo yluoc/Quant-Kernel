@@ -8,12 +8,6 @@ from pathlib import Path
 from ._abi import (
     ABI_MAJOR,
     ABI_MINOR,
-    QKBSInput,
-    QKBSOutput,
-    QKIVInput,
-    QKIVOutput,
-    QKMCInput,
-    QKMCOutput,
     QK_OK,
 )
 
@@ -78,15 +72,6 @@ def _find_library_or_raise(names: list[str], search_dirs: list[Path], purpose: s
 def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_abi_version.restype = None
     lib.qk_abi_version.argtypes = [ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32)]
-
-    lib.qk_bs_price.restype = ct.c_int32
-    lib.qk_bs_price.argtypes = [ct.POINTER(QKBSInput), ct.POINTER(QKBSOutput)]
-
-    lib.qk_iv_solve.restype = ct.c_int32
-    lib.qk_iv_solve.argtypes = [ct.POINTER(QKIVInput), ct.POINTER(QKIVOutput)]
-
-    lib.qk_mc_price.restype = ct.c_int32
-    lib.qk_mc_price.argtypes = [ct.POINTER(QKMCInput), ct.POINTER(QKMCOutput)]
 
     if hasattr(lib, "qk_runtime_load_plugin"):
         lib.qk_runtime_load_plugin.restype = ct.c_int32

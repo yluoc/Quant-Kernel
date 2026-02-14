@@ -4,8 +4,8 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 use std::sync::{OnceLock, RwLock};
 
-const QK_ABI_MAJOR: i32 = 1;
-const QK_ABI_MINOR: i32 = 1;
+const QK_ABI_MAJOR: i32 = 2;
+const QK_ABI_MINOR: i32 = 0;
 
 const QK_OK: i32 = 0;
 const QK_ERR_NULL_PTR: i32 = -1;
@@ -13,75 +13,6 @@ const QK_ERR_BAD_SIZE: i32 = -2;
 const QK_ERR_ABI_MISMATCH: i32 = -3;
 const QK_ERR_RUNTIME_INIT: i32 = -4;
 
-#[repr(C)]
-pub struct QKBSInput {
-    n: i64,
-    spot: *const f64,
-    strike: *const f64,
-    time_to_expiry: *const f64,
-    volatility: *const f64,
-    risk_free_rate: *const f64,
-    dividend_yield: *const f64,
-    option_type: *const i32,
-}
-
-#[repr(C)]
-pub struct QKBSOutput {
-    price: *mut f64,
-    delta: *mut f64,
-    gamma: *mut f64,
-    vega: *mut f64,
-    theta: *mut f64,
-    rho: *mut f64,
-    error_codes: *mut i32,
-}
-
-#[repr(C)]
-pub struct QKIVInput {
-    n: i64,
-    spot: *const f64,
-    strike: *const f64,
-    time_to_expiry: *const f64,
-    risk_free_rate: *const f64,
-    dividend_yield: *const f64,
-    option_type: *const i32,
-    market_price: *const f64,
-    tol: f64,
-    max_iter: i32,
-}
-
-#[repr(C)]
-pub struct QKIVOutput {
-    implied_vol: *mut f64,
-    iterations: *mut i32,
-    error_codes: *mut i32,
-}
-
-#[repr(C)]
-pub struct QKMCInput {
-    n: i64,
-    spot: *const f64,
-    strike: *const f64,
-    time_to_expiry: *const f64,
-    volatility: *const f64,
-    risk_free_rate: *const f64,
-    dividend_yield: *const f64,
-    option_type: *const i32,
-    num_paths: *const i32,
-    rng_seed: *const u64,
-}
-
-#[repr(C)]
-pub struct QKMCOutput {
-    price: *mut f64,
-    std_error: *mut f64,
-    paths_used: *mut i32,
-    error_codes: *mut i32,
-}
-
-type QKBSPriceFn = unsafe extern "C" fn(*const QKBSInput, *mut QKBSOutput) -> i32;
-type QKIVSolveFn = unsafe extern "C" fn(*const QKIVInput, *mut QKIVOutput) -> i32;
-type QKMCPriceFn = unsafe extern "C" fn(*const QKMCInput, *mut QKMCOutput) -> i32;
 type QKPluginGetApiFn = unsafe extern "C" fn(i32, i32, *mut *const QKPluginAPI) -> i32;
 
 #[repr(C)]
@@ -89,14 +20,10 @@ pub struct QKPluginAPI {
     abi_major: i32,
     abi_minor: i32,
     plugin_name: *const c_char,
-    bs_price: Option<QKBSPriceFn>,
-    iv_solve: Option<QKIVSolveFn>,
-    mc_price: Option<QKMCPriceFn>,
 }
 
 struct PluginHandle {
     dl_handle: *mut c_void,
-    api: *const QKPluginAPI,
 }
 
 unsafe impl Send for PluginHandle {}
@@ -156,39 +83,16 @@ unsafe fn load_plugin_internal(path: *const c_char) -> Result<PluginHandle, i32>
         close_plugin(dl_handle);
         return Err(QK_ERR_ABI_MISMATCH);
     }
-    if api.bs_price.is_none() || api.iv_solve.is_none() || api.mc_price.is_none() {
+    if api.plugin_name.is_null() {
         close_plugin(dl_handle);
         return Err(QK_ERR_RUNTIME_INIT);
     }
-
-    Ok(PluginHandle { dl_handle, api: api_ptr })
+    Ok(PluginHandle { dl_handle })
 }
 
 #[cfg(not(unix))]
 unsafe fn load_plugin_internal(_path: *const c_char) -> Result<PluginHandle, i32> {
     Err(QK_ERR_RUNTIME_INIT)
-}
-
-fn with_plugin<F>(f: F) -> i32
-where
-    F: FnOnce(&QKPluginAPI) -> i32,
-{
-    let state = runtime_state();
-    let guard = match state.read() {
-        Ok(g) => g,
-        Err(_) => return QK_ERR_RUNTIME_INIT,
-    };
-
-    let Some(plugin) = guard.as_ref() else {
-        return QK_ERR_RUNTIME_INIT;
-    };
-
-    let api = unsafe { plugin.api.as_ref() };
-    let Some(api) = api else {
-        return QK_ERR_RUNTIME_INIT;
-    };
-
-    f(api)
 }
 
 fn ffi_guard<F>(f: F) -> i32
@@ -199,109 +103,6 @@ where
         Ok(rc) => rc,
         Err(_) => QK_ERR_RUNTIME_INIT,
     }
-}
-
-fn validate_bs(input: *const QKBSInput, output: *mut QKBSOutput) -> i32 {
-    if input.is_null() || output.is_null() {
-        return QK_ERR_NULL_PTR;
-    }
-
-    let in_ref = unsafe { &*input };
-    let out_ref = unsafe { &*output };
-
-    if in_ref.n <= 0 {
-        return QK_ERR_BAD_SIZE;
-    }
-
-    if in_ref.spot.is_null()
-        || in_ref.strike.is_null()
-        || in_ref.time_to_expiry.is_null()
-        || in_ref.volatility.is_null()
-        || in_ref.risk_free_rate.is_null()
-        || in_ref.dividend_yield.is_null()
-        || in_ref.option_type.is_null()
-    {
-        return QK_ERR_NULL_PTR;
-    }
-
-    if out_ref.price.is_null()
-        || out_ref.delta.is_null()
-        || out_ref.gamma.is_null()
-        || out_ref.vega.is_null()
-        || out_ref.theta.is_null()
-        || out_ref.rho.is_null()
-        || out_ref.error_codes.is_null()
-    {
-        return QK_ERR_NULL_PTR;
-    }
-
-    QK_OK
-}
-
-fn validate_iv(input: *const QKIVInput, output: *mut QKIVOutput) -> i32 {
-    if input.is_null() || output.is_null() {
-        return QK_ERR_NULL_PTR;
-    }
-
-    let in_ref = unsafe { &*input };
-    let out_ref = unsafe { &*output };
-
-    if in_ref.n <= 0 {
-        return QK_ERR_BAD_SIZE;
-    }
-
-    if in_ref.spot.is_null()
-        || in_ref.strike.is_null()
-        || in_ref.time_to_expiry.is_null()
-        || in_ref.risk_free_rate.is_null()
-        || in_ref.dividend_yield.is_null()
-        || in_ref.option_type.is_null()
-        || in_ref.market_price.is_null()
-    {
-        return QK_ERR_NULL_PTR;
-    }
-
-    if out_ref.implied_vol.is_null() || out_ref.iterations.is_null() || out_ref.error_codes.is_null() {
-        return QK_ERR_NULL_PTR;
-    }
-
-    QK_OK
-}
-
-fn validate_mc(input: *const QKMCInput, output: *mut QKMCOutput) -> i32 {
-    if input.is_null() || output.is_null() {
-        return QK_ERR_NULL_PTR;
-    }
-
-    let in_ref = unsafe { &*input };
-    let out_ref = unsafe { &*output };
-
-    if in_ref.n <= 0 {
-        return QK_ERR_BAD_SIZE;
-    }
-
-    if in_ref.spot.is_null()
-        || in_ref.strike.is_null()
-        || in_ref.time_to_expiry.is_null()
-        || in_ref.volatility.is_null()
-        || in_ref.risk_free_rate.is_null()
-        || in_ref.dividend_yield.is_null()
-        || in_ref.option_type.is_null()
-        || in_ref.num_paths.is_null()
-        || in_ref.rng_seed.is_null()
-    {
-        return QK_ERR_NULL_PTR;
-    }
-
-    if out_ref.price.is_null()
-        || out_ref.std_error.is_null()
-        || out_ref.paths_used.is_null()
-        || out_ref.error_codes.is_null()
-    {
-        return QK_ERR_NULL_PTR;
-    }
-
-    QK_OK
 }
 
 #[no_mangle]
@@ -371,56 +172,5 @@ pub extern "C" fn qk_runtime_unload_plugin() -> i32 {
         }
 
         QK_OK
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn qk_bs_price(input: *const QKBSInput, output: *mut QKBSOutput) -> i32 {
-    ffi_guard(|| {
-        let rc = validate_bs(input, output);
-        if rc != QK_OK {
-            return rc;
-        }
-
-        with_plugin(|api| {
-            let Some(bs_price) = api.bs_price else {
-                return QK_ERR_RUNTIME_INIT;
-            };
-            unsafe { bs_price(input, output) }
-        })
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn qk_iv_solve(input: *const QKIVInput, output: *mut QKIVOutput) -> i32 {
-    ffi_guard(|| {
-        let rc = validate_iv(input, output);
-        if rc != QK_OK {
-            return rc;
-        }
-
-        with_plugin(|api| {
-            let Some(iv_solve) = api.iv_solve else {
-                return QK_ERR_RUNTIME_INIT;
-            };
-            unsafe { iv_solve(input, output) }
-        })
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn qk_mc_price(input: *const QKMCInput, output: *mut QKMCOutput) -> i32 {
-    ffi_guard(|| {
-        let rc = validate_mc(input, output);
-        if rc != QK_OK {
-            return rc;
-        }
-
-        with_plugin(|api| {
-            let Some(mc_price) = api.mc_price else {
-                return QK_ERR_RUNTIME_INIT;
-            };
-            unsafe { mc_price(input, output) }
-        })
     })
 }

@@ -2,10 +2,17 @@
 
 QuantKernel is a high-performance options analytics library with a stable C ABI and a Python wrapper.
 
-Implemented engines:
-- Black-Scholes pricing with Greeks (`qk_bs_price`)
-- Implied volatility solver (`qk_iv_solve`)
-- Monte Carlo pricer (`qk_mc_price`)
+Implemented C++ quantitative models are under:
+- `cpp/src/algorithms/closed_form_semi_analytical/`
+Includes:
+- Black-Scholes-Merton
+- Black (1976)
+- Bachelier
+- Heston (characteristic-function pricing)
+- Merton Jump-Diffusion
+- Variance Gamma (characteristic-function pricing)
+- SABR (Hagan lognormal asymptotics)
+- Dupire Local Volatility (direct and finite-difference forms)
 
 ## Build
 
@@ -48,25 +55,10 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE quantkernel)
 ```
 
-### Minimal C++ call example
+### C++ model include example
 
 ```cpp
-#include <quantkernel/qk_api.h>
-#include <vector>
-#include <cstdint>
-
-int main() {
-    std::vector<double> spot{100.0}, strike{100.0}, tte{1.0}, vol{0.2}, r{0.05}, q{0.0};
-    std::vector<int32_t> opt{QK_CALL};
-    std::vector<double> price(1), delta(1), gamma(1), vega(1), theta(1), rho(1);
-    std::vector<int32_t> err(1);
-
-    QKBSInput in{1, spot.data(), strike.data(), tte.data(), vol.data(), r.data(), q.data(), opt.data()};
-    QKBSOutput out{price.data(), delta.data(), gamma.data(), vega.data(), theta.data(), rho.data(), err.data()};
-
-    int32_t rc = qk_bs_price(&in, &out);
-    return (rc == QK_OK && err[0] == QK_ROW_OK) ? 0 : 1;
-}
+#include "algorithms/closed_form_semi_analytical/closed_form_models.h"
 ```
 
 ## Use As A Python Library
@@ -83,25 +75,17 @@ Build native libraries first, then run Python with package path:
 PYTHONPATH=python python3 -c "from quantkernel import QuantKernel; print(QuantKernel())"
 ```
 
-### Python pricing example
+### Python usage example
 
 ```python
-import numpy as np
+import ctypes as ct
 from quantkernel import QuantKernel
 
 qk = QuantKernel()
-
-res = qk.bs_price(
-    spot=np.array([100.0]),
-    strike=np.array([100.0]),
-    time_to_expiry=np.array([1.0]),
-    volatility=np.array([0.20]),
-    risk_free_rate=np.array([0.05]),
-    dividend_yield=np.array([0.0]),
-    option_type=np.array([QuantKernel.CALL], dtype=np.int32),
-)
-
-print(res["price"][0], res["error_codes"][0])
+major = ct.c_int32(-1)
+minor = ct.c_int32(-1)
+qk._lib.qk_abi_version(ct.byref(major), ct.byref(minor))
+print(major.value, minor.value)
 ```
 
 Python loader notes:
@@ -110,7 +94,7 @@ Python loader notes:
 
 ## Runtime Shell Mode (Optional)
 
-To route calls through the Rust runtime safety shell:
+To enable the Rust runtime shell for plugin lifecycle and ABI validation:
 
 ```bash
 QK_USE_RUNTIME=1 \
@@ -120,6 +104,7 @@ PYTHONPATH=python python3 python/examples/demo_pricing.py
 
 If `QK_PLUGIN_PATH` is unset, the loader tries to discover a plugin in its default search directories.
 The runtime plugin loader is currently implemented for Unix (`dlopen` path).
+The runtime shell currently manages plugin load/unload and ABI checks; closed-form model execution remains in the C++ plugin.
 
 ## Run Tests
 

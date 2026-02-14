@@ -10,3 +10,21 @@ cmake_install.cmake
 .claude
 target/
 rust/runtime/target/
+rust/runtime/target_local/
+rust/runtime/.tmp/
+
+# Editor / OS local files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Python local environments / coverage
+.venv/
+venv/
+.env
+.env.*
+.coverage
+coverage.xml
+htmlcov/
