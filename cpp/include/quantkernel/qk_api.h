@@ -17,9 +17,6 @@ QK_EXPORT void    qk_abi_version(int32_t* major, int32_t* minor);
 QK_EXPORT int32_t qk_plugin_get_api(int32_t host_abi_major,
                                     int32_t host_abi_minor,
                                     const QKPluginAPI** out_api);
-/* Runtime-only symbols (exported by Rust runtime shell, not by plugins) */
-QK_EXPORT int32_t qk_runtime_load_plugin(const char* plugin_path_utf8);
-QK_EXPORT int32_t qk_runtime_unload_plugin(void);
 
 #ifdef __cplusplus
 }

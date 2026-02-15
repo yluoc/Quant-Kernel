@@ -26,14 +26,6 @@ Main shared library output:
 - macOS: `build/cpp/libquantkernel.dylib`
 - Windows: `build/cpp/quantkernel.dll` (or `libquantkernel.dll`)
 
-Optional Rust runtime shell:
-
-```bash
-cmake --build build --target quantkernel_runtime
-```
-
-Runtime output is under `rust/runtime/target/release/` (and may also appear in `target/release/` depending on build flow).
-
 ## Use As A C/C++ Library
 
 Public headers:
@@ -89,22 +81,8 @@ print(major.value, minor.value)
 ```
 
 Python loader notes:
-- Default search paths include `build/cpp`, `build`, `target/release`, `rust/runtime/target/release`, and project root.
+- Default search paths include `build/cpp`, `build`, and project root.
 - Set `QK_LIB_PATH` to override where shared libraries are searched.
-
-## Runtime Shell Mode (Optional)
-
-To enable the Rust runtime shell for plugin lifecycle and ABI validation:
-
-```bash
-QK_USE_RUNTIME=1 \
-QK_PLUGIN_PATH=$PWD/build/cpp/libquantkernel.so \
-PYTHONPATH=python python3 python/examples/demo_pricing.py
-```
-
-If `QK_PLUGIN_PATH` is unset, the loader tries to discover a plugin in its default search directories.
-The runtime plugin loader is currently implemented for Unix (`dlopen` path).
-The runtime shell currently manages plugin load/unload and ABI checks; closed-form model execution remains in the C++ plugin.
 
 ## Run Tests
 

@@ -19,7 +19,7 @@ rust/runtime/.tmp/
 .DS_Store
 *.swp
 *.swo
-
+claude_session.txt
 # Python local environments / coverage
 .venv/
 venv/

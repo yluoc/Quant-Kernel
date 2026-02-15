@@ -1,3 +1,0 @@
-[workspace]
-members = ["rust/runtime"]
-resolver = "2"
