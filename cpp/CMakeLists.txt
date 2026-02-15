@@ -9,6 +9,12 @@ add_library(quantkernel SHARED
     src/algorithms/closed_form_semi_analytical/variance_gamma/variance_gamma.cpp
     src/algorithms/closed_form_semi_analytical/sabr/sabr.cpp
     src/algorithms/closed_form_semi_analytical/dupire/dupire.cpp
+    src/algorithms/tree_lattice_methods/crr/crr.cpp
+    src/algorithms/tree_lattice_methods/jarrow_rudd/jarrow_rudd.cpp
+    src/algorithms/tree_lattice_methods/tian/tian.cpp
+    src/algorithms/tree_lattice_methods/leisen_reimer/leisen_reimer.cpp
+    src/algorithms/tree_lattice_methods/trinomial_tree/trinomial_tree.cpp
+    src/algorithms/tree_lattice_methods/implied_tree/derman_kani.cpp
 )
 
 target_include_directories(quantkernel

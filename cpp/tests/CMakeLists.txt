@@ -1,6 +1,7 @@
 add_executable(qk_tests
     test_main.cpp
     test_closed_form_models.cpp
+    test_tree_lattice_models.cpp
 )
 
 target_link_libraries(qk_tests PRIVATE quantkernel)

@@ -2,7 +2,7 @@
 
 # ABI version expected by this Python wrapper
 ABI_MAJOR = 2
-ABI_MINOR = 0
+ABI_MINOR = 2
 
 # Return codes
 QK_OK = 0

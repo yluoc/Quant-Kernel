@@ -61,6 +61,67 @@ def _find_library_or_raise(names: list[str], search_dirs: list[Path], purpose: s
 def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_abi_version.restype = None
     lib.qk_abi_version.argtypes = [ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32)]
+    
+    lib.qk_cf_black_scholes_merton_price.restype = ct.c_double
+    lib.qk_cf_black_scholes_merton_price.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_cf_black76_price.restype = ct.c_double
+    lib.qk_cf_black76_price.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_cf_bachelier_price.restype = ct.c_double
+    lib.qk_cf_bachelier_price.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_cf_heston_price_cf.restype = ct.c_double
+    lib.qk_cf_heston_price_cf.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_int32, ct.c_int32, ct.c_double,
+    ]
+    lib.qk_cf_merton_jump_diffusion_price.restype = ct.c_double
+    lib.qk_cf_merton_jump_diffusion_price.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_double, ct.c_int32, ct.c_int32,
+    ]
+    lib.qk_cf_variance_gamma_price_cf.restype = ct.c_double
+    lib.qk_cf_variance_gamma_price_cf.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_double, ct.c_int32, ct.c_int32, ct.c_double,
+    ]
+    lib.qk_cf_sabr_hagan_lognormal_iv.restype = ct.c_double
+    lib.qk_cf_sabr_hagan_lognormal_iv.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+    ]
+    lib.qk_cf_sabr_hagan_black76_price.restype = ct.c_double
+    lib.qk_cf_sabr_hagan_black76_price.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_cf_dupire_local_vol.restype = ct.c_double
+    lib.qk_cf_dupire_local_vol.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+    ]
+
+    tlm_argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32, ct.c_int32, ct.c_int32,
+    ]
+    lib.qk_tlm_crr_price.restype = ct.c_double
+    lib.qk_tlm_crr_price.argtypes = tlm_argtypes
+    lib.qk_tlm_jarrow_rudd_price.restype = ct.c_double
+    lib.qk_tlm_jarrow_rudd_price.argtypes = tlm_argtypes
+    lib.qk_tlm_tian_price.restype = ct.c_double
+    lib.qk_tlm_tian_price.argtypes = tlm_argtypes
+    lib.qk_tlm_leisen_reimer_price.restype = ct.c_double
+    lib.qk_tlm_leisen_reimer_price.argtypes = tlm_argtypes
+    lib.qk_tlm_trinomial_tree_price.restype = ct.c_double
+    lib.qk_tlm_trinomial_tree_price.argtypes = tlm_argtypes
+    lib.qk_tlm_derman_kani_const_local_vol_price.restype = ct.c_double
+    lib.qk_tlm_derman_kani_const_local_vol_price.argtypes = tlm_argtypes
 
 
 def _verify_abi(lib: ct.CDLL) -> None:
