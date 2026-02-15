@@ -29,19 +29,21 @@ double merton_jump_diffusion_price(double spot, double strike, double t, double 
     double weight = std::exp(-lambda_t);
     double price = 0.0;
 
+    double vol2 = vol * vol;
+    double jump_vol2 = params.jump_vol * params.jump_vol;
+    double inv_t = 1.0 / t;
+    double base_r = r - params.jump_intensity * kappa_j;
+
     for (int32_t n = 0; n <= max_terms; ++n) {
         double n_d = static_cast<double>(n);
-        double var_n = vol * vol + (n_d * params.jump_vol * params.jump_vol) / t;
+        double var_n = vol2 + n_d * jump_vol2 * inv_t;
         double vol_n = std::sqrt(std::max(0.0, var_n));
-        double r_n = r - params.jump_intensity * kappa_j
-            + (n_d * params.jump_mean) / t
-            + 0.5 * (n_d * params.jump_vol * params.jump_vol) / t;
+        double r_n = base_r + n_d * (params.jump_mean + 0.5 * jump_vol2) * inv_t;
 
         price += weight * black_scholes_merton_price(spot, strike, t, vol_n, r_n, q, option_type);
 
-        if (n < max_terms) {
-            weight *= lambda_t / static_cast<double>(n + 1);
-        }
+        if (weight < 1e-15) break;
+        weight *= lambda_t / static_cast<double>(n + 1);
     }
     return price;
 }

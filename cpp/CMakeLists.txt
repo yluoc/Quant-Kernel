@@ -24,13 +24,15 @@ target_include_directories(quantkernel
 
 target_compile_options(quantkernel PRIVATE
     -Wall -Wextra -Wpedantic
-    -O2 -ffast-math -march=native
+    -O3 -ffast-math -march=native -mtune=native
+    -funroll-loops -ftree-vectorize
 )
 
 set_target_properties(quantkernel PROPERTIES
     OUTPUT_NAME "quantkernel"
     PREFIX "lib"
     SOVERSION 1
+    INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 
 # C++ tests

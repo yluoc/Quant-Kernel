@@ -7,9 +7,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace qk::tlm::detail {
+
+// Small-buffer optimization: use stack for small arrays, heap for large
+static constexpr int32_t kStackThreshold = 1025; // steps+1 <= 1025 uses stack
 
 constexpr double kEps = 1e-12;
 
@@ -56,30 +60,43 @@ inline double binomial_price(double spot, double strike, double t, double r, dou
     double disc = std::exp(-r * dt);
     double p = clamp_probability(prob_up);
 
-    std::vector<double> values(static_cast<std::size_t>(steps + 1), 0.0);
-    double stock = spot * std::pow(down, static_cast<double>(steps));
+    int32_t buf_sz = steps + 1;
+    double stack_buf[kStackThreshold];
+    std::unique_ptr<double[]> heap_buf;
+    double* __restrict__ v;
+    if (buf_sz <= kStackThreshold) {
+        v = stack_buf;
+    } else {
+        heap_buf = std::make_unique<double[]>(static_cast<std::size_t>(buf_sz));
+        v = heap_buf.get();
+    }
+
     double ud = up / down;
+    double stock = spot * std::pow(down, static_cast<double>(steps));
     for (int32_t i = 0; i <= steps; ++i) {
-        values[static_cast<std::size_t>(i)] = intrinsic_value(stock, strike, option_type);
+        v[i] = intrinsic_value(stock, strike, option_type);
         stock *= ud;
     }
 
-    for (int32_t n = steps - 1; n >= 0; --n) {
-        double stock_n = spot * std::pow(down, static_cast<double>(n));
-        for (int32_t i = 0; i <= n; ++i) {
-            double cont = disc * (p * values[static_cast<std::size_t>(i + 1)] +
-                                  (1.0 - p) * values[static_cast<std::size_t>(i)]);
-            if (american_style) {
-                double exercise = intrinsic_value(stock_n, strike, option_type);
-                values[static_cast<std::size_t>(i)] = std::max(cont, exercise);
-            } else {
-                values[static_cast<std::size_t>(i)] = cont;
+    double one_minus_p = 1.0 - p;
+    if (!american_style) {
+        for (int32_t n = steps - 1; n >= 0; --n) {
+            for (int32_t i = 0; i <= n; ++i) {
+                v[i] = disc * (p * v[i + 1] + one_minus_p * v[i]);
             }
-            stock_n *= ud;
+        }
+    } else {
+        for (int32_t n = steps - 1; n >= 0; --n) {
+            double stock_n = spot * std::pow(down, static_cast<double>(n));
+            for (int32_t i = 0; i <= n; ++i) {
+                double cont = disc * (p * v[i + 1] + one_minus_p * v[i]);
+                v[i] = std::max(cont, intrinsic_value(stock_n, strike, option_type));
+                stock_n *= ud;
+            }
         }
     }
 
-    return values[0];
+    return v[0];
 }
 
 } // namespace qk::tlm::detail

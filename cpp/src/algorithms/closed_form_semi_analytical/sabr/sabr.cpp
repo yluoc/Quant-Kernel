@@ -32,6 +32,7 @@ double sabr_hagan_lognormal_iv(double forward, double strike, double t,
     }
 
     double fk_pow = std::pow(forward * strike, 0.5 * one_minus_beta);
+    double fk_pow_full = fk_pow * fk_pow; // pow(F*K, 1-beta)
     double z = (params.nu / params.alpha) * fk_pow * log_fk;
 
     double sqrt_arg = 1.0 - 2.0 * params.rho * z + z * z;
@@ -43,11 +44,11 @@ double sabr_hagan_lognormal_iv(double forward, double strike, double t,
     double log_fk4 = log_fk2 * log_fk2;
     double A = params.alpha / (fk_pow * (1.0 + beta2 * log_fk2 / 24.0 + beta4 * log_fk4 / 1920.0));
 
-    double term1 = (beta2 / 24.0) * (params.alpha * params.alpha)
-        / std::pow(forward * strike, one_minus_beta);
-    double term2 = (params.rho * params.beta * params.nu * params.alpha)
-        / (4.0 * fk_pow);
-    double term3 = ((2.0 - 3.0 * params.rho * params.rho) * params.nu * params.nu) / 24.0;
+    double alpha2 = params.alpha * params.alpha;
+    double nu2 = params.nu * params.nu;
+    double term1 = (beta2 / 24.0) * alpha2 / fk_pow_full;
+    double term2 = (params.rho * params.beta * params.nu * params.alpha) / (4.0 * fk_pow);
+    double term3 = ((2.0 - 3.0 * params.rho * params.rho) * nu2) / 24.0;
     double B = 1.0 + (term1 + term2 + term3) * t;
 
     return A * z_over_x * B;

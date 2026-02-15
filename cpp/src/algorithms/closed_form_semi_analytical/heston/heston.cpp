@@ -23,22 +23,28 @@ double heston_price_cf(double spot, double strike, double t, double r, double q,
     if (integration_limit <= 1e-6) return detail::nan_value();
 
     double log_spot = std::log(spot);
+    double sigma2 = params.sigma * params.sigma;
+    double inv_sigma2 = 1.0 / sigma2;
+    double kappa_theta_inv_s2 = params.kappa * params.theta * inv_sigma2;
+    double rho_sigma = params.rho * params.sigma;
+    double drift = log_spot + (r - q) * t;
+
     auto cf = [&](std::complex<double> u) -> std::complex<double> {
-        std::complex<double> beta = params.kappa - params.rho * params.sigma * detail::kI * u;
-        std::complex<double> d = std::sqrt(beta * beta + params.sigma * params.sigma * (detail::kI * u + u * u));
-        std::complex<double> g = (beta - d) / (beta + d);
+        std::complex<double> iu = detail::kI * u;
+        std::complex<double> beta = params.kappa - rho_sigma * iu;
+        std::complex<double> d = std::sqrt(beta * beta + sigma2 * (iu + u * u));
+        std::complex<double> bmd = beta - d;
+        std::complex<double> g = bmd / (beta + d);
         std::complex<double> exp_neg_d_t = std::exp(-d * t);
-        std::complex<double> C = detail::kI * u * (log_spot + (r - q) * t)
-            + (params.kappa * params.theta / (params.sigma * params.sigma))
-                * ((beta - d) * t - 2.0 * std::log((1.0 - g * exp_neg_d_t) / (1.0 - g)));
-        std::complex<double> D = ((beta - d) / (params.sigma * params.sigma))
-            * ((1.0 - exp_neg_d_t) / (1.0 - g * exp_neg_d_t));
+        std::complex<double> C = iu * drift
+            + kappa_theta_inv_s2 * (bmd * t - 2.0 * std::log((1.0 - g * exp_neg_d_t) / (1.0 - g)));
+        std::complex<double> D = (bmd * inv_sigma2) * ((1.0 - exp_neg_d_t) / (1.0 - g * exp_neg_d_t));
         return std::exp(C + D * params.v0);
     };
 
     double log_strike = std::log(strike);
-    double p1 = detail::probability_p1(cf, log_strike, integration_steps, integration_limit);
-    double p2 = detail::probability_p2(cf, log_strike, integration_steps, integration_limit);
+    double p1, p2;
+    detail::probability_p1p2(cf, log_strike, integration_steps, integration_limit, p1, p2);
     if (!is_finite_safe(p1) || !is_finite_safe(p2)) return detail::nan_value();
 
     double call_price = spot * std::exp(-q * t) * p1 - strike * std::exp(-r * t) * p2;

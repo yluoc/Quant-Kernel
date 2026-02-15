@@ -34,41 +34,47 @@ double derman_kani_implied_tree_price(
     // when local vol is close to sigma_ref.
     double dx = sigma_ref * std::sqrt(3.0 * dt);
     double up = std::exp(dx);
+    double inv_up = 1.0 / up;
+    double dx2 = dx * dx;
+    double inv_dx = 1.0 / dx;
+    double inv_dx2 = 1.0 / dx2;
 
     // Recombining trinomial tree: at step n there are (2n+1) nodes
     // with index j in [-n, n].  Node (n, j) has spot = S0 * exp(j * dx).
 
-    // Terminal payoff at step N: (2N+1) nodes.
-    std::vector<double> values(static_cast<std::size_t>(2 * N + 1), 0.0);
+    // Terminal payoff at step N: (2N+1) nodes — build incrementally.
+    std::size_t max_width = static_cast<std::size_t>(2 * N + 1);
+    std::vector<double> buf_a(max_width);
+    std::vector<double> buf_b(max_width);
+    double* values = buf_a.data();
+    double* next = buf_b.data();
+
+    double node_spot = spot * std::pow(inv_up, static_cast<double>(N));
     for (int32_t j = -N; j <= N; ++j) {
-        double node_spot = spot * std::pow(up, static_cast<double>(j));
-        values[static_cast<std::size_t>(j + N)] =
-            detail::intrinsic_value(node_spot, strike, option_type);
+        values[j + N] = detail::intrinsic_value(node_spot, strike, option_type);
+        node_spot *= up;
     }
 
     // Backward induction with node-specific trinomial probabilities.
     for (int32_t n = N - 1; n >= 0; --n) {
-        std::vector<double> next(static_cast<std::size_t>(2 * n + 1), 0.0);
+        double node_t = static_cast<double>(n) * dt;
+        double ns = spot * std::pow(inv_up, static_cast<double>(n));
         for (int32_t j = -n; j <= n; ++j) {
-            double node_spot = spot * std::pow(up, static_cast<double>(j));
-            double node_t = static_cast<double>(n) * dt;
-            double sigma = local_vol_surface(node_spot, node_t);
+            double sigma = local_vol_surface(ns, node_t);
             if (!is_finite_safe(sigma) || sigma < 0.0) return detail::nan_value();
             sigma = std::max(sigma, detail::kEps);
 
-            // Match drift and variance on the fixed grid.
-            //   E[Dx]   = mu * dt,  Var[Dx] = sigma^2 * dt
-            //   mu = r - q - sigma^2 / 2
-            double mu = r - q - 0.5 * sigma * sigma;
-            double var_dt = sigma * sigma * dt;
+            double sigma2 = sigma * sigma;
+            double mu = r - q - 0.5 * sigma2;
+            double var_dt = sigma2 * dt;
             double mu_dt = mu * dt;
-            double dx2 = dx * dx;
 
-            double pu = 0.5 * ((var_dt + mu_dt * mu_dt) / dx2 + mu_dt / dx);
-            double pd = 0.5 * ((var_dt + mu_dt * mu_dt) / dx2 - mu_dt / dx);
+            double drift_var = (var_dt + mu_dt * mu_dt) * inv_dx2;
+            double drift_dir = mu_dt * inv_dx;
+            double pu = 0.5 * (drift_var + drift_dir);
+            double pd = 0.5 * (drift_var - drift_dir);
             double pm = 1.0 - pu - pd;
 
-            // Clamp and renormalise for numerical safety.
             pu = std::max(0.0, pu);
             pd = std::max(0.0, pd);
             pm = std::max(0.0, pm);
@@ -77,21 +83,19 @@ double derman_kani_implied_tree_price(
             pm /= sum_p;
             pd /= sum_p;
 
-            // Children live in the (n+1)-level array of size 2(n+1)+1.
-            // Node j at level n maps to children j-1, j, j+1 at level n+1.
-            int32_t center = j + (n + 1);   // index of middle child
-            double cont = disc * (pu * values[static_cast<std::size_t>(center + 1)] +
-                                  pm * values[static_cast<std::size_t>(center)] +
-                                  pd * values[static_cast<std::size_t>(center - 1)]);
+            int32_t center = j + (n + 1);
+            double cont = disc * (pu * values[center + 1] +
+                                  pm * values[center] +
+                                  pd * values[center - 1]);
 
             if (config.american_style) {
-                next[static_cast<std::size_t>(j + n)] =
-                    std::max(cont, detail::intrinsic_value(node_spot, strike, option_type));
+                next[j + n] = std::max(cont, detail::intrinsic_value(ns, strike, option_type));
             } else {
-                next[static_cast<std::size_t>(j + n)] = cont;
+                next[j + n] = cont;
             }
+            ns *= up;
         }
-        values.swap(next);
+        double* tmp = values; values = next; next = tmp;
     }
 
     return values[0];

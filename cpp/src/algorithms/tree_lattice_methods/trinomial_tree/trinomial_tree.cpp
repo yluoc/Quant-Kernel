@@ -25,40 +25,58 @@ double trinomial_tree_price(double spot, double strike, double t, double vol, do
 
     double dx = vol * std::sqrt(2.0 * dt);
     double up = std::exp(dx);
+    double inv_up = 1.0 / up;
     double edr = std::exp((r - q) * dt * 0.5);
     double ev = std::exp(vol * std::sqrt(dt * 0.5));
-    double pu = std::pow((edr - 1.0 / ev) / (ev - 1.0 / ev), 2.0);
-    double pd = std::pow((ev - edr) / (ev - 1.0 / ev), 2.0);
+    double inv_ev = 1.0 / ev;
+    double denom = ev - inv_ev;
+    double pu_raw = (edr - inv_ev) / denom;
+    double pd_raw = (ev - edr) / denom;
+    double pu = pu_raw * pu_raw;
+    double pd = pd_raw * pd_raw;
     double pm = std::max(0.0, 1.0 - pu - pd);
     double sum_p = pu + pm + pd;
     pu /= sum_p;
     pm /= sum_p;
     pd /= sum_p;
 
-    int32_t width = 2 * steps + 1;
-    std::vector<double> values(static_cast<std::size_t>(width), 0.0);
+    std::size_t max_width = static_cast<std::size_t>(2 * steps + 1);
+    std::vector<double> buf_a(max_width);
+    std::vector<double> buf_b(max_width);
+    double* values = buf_a.data();
+    double* next = buf_b.data();
+
+    // Terminal payoff: build incrementally instead of pow(up, j)
+    double node_spot = spot * std::pow(inv_up, static_cast<double>(steps));
+    double up2 = up; // up^1 multiplier
     for (int32_t j = -steps; j <= steps; ++j) {
-        double node_spot = spot * std::pow(up, static_cast<double>(j));
-        values[static_cast<std::size_t>(j + steps)] = detail::intrinsic_value(node_spot, strike, option_type);
+        values[j + steps] = detail::intrinsic_value(node_spot, strike, option_type);
+        node_spot *= up2;
     }
 
-    for (int32_t n = steps - 1; n >= 0; --n) {
-        std::vector<double> next(static_cast<std::size_t>(2 * n + 1), 0.0);
-        for (int32_t j = -n; j <= n; ++j) {
-            int32_t idx = j + n;
-            int32_t center = j + (n + 1);
-            double cont = disc * (pu * values[static_cast<std::size_t>(center + 1)] +
-                                  pm * values[static_cast<std::size_t>(center)] +
-                                  pd * values[static_cast<std::size_t>(center - 1)]);
-            if (american_style) {
-                double node_spot = spot * std::pow(up, static_cast<double>(j));
-                next[static_cast<std::size_t>(idx)] =
-                    std::max(cont, detail::intrinsic_value(node_spot, strike, option_type));
-            } else {
-                next[static_cast<std::size_t>(idx)] = cont;
+    if (!american_style) {
+        for (int32_t n = steps - 1; n >= 0; --n) {
+            for (int32_t j = -n; j <= n; ++j) {
+                int32_t center = j + (n + 1);
+                next[j + n] = disc * (pu * values[center + 1] +
+                                      pm * values[center] +
+                                      pd * values[center - 1]);
             }
+            double* tmp = values; values = next; next = tmp;
         }
-        values.swap(next);
+    } else {
+        for (int32_t n = steps - 1; n >= 0; --n) {
+            double ns = spot * std::pow(inv_up, static_cast<double>(n));
+            for (int32_t j = -n; j <= n; ++j) {
+                int32_t center = j + (n + 1);
+                double cont = disc * (pu * values[center + 1] +
+                                      pm * values[center] +
+                                      pd * values[center - 1]);
+                next[j + n] = std::max(cont, detail::intrinsic_value(ns, strike, option_type));
+                ns *= up2;
+            }
+            double* tmp = values; values = next; next = tmp;
+        }
     }
 
     return values[0];
