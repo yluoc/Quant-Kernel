@@ -46,9 +46,8 @@ double trinomial_tree_price(double spot, double strike, double t, double vol, do
     double* values = buf_a.data();
     double* next = buf_b.data();
 
-    // Terminal payoff: build incrementally instead of pow(up, j)
     double node_spot = spot * std::pow(inv_up, static_cast<double>(steps));
-    double up2 = up; // up^1 multiplier
+    double up2 = up;
     for (int32_t j = -steps; j <= steps; ++j) {
         values[j + steps] = detail::intrinsic_value(node_spot, strike, option_type);
         node_spot *= up2;

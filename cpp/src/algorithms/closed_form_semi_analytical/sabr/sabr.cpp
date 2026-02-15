@@ -32,7 +32,7 @@ double sabr_hagan_lognormal_iv(double forward, double strike, double t,
     }
 
     double fk_pow = std::pow(forward * strike, 0.5 * one_minus_beta);
-    double fk_pow_full = fk_pow * fk_pow; // pow(F*K, 1-beta)
+    double fk_pow_full = fk_pow * fk_pow;
     double z = (params.nu / params.alpha) * fk_pow * log_fk;
 
     double sqrt_arg = 1.0 - 2.0 * params.rho * z + z * z;

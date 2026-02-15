@@ -2,8 +2,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-/* Minimal test harness — no external framework needed */
-
 static int g_tests_run    = 0;
 static int g_tests_passed = 0;
 static int g_tests_failed = 0;
@@ -63,7 +61,6 @@ void test_registry_add(const char* name, void (*func)()) {
     }
 }
 
-/* Declare tests from other TUs */
 extern void register_cf_tests();
 extern void register_tlm_tests();
 

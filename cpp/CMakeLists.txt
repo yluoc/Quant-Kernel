@@ -1,4 +1,3 @@
-# QuantKernel shared library
 add_library(quantkernel SHARED
     src/qk_api.cpp
     src/algorithms/closed_form_semi_analytical/black_scholes_merton/black_scholes_merton.cpp
@@ -35,5 +34,4 @@ set_target_properties(quantkernel PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 
-# C++ tests
 add_subdirectory(tests)

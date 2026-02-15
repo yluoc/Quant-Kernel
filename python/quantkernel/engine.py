@@ -16,7 +16,6 @@ class QuantKernel:
 
     def __init__(self):
         self._lib = load_library()
-        # Cache function references to avoid repeated getattr lookups
         self._fn_cache = {}
 
     def _get_fn(self, fn_name: str):

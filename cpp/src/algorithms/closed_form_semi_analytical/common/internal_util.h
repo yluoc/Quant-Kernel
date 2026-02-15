@@ -35,10 +35,8 @@ inline double clamp01(double x) {
     return std::min(1.0, std::max(0.0, x));
 }
 
-// 64-point Gauss-Legendre nodes and weights on [-1,1]
 namespace gl64 {
     static constexpr int N = 64;
-    // Nodes (positive half, symmetric about 0)
     static constexpr double x[] = {
         0.02435029266342443, 0.07299312178779904, 0.12146281929612056, 0.16964442042399283,
         0.21742364374720903, 0.26468716220876742, 0.31132287199021097, 0.35722015833766813,
@@ -49,7 +47,6 @@ namespace gl64 {
         0.92956917213193957, 0.94641137485840282, 0.96100879965205372, 0.97332682778991096,
         0.98333625388462596, 0.99101337147674668, 0.99634011677195528, 0.99930504173577214
     };
-    // Weights (for positive half)
     static constexpr double w[] = {
         0.04869095700913972, 0.04857546744150343, 0.04834476223480296, 0.04799938859645831,
         0.04754016571483031, 0.04696818281621002, 0.04628479658131442, 0.04549162792741814,
@@ -76,7 +73,6 @@ inline double integrate_gauss_legendre(const F& f, double a, double b) {
     return half * sum;
 }
 
-// Multi-panel Gauss-Legendre for wide integration domains
 template <typename F>
 inline double integrate_gl_panels(const F& f, double a, double b, int32_t panels) {
     if (panels < 1) panels = 1;
@@ -90,7 +86,6 @@ inline double integrate_gl_panels(const F& f, double a, double b, int32_t panels
     return total;
 }
 
-// Merged P1+P2 computation in a single integration pass
 template <typename CfFn>
 inline void probability_p1p2(const CfFn& cf, double log_strike,
                              int32_t /* steps */, double integration_limit,
@@ -98,10 +93,8 @@ inline void probability_p1p2(const CfFn& cf, double log_strike,
     std::complex<double> phi_minus_i = cf(std::complex<double>(0.0, -1.0));
     double phi_mi_abs = std::abs(phi_minus_i);
 
-    // Determine panel count based on integration range
     int32_t panels = std::max(2, static_cast<int32_t>(integration_limit / 15.0));
 
-    // GL quadrature inline to accumulate both sums simultaneously
     double a = 1e-8;
     double b = integration_limit;
     double sum_p1 = 0.0;
@@ -125,9 +118,6 @@ inline void probability_p1p2(const CfFn& cf, double log_strike,
                 double cos_term = std::cos(u * log_strike);
                 double sin_term = std::sin(u * log_strike);
 
-                // Re[exp(-i*u*lnK) * cf(u) / (i*u)]
-                // num = (cos-i*sin)*(Re+i*Im) = (cos*Re+sin*Im) + i*(cos*Im-sin*Re)
-                // num/(i*u) has real part = (cos*Im-sin*Re)/u
                 double re_cf = cf_val2.real();
                 double im_cf = cf_val2.imag();
                 double val_p2 = (cos_term * im_cf - sin_term * re_cf) * inv_u;
@@ -140,11 +130,8 @@ inline void probability_p1p2(const CfFn& cf, double log_strike,
                     double im1 = cf_val1.imag();
                     double n1_re = cos_term * re1 + sin_term * im1;
                     double n1_im = cos_term * im1 - sin_term * re1;
-                    // Divide by (i*u * phi_minus_i):
-                    // First divide by (i*u): (n1_im/u, -n1_re/u)
                     double d_re = n1_im * inv_u;
                     double d_im = -n1_re * inv_u;
-                    // Then divide by phi_minus_i: (d / phi_mi)
                     double phi_re = phi_minus_i.real();
                     double phi_im = phi_minus_i.imag();
                     double phi_abs2 = phi_re * phi_re + phi_im * phi_im;
@@ -160,7 +147,6 @@ inline void probability_p1p2(const CfFn& cf, double log_strike,
     p1_out = (phi_mi_abs >= 1e-14) ? clamp01(0.5 + sum_p1 / kPi) : nan_value();
 }
 
-// Keep backward-compatible individual functions
 template <typename CfFn>
 inline double probability_p2(const CfFn& cf, double log_strike,
                              int32_t steps, double integration_limit) {

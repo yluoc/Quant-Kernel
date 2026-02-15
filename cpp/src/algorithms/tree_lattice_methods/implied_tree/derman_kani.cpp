@@ -25,24 +25,16 @@ double derman_kani_implied_tree_price(
     double dt = t / static_cast<double>(N);
     double disc = std::exp(-r * dt);
 
-    // Reference volatility sets the fixed log-space grid spacing.
     double sigma_ref = local_vol_surface(spot, 0.0);
     if (!is_finite_safe(sigma_ref) || sigma_ref < 0.0) return detail::nan_value();
     sigma_ref = std::max(sigma_ref, detail::kEps);
 
-    // Trinomial spacing: dx = sigma_ref * sqrt(3 * dt) keeps p_m >= 0
-    // when local vol is close to sigma_ref.
     double dx = sigma_ref * std::sqrt(3.0 * dt);
     double up = std::exp(dx);
     double inv_up = 1.0 / up;
     double dx2 = dx * dx;
     double inv_dx = 1.0 / dx;
     double inv_dx2 = 1.0 / dx2;
-
-    // Recombining trinomial tree: at step n there are (2n+1) nodes
-    // with index j in [-n, n].  Node (n, j) has spot = S0 * exp(j * dx).
-
-    // Terminal payoff at step N: (2N+1) nodes — build incrementally.
     std::size_t max_width = static_cast<std::size_t>(2 * N + 1);
     std::vector<double> buf_a(max_width);
     std::vector<double> buf_b(max_width);
@@ -55,7 +47,6 @@ double derman_kani_implied_tree_price(
         node_spot *= up;
     }
 
-    // Backward induction with node-specific trinomial probabilities.
     for (int32_t n = N - 1; n >= 0; --n) {
         double node_t = static_cast<double>(n) * dt;
         double ns = spot * std::pow(inv_up, static_cast<double>(n));
