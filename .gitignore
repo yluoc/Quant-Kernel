@@ -13,6 +13,7 @@ rust/runtime/target/
 rust/runtime/target_local/
 rust/runtime/.tmp/
 
+fuzztest/fuzztest/
 # Editor / OS local files
 .vscode/
 .idea/

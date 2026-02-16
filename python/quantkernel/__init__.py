@@ -1,6 +1,7 @@
 """QuantKernel — high-performance derivative pricing engine."""
 
 from .engine import QuantKernel
+from .accelerator import QuantAccelerator
 from ._abi import (
     QK_CALL,
     QK_PUT,
@@ -15,6 +16,7 @@ from ._abi import (
 
 __all__ = [
     "QuantKernel",
+    "QuantAccelerator",
     "QK_CALL",
     "QK_PUT",
     "QK_OK",

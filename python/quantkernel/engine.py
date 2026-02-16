@@ -9,7 +9,7 @@ from ._loader import load_library
 class QuantKernel:
     """Thin wrapper for the QuantKernel shared library."""
 
-    __slots__ = ('_lib', '_fn_cache')
+    __slots__ = ('_lib', '_fn_cache', '_accel_cache')
 
     CALL = QK_CALL
     PUT = QK_PUT
@@ -17,6 +17,7 @@ class QuantKernel:
     def __init__(self):
         self._lib = load_library()
         self._fn_cache = {}
+        self._accel_cache = {}
 
     def _get_fn(self, fn_name: str):
         fn = self._fn_cache.get(fn_name)
@@ -30,6 +31,41 @@ class QuantKernel:
         if math.isnan(out):
             raise ValueError(f"{fn_name} returned NaN; check inputs.")
         return out
+
+    def get_accelerator(self, backend: str = "auto", max_workers: int | None = None):
+        """Return a cached QuantAccelerator bound to this QuantKernel."""
+        key = (backend, max_workers)
+        acc = self._accel_cache.get(key)
+        if acc is not None:
+            return acc
+
+        from .accelerator import QuantAccelerator
+
+        acc = QuantAccelerator(qk=self, backend=backend, max_workers=max_workers)
+        self._accel_cache[key] = acc
+        return acc
+
+    def price_batch(
+        self,
+        method: str,
+        jobs,
+        backend: str = "auto",
+        max_workers: int | None = None,
+    ):
+        """Batch-price using rule-based acceleration.
+
+        Parameters
+        ----------
+        method:
+            QuantKernel method name (e.g. ``"black_scholes_merton_price"``).
+        jobs:
+            Sequence of dict-like kwargs, one pricing call per element.
+        backend:
+            ``"auto"``, ``"cpu"``, or ``"gpu"``.
+        max_workers:
+            Optional thread count override for threaded strategies.
+        """
+        return self.get_accelerator(backend=backend, max_workers=max_workers).price_batch(method, jobs)
 
     def _tree_price(
         self, fn_name: str, spot: float, strike: float, t: float, vol: float,
