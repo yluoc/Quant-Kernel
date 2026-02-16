@@ -7,42 +7,37 @@ QuantKernel is a C++17 quant pricing kernel with a Python wrapper.
 - Tree/lattice: CRR, Jarrow-Rudd, Tian, Leisen-Reimer, Trinomial, Derman-Kani (const local vol entrypoint).
 - Finite-difference: Explicit FD, Implicit FD, Crank-Nicolson, ADI (Douglas/Craig-Sneyd/Hundsdorfer-Verwer), PSOR.
 
-## Quick Start (Clone to First Price)
-1. Clone and enter the repo.
-```bash
-git clone <your-repo-url>
-cd quant_algo_cpp_py
-```
+## Quick Start (Use From Another Project)
+This quick start assumes you clone/build QuantKernel once, then use it from any working directory.
 
-2. Create and activate a Python environment.
+1. Clone and build QuantKernel (one-time setup).
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install --upgrade pip
-```
-
-3. Install Python dependencies.
-```bash
+git clone <your-repo-url> /opt/quantkernel
+cd /opt/quantkernel
 python3 -m pip install -r requirements.txt
-```
-
-4. Build the C++ shared library.
-```bash
 cmake -S . -B build
 cmake --build build -j
 ```
 
-5. Run a first pricing call from Python.
+2. In your own project directory, point Python at QuantKernel and its shared library.
 ```bash
-PYTHONPATH=python python3 - <<'PY'
+export QK_ROOT=/opt/quantkernel
+export PYTHONPATH=$QK_ROOT/python
+export QK_LIB_PATH=$QK_ROOT/build/cpp
+```
+
+3. Call it from anywhere.
+```bash
+python3 - <<'PY'
 from quantkernel import QuantKernel, QK_CALL
 qk = QuantKernel()
 print(qk.black_scholes_merton_price(100, 100, 1.0, 0.2, 0.03, 0.01, QK_CALL))
 PY
 ```
 
-6. Optional: run demos.
+Optional demos (run from the QuantKernel repo):
 ```bash
+cd $QK_ROOT
 PYTHONPATH=python python3 python/examples/demo_accelerator.py
 PYTHONPATH=python python3 python/examples/run_all_algos.py --profile quick
 ```
