@@ -62,6 +62,35 @@ QK_EXPORT double qk_tlm_derman_kani_const_local_vol_price(double spot, double st
                                                           double local_vol, double r, double q,
                                                           int32_t option_type, int32_t steps,
                                                           int32_t american_style);
+/* --- Finite Difference methods --- */
+QK_EXPORT double qk_fdm_explicit_fd_price(double spot, double strike, double t, double vol,
+                                          double r, double q, int32_t option_type,
+                                          int32_t time_steps, int32_t spot_steps,
+                                          int32_t american_style);
+QK_EXPORT double qk_fdm_implicit_fd_price(double spot, double strike, double t, double vol,
+                                          double r, double q, int32_t option_type,
+                                          int32_t time_steps, int32_t spot_steps,
+                                          int32_t american_style);
+QK_EXPORT double qk_fdm_crank_nicolson_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t time_steps, int32_t spot_steps,
+                                             int32_t american_style);
+QK_EXPORT double qk_fdm_adi_douglas_price(double spot, double strike, double t, double r, double q,
+                                          double v0, double kappa, double theta_v, double sigma,
+                                          double rho, int32_t option_type,
+                                          int32_t s_steps, int32_t v_steps, int32_t time_steps);
+QK_EXPORT double qk_fdm_adi_craig_sneyd_price(double spot, double strike, double t, double r, double q,
+                                              double v0, double kappa, double theta_v, double sigma,
+                                              double rho, int32_t option_type,
+                                              int32_t s_steps, int32_t v_steps, int32_t time_steps);
+QK_EXPORT double qk_fdm_adi_hundsdorfer_verwer_price(double spot, double strike, double t, double r, double q,
+                                                     double v0, double kappa, double theta_v, double sigma,
+                                                     double rho, int32_t option_type,
+                                                     int32_t s_steps, int32_t v_steps, int32_t time_steps);
+QK_EXPORT double qk_fdm_psor_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t time_steps, int32_t spot_steps,
+                                   double omega, double tol, int32_t max_iter);
 
 #ifdef __cplusplus
 }

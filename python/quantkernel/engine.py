@@ -166,3 +166,88 @@ class QuantKernel:
             "qk_tlm_derman_kani_const_local_vol_price",
             spot, strike, t, local_vol, r, q, option_type, steps, american_style
         )
+
+    # --- Finite Difference methods ---
+
+    def _fdm_price(
+        self, fn_name: str, spot: float, strike: float, t: float, vol: float,
+        r: float, q: float, option_type: int, time_steps: int, spot_steps: int,
+        american_style: bool = False
+    ) -> float:
+        return self._get_fn(fn_name)(
+            spot, strike, t, vol, r, q, option_type,
+            time_steps, spot_steps, 1 if american_style else 0
+        )
+
+    def explicit_fd_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, time_steps: int, spot_steps: int, american_style: bool = False
+    ) -> float:
+        return self._fdm_price(
+            "qk_fdm_explicit_fd_price", spot, strike, t, vol, r, q,
+            option_type, time_steps, spot_steps, american_style
+        )
+
+    def implicit_fd_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, time_steps: int, spot_steps: int, american_style: bool = False
+    ) -> float:
+        return self._fdm_price(
+            "qk_fdm_implicit_fd_price", spot, strike, t, vol, r, q,
+            option_type, time_steps, spot_steps, american_style
+        )
+
+    def crank_nicolson_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, time_steps: int, spot_steps: int, american_style: bool = False
+    ) -> float:
+        return self._fdm_price(
+            "qk_fdm_crank_nicolson_price", spot, strike, t, vol, r, q,
+            option_type, time_steps, spot_steps, american_style
+        )
+
+    def adi_douglas_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta_v: float, sigma: float, rho: float,
+        option_type: int, s_steps: int = 40, v_steps: int = 20, time_steps: int = 40
+    ) -> float:
+        return self._call_checked(
+            "qk_fdm_adi_douglas_price",
+            spot, strike, t, r, q,
+            v0, kappa, theta_v, sigma, rho,
+            option_type, s_steps, v_steps, time_steps
+        )
+
+    def adi_craig_sneyd_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta_v: float, sigma: float, rho: float,
+        option_type: int, s_steps: int = 40, v_steps: int = 20, time_steps: int = 40
+    ) -> float:
+        return self._call_checked(
+            "qk_fdm_adi_craig_sneyd_price",
+            spot, strike, t, r, q,
+            v0, kappa, theta_v, sigma, rho,
+            option_type, s_steps, v_steps, time_steps
+        )
+
+    def adi_hundsdorfer_verwer_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta_v: float, sigma: float, rho: float,
+        option_type: int, s_steps: int = 40, v_steps: int = 20, time_steps: int = 40
+    ) -> float:
+        return self._call_checked(
+            "qk_fdm_adi_hundsdorfer_verwer_price",
+            spot, strike, t, r, q,
+            v0, kappa, theta_v, sigma, rho,
+            option_type, s_steps, v_steps, time_steps
+        )
+
+    def psor_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, time_steps: int, spot_steps: int,
+        omega: float = 1.2, tol: float = 1e-8, max_iter: int = 10000
+    ) -> float:
+        return self._get_fn("qk_fdm_psor_price")(
+            spot, strike, t, vol, r, q, option_type,
+            time_steps, spot_steps, omega, tol, max_iter
+        )

@@ -14,6 +14,11 @@ add_library(quantkernel SHARED
     src/algorithms/tree_lattice_methods/leisen_reimer/leisen_reimer.cpp
     src/algorithms/tree_lattice_methods/trinomial_tree/trinomial_tree.cpp
     src/algorithms/tree_lattice_methods/implied_tree/derman_kani.cpp
+    src/algorithms/finite_difference_methods/explicit_fd/explicit_fd.cpp
+    src/algorithms/finite_difference_methods/implicit_fd/implicit_fd.cpp
+    src/algorithms/finite_difference_methods/crank_nicolson/crank_nicolson.cpp
+    src/algorithms/finite_difference_methods/adi/adi.cpp
+    src/algorithms/finite_difference_methods/psor/psor.cpp
 )
 
 target_include_directories(quantkernel
@@ -33,5 +38,3 @@ set_target_properties(quantkernel PROPERTIES
     SOVERSION 1
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
-
-add_subdirectory(tests)

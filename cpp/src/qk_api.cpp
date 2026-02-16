@@ -2,13 +2,14 @@
 
 #include "algorithms/closed_form_semi_analytical/closed_form_models.h"
 #include "algorithms/tree_lattice_methods/tree_lattice_models.h"
+#include "algorithms/finite_difference_methods/finite_difference_models.h"
 
 namespace {
 
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.closed_form_and_trees.v4"
+    "quantkernel.cpp.closed_form_trees_fdm.v5"
 };
 
 } /* namespace */
@@ -157,6 +158,88 @@ double qk_tlm_derman_kani_const_local_vol_price(double spot, double strike, doub
     cfg.steps = steps;
     cfg.american_style = (american_style != 0);
     return qk::tlm::derman_kani_implied_tree_price(spot, strike, t, r, q, option_type, surface, cfg);
+}
+
+/* --- Finite Difference methods --- */
+
+double qk_fdm_explicit_fd_price(double spot, double strike, double t, double vol,
+                                double r, double q, int32_t option_type,
+                                int32_t time_steps, int32_t spot_steps,
+                                int32_t american_style) {
+    return qk::fdm::explicit_fd_price(spot, strike, t, vol, r, q, option_type,
+                                      time_steps, spot_steps, american_style != 0);
+}
+
+double qk_fdm_implicit_fd_price(double spot, double strike, double t, double vol,
+                                double r, double q, int32_t option_type,
+                                int32_t time_steps, int32_t spot_steps,
+                                int32_t american_style) {
+    return qk::fdm::implicit_fd_price(spot, strike, t, vol, r, q, option_type,
+                                      time_steps, spot_steps, american_style != 0);
+}
+
+double qk_fdm_crank_nicolson_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t time_steps, int32_t spot_steps,
+                                   int32_t american_style) {
+    return qk::fdm::crank_nicolson_price(spot, strike, t, vol, r, q, option_type,
+                                         time_steps, spot_steps, american_style != 0);
+}
+
+double qk_fdm_adi_douglas_price(double spot, double strike, double t, double r, double q,
+                                double v0, double kappa, double theta_v, double sigma,
+                                double rho, int32_t option_type,
+                                int32_t s_steps, int32_t v_steps, int32_t time_steps) {
+    qk::fdm::ADIHestonParams params{};
+    params.v0 = v0;
+    params.kappa = kappa;
+    params.theta_v = theta_v;
+    params.sigma = sigma;
+    params.rho = rho;
+    params.s_steps = s_steps;
+    params.v_steps = v_steps;
+    params.time_steps = time_steps;
+    return qk::fdm::adi_douglas_price(spot, strike, t, r, q, params, option_type);
+}
+
+double qk_fdm_adi_craig_sneyd_price(double spot, double strike, double t, double r, double q,
+                                    double v0, double kappa, double theta_v, double sigma,
+                                    double rho, int32_t option_type,
+                                    int32_t s_steps, int32_t v_steps, int32_t time_steps) {
+    qk::fdm::ADIHestonParams params{};
+    params.v0 = v0;
+    params.kappa = kappa;
+    params.theta_v = theta_v;
+    params.sigma = sigma;
+    params.rho = rho;
+    params.s_steps = s_steps;
+    params.v_steps = v_steps;
+    params.time_steps = time_steps;
+    return qk::fdm::adi_craig_sneyd_price(spot, strike, t, r, q, params, option_type);
+}
+
+double qk_fdm_adi_hundsdorfer_verwer_price(double spot, double strike, double t, double r, double q,
+                                           double v0, double kappa, double theta_v, double sigma,
+                                           double rho, int32_t option_type,
+                                           int32_t s_steps, int32_t v_steps, int32_t time_steps) {
+    qk::fdm::ADIHestonParams params{};
+    params.v0 = v0;
+    params.kappa = kappa;
+    params.theta_v = theta_v;
+    params.sigma = sigma;
+    params.rho = rho;
+    params.s_steps = s_steps;
+    params.v_steps = v_steps;
+    params.time_steps = time_steps;
+    return qk::fdm::adi_hundsdorfer_verwer_price(spot, strike, t, r, q, params, option_type);
+}
+
+double qk_fdm_psor_price(double spot, double strike, double t, double vol,
+                         double r, double q, int32_t option_type,
+                         int32_t time_steps, int32_t spot_steps,
+                         double omega, double tol, int32_t max_iter) {
+    return qk::fdm::psor_price(spot, strike, t, vol, r, q, option_type,
+                               time_steps, spot_steps, omega, tol, max_iter);
 }
 
 } /* extern "C" */

@@ -123,6 +123,38 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_tlm_derman_kani_const_local_vol_price.restype = ct.c_double
     lib.qk_tlm_derman_kani_const_local_vol_price.argtypes = tlm_argtypes
 
+    # --- Finite Difference methods ---
+    fdm_argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32, ct.c_int32, ct.c_int32,
+        ct.c_int32,
+    ]
+    lib.qk_fdm_explicit_fd_price.restype = ct.c_double
+    lib.qk_fdm_explicit_fd_price.argtypes = fdm_argtypes
+    lib.qk_fdm_implicit_fd_price.restype = ct.c_double
+    lib.qk_fdm_implicit_fd_price.argtypes = fdm_argtypes
+    lib.qk_fdm_crank_nicolson_price.restype = ct.c_double
+    lib.qk_fdm_crank_nicolson_price.argtypes = fdm_argtypes
+
+    adi_argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_int32, ct.c_int32, ct.c_int32, ct.c_int32,
+    ]
+    lib.qk_fdm_adi_douglas_price.restype = ct.c_double
+    lib.qk_fdm_adi_douglas_price.argtypes = adi_argtypes
+    lib.qk_fdm_adi_craig_sneyd_price.restype = ct.c_double
+    lib.qk_fdm_adi_craig_sneyd_price.argtypes = adi_argtypes
+    lib.qk_fdm_adi_hundsdorfer_verwer_price.restype = ct.c_double
+    lib.qk_fdm_adi_hundsdorfer_verwer_price.argtypes = adi_argtypes
+
+    lib.qk_fdm_psor_price.restype = ct.c_double
+    lib.qk_fdm_psor_price.argtypes = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32, ct.c_int32, ct.c_int32,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+
 
 def _verify_abi(lib: ct.CDLL) -> None:
     major = ct.c_int32(-1)
