@@ -14,6 +14,9 @@ This quick start assumes you clone/build QuantKernel once, then use it from any 
 ```bash
 git clone <your-repo-url> /opt/quantkernel
 cd /opt/quantkernel
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 cmake -S . -B build
 cmake --build build -j
