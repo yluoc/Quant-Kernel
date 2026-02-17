@@ -126,6 +126,25 @@ QK_EXPORT double qk_mcm_antithetic_variates_price(double spot, double strike, do
 QK_EXPORT double qk_mcm_stratified_sampling_price(double spot, double strike, double t, double vol,
                                                   double r, double q, int32_t option_type,
                                                   int32_t paths, uint64_t seed);
+/* --- Fourier transform methods --- */
+QK_EXPORT double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t grid_size, double eta, double alpha);
+QK_EXPORT double qk_ftm_cos_fang_oosterlee_price(double spot, double strike, double t, double vol,
+                                                 double r, double q, int32_t option_type,
+                                                 int32_t n_terms, double truncation_width);
+QK_EXPORT double qk_ftm_fractional_fft_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t grid_size, double eta, double lambda,
+                                             double alpha);
+QK_EXPORT double qk_ftm_lewis_fourier_inversion_price(double spot, double strike, double t, double vol,
+                                                      double r, double q, int32_t option_type,
+                                                      int32_t integration_steps,
+                                                      double integration_limit);
+QK_EXPORT double qk_ftm_hilbert_transform_price(double spot, double strike, double t, double vol,
+                                                double r, double q, int32_t option_type,
+                                                int32_t integration_steps,
+                                                double integration_limit);
 
 #ifdef __cplusplus
 }

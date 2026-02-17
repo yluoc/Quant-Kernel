@@ -33,6 +33,11 @@ GPU_VECTOR_METHODS = {
     "sabr_hagan_lognormal_iv",
     "sabr_hagan_black76_price",
     "dupire_local_vol",
+    "carr_madan_fft_price",
+    "cos_method_fang_oosterlee_price",
+    "fractional_fft_price",
+    "lewis_fourier_inversion_price",
+    "hilbert_transform_price",
 }
 
 
@@ -111,6 +116,11 @@ def algo_cases() -> List[AlgoCase]:
         AlgoCase("sabr_hagan_lognormal_iv", {"forward": fwd, "strike": strike, "t": t, "alpha": 0.20, "beta": 0.50, "rho": -0.25, "nu": 0.40}, 60_000, 200_000),
         AlgoCase("sabr_hagan_black76_price", {"forward": fwd, "strike": strike, "t": t, "r": r, "alpha": 0.20, "beta": 0.50, "rho": -0.25, "nu": 0.40, "option_type": QK_CALL}, 60_000, 200_000),
         AlgoCase("dupire_local_vol", {"strike": strike, "t": t, "call_price": 8.0, "dC_dT": 2.0, "dC_dK": -0.5, "d2C_dK2": 0.03, "r": r, "q": q}, 80_000, 250_000),
+        AlgoCase("carr_madan_fft_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "grid_size": 4096, "eta": 0.25, "alpha": 1.5}, 512, 2_048),
+        AlgoCase("cos_method_fang_oosterlee_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "n_terms": 256, "truncation_width": 10.0}, 1_024, 4_096),
+        AlgoCase("fractional_fft_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "grid_size": 256, "eta": 0.25, "lambda_": 0.05, "alpha": 1.5}, 512, 2_048),
+        AlgoCase("lewis_fourier_inversion_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "integration_steps": 4096, "integration_limit": 300.0}, 1_024, 4_096),
+        AlgoCase("hilbert_transform_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "integration_steps": 4096, "integration_limit": 300.0}, 1_024, 4_096),
         AlgoCase("crr_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "steps": 180, "american_style": False}, 256, 1_000),
         AlgoCase("jarrow_rudd_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "steps": 180, "american_style": False}, 256, 1_000),
         AlgoCase("tian_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "steps": 180, "american_style": False}, 256, 1_000),

@@ -6,6 +6,7 @@ Linux/macOS is recommended.
 
 ## Models
 - Closed-form / semi-analytical: Black-Scholes-Merton, Black-76, Bachelier, Heston CF, Merton jump-diffusion, Variance Gamma CF, SABR (Hagan), Dupire local vol.
+- Fourier-transform methods: Carr-Madan FFT, COS (Fang-Oosterlee), Fractional FFT, Lewis Fourier inversion, Hilbert transform pricing.
 - Tree/lattice: CRR, Jarrow-Rudd, Tian, Leisen-Reimer, Trinomial, Derman-Kani (const local vol entrypoint).
 - Finite-difference: Explicit FD, Implicit FD, Crank-Nicolson, ADI (Douglas/Craig-Sneyd/Hundsdorfer-Verwer), PSOR.
 - Monte Carlo methods: Standard Monte Carlo, Euler-Maruyama, Milstein, Longstaff-Schwartz (LSMC), Quasi-Monte Carlo (Sobol/Halton), MLMC, Importance Sampling, Control Variates, Antithetic Variates, Stratified Sampling.
@@ -83,6 +84,11 @@ The following algorithms have fully vectorized NumPy/CuPy implementations in `Qu
 | SABR Hagan (Black-76 price) | 15,000 | Vectorized closed-form across batch |
 | Dupire Local Vol | 30,000 | Vectorized closed-form across batch |
 | Merton Jump Diffusion | 10,000 | Series expansion with vectorized BSM per term |
+| Carr-Madan FFT | 512 | Batched damped-CF FFT across frequency grid |
+| COS (Fang-Oosterlee) | 1,024 | Batched cosine-expansion coefficients and reductions |
+| Fractional FFT | 256 | Batched fractional-phase transform on shared grid |
+| Lewis Fourier Inversion | 1,024 | Batched Fourier integral with vectorized quadrature |
+| Hilbert Transform Method | 1,024 | Batched Fourier-probability inversion (P1/P2) |
 | Standard Monte Carlo | 1 | (B, P) random normals on GPU, vectorized payoff |
 | Euler-Maruyama | 1 | Time-step loop, all (B, P) paths advance per step |
 | Milstein | 1 | Euler + higher-order correction, same path structure |

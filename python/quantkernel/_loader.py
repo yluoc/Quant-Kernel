@@ -106,6 +106,22 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
         ct.c_double, ct.c_double, ct.c_double, ct.c_double,
     ]
 
+    # --- Fourier Transform methods ---
+    ftm_common = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_ftm_carr_madan_fft_price.restype = ct.c_double
+    lib.qk_ftm_carr_madan_fft_price.argtypes = ftm_common + [ct.c_int32, ct.c_double, ct.c_double]
+    lib.qk_ftm_cos_fang_oosterlee_price.restype = ct.c_double
+    lib.qk_ftm_cos_fang_oosterlee_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
+    lib.qk_ftm_fractional_fft_price.restype = ct.c_double
+    lib.qk_ftm_fractional_fft_price.argtypes = ftm_common + [ct.c_int32, ct.c_double, ct.c_double, ct.c_double]
+    lib.qk_ftm_lewis_fourier_inversion_price.restype = ct.c_double
+    lib.qk_ftm_lewis_fourier_inversion_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
+    lib.qk_ftm_hilbert_transform_price.restype = ct.c_double
+    lib.qk_ftm_hilbert_transform_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
+
     tlm_argtypes = [
         ct.c_double, ct.c_double, ct.c_double, ct.c_double,
         ct.c_double, ct.c_double, ct.c_int32, ct.c_int32, ct.c_int32,

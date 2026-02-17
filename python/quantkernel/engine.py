@@ -152,6 +152,54 @@ class QuantKernel:
             strike, t, call_price, dC_dT, dC_dK, d2C_dK2, r, q
         )
 
+    # --- Fourier transform methods ---
+
+    def carr_madan_fft_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, grid_size: int = 4096, eta: float = 0.25, alpha: float = 1.5
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_carr_madan_fft_price",
+            spot, strike, t, vol, r, q, option_type, grid_size, eta, alpha
+        )
+
+    def cos_method_fang_oosterlee_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, n_terms: int = 256, truncation_width: float = 10.0
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_cos_fang_oosterlee_price",
+            spot, strike, t, vol, r, q, option_type, n_terms, truncation_width
+        )
+
+    def fractional_fft_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, grid_size: int = 256, eta: float = 0.25,
+        lambda_: float = 0.05, alpha: float = 1.5
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_fractional_fft_price",
+            spot, strike, t, vol, r, q, option_type, grid_size, eta, lambda_, alpha
+        )
+
+    def lewis_fourier_inversion_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, integration_steps: int = 4096, integration_limit: float = 300.0
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_lewis_fourier_inversion_price",
+            spot, strike, t, vol, r, q, option_type, integration_steps, integration_limit
+        )
+
+    def hilbert_transform_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, integration_steps: int = 4096, integration_limit: float = 300.0
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_hilbert_transform_price",
+            spot, strike, t, vol, r, q, option_type, integration_steps, integration_limit
+        )
+
     def crr_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
         option_type: int, steps: int, american_style: bool = False

@@ -126,6 +126,11 @@ class QuantAccelerator:
         "sabr_hagan_black76_price",
         "dupire_local_vol",
         "merton_jump_diffusion_price",
+        "carr_madan_fft_price",
+        "cos_method_fang_oosterlee_price",
+        "fractional_fft_price",
+        "lewis_fourier_inversion_price",
+        "hilbert_transform_price",
         "standard_monte_carlo_price",
         "euler_maruyama_price",
         "milstein_price",
@@ -168,6 +173,11 @@ class QuantAccelerator:
         "sabr_hagan_black76_price": 15_000,
         "dupire_local_vol": 30_000,
         "merton_jump_diffusion_price": 10_000,
+        "carr_madan_fft_price": 512,
+        "cos_method_fang_oosterlee_price": 1_024,
+        "fractional_fft_price": 256,
+        "lewis_fourier_inversion_price": 1_024,
+        "hilbert_transform_price": 1_024,
         "standard_monte_carlo_price": 1,
         "euler_maruyama_price": 1,
         "milstein_price": 1,
@@ -484,6 +494,263 @@ class QuantAccelerator:
                 result = result + weight * bsm
 
             return result
+
+        if method == "carr_madan_fft_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+
+            grid_size = int(jobs[0].get("grid_size", 4096))
+            eta = float(jobs[0].get("eta", 0.25))
+            alpha = float(jobs[0].get("alpha", 1.5))
+            if grid_size < 16 or (grid_size & (grid_size - 1)) != 0:
+                raise RuntimeError("carr_madan_fft_price requires power-of-two grid_size >= 16")
+            if eta <= 0.0 or alpha <= 0.0:
+                raise RuntimeError("carr_madan_fft_price requires eta > 0 and alpha > 0")
+
+            lam = 2.0 * math.pi / (grid_size * eta)
+            b = 0.5 * grid_size * lam
+
+            v = xp.arange(grid_size, dtype=np.float64) * eta
+            weights = xp.full((grid_size,), 2.0, dtype=np.float64)
+            weights[0] = 1.0
+            weights[1::2] = 4.0
+
+            u = v[None, :] - 1j * (alpha + 1.0)
+            vol2 = vol * vol
+            mu = xp.log(spot) + (r - q - 0.5 * vol2) * t
+            den = (alpha * alpha + alpha - v * v) + 1j * (2.0 * alpha + 1.0) * v
+            psi = (
+                xp.exp(-r[:, None] * t[:, None])
+                * xp.exp(1j * u * mu[:, None] - 0.5 * vol2[:, None] * t[:, None] * (u * u))
+                / den[None, :]
+            )
+            x = xp.exp(1j * b * v)[None, :] * psi * (eta * weights[None, :] / 3.0)
+            y = xp.fft.fft(x, axis=1)
+
+            k_grid = -b + xp.arange(grid_size, dtype=np.float64) * lam
+            call_grid = xp.maximum(0.0, xp.exp(-alpha * k_grid)[None, :] * xp.real(y) / math.pi)
+            log_strike = xp.log(strike)
+
+            idx = xp.searchsorted(k_grid, log_strike)
+            idx = xp.clip(idx, 1, grid_size - 1).astype(np.int32)
+            rows = xp.arange(len(jobs), dtype=np.int32)
+            left_k = k_grid[idx - 1]
+            right_k = k_grid[idx]
+            w = (log_strike - left_k) / xp.maximum(right_k - left_k, eps)
+            left_v = call_grid[rows, idx - 1]
+            right_v = call_grid[rows, idx]
+            call = (1.0 - w) * left_v + w * right_v
+
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            regular = xp.where(option_type == QK_CALL, call, put)
+            intrinsic = xp.where(option_type == QK_CALL, xp.maximum(spot - strike, 0.0), xp.maximum(strike - spot, 0.0))
+            fwd = spot * xp.exp((r - q) * t)
+            det = xp.exp(-r * t) * xp.where(option_type == QK_CALL, xp.maximum(fwd - strike, 0.0), xp.maximum(strike - fwd, 0.0))
+            return xp.where(t <= eps, intrinsic, xp.where(vol <= eps, det, regular))
+
+        if method == "cos_method_fang_oosterlee_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+
+            n_terms = int(jobs[0].get("n_terms", 256))
+            truncation_width = float(jobs[0].get("truncation_width", 10.0))
+            if n_terms < 8 or truncation_width <= 0.0:
+                raise RuntimeError("cos_method_fang_oosterlee_price requires n_terms >= 8 and truncation_width > 0")
+
+            vol2 = vol * vol
+            c1 = xp.log(spot) + (r - q - 0.5 * vol2) * t
+            c2 = vol2 * t
+            a = c1 - truncation_width * xp.sqrt(xp.maximum(c2, 0.0))
+            b = c1 + truncation_width * xp.sqrt(xp.maximum(c2, 0.0))
+            interval = xp.maximum(b - a, eps)
+
+            k = xp.arange(n_terms, dtype=np.float64)
+            u = k[None, :] * math.pi / interval[:, None]
+            log_strike = xp.log(strike)
+            c = xp.clip(log_strike, a, b)
+            d = b
+
+            u_d = u * (d[:, None] - a[:, None])
+            u_c = u * (c[:, None] - a[:, None])
+            exp_d = xp.exp(d)[:, None]
+            exp_c = xp.exp(c)[:, None]
+            chi_general = (
+                (xp.cos(u_d) * exp_d - xp.cos(u_c) * exp_c)
+                + u * (xp.sin(u_d) * exp_d - xp.sin(u_c) * exp_c)
+            ) / (1.0 + u * u)
+            psi_general = (xp.sin(u_d) - xp.sin(u_c)) / xp.maximum(u, eps)
+
+            is_zero = (k == 0)[None, :]
+            chi = xp.where(is_zero, (xp.exp(d) - xp.exp(c))[:, None], chi_general)
+            psi = xp.where(is_zero, (d - c)[:, None], psi_general)
+            u_k = 2.0 / interval[:, None] * (chi - strike[:, None] * psi)
+
+            mu = xp.log(spot) + (r - q - 0.5 * vol2) * t
+            phi = xp.exp(1j * u * mu[:, None] - 0.5 * vol2[:, None] * t[:, None] * (u * u))
+            f_k = xp.real(phi * xp.exp(-1j * u * a[:, None]))
+            weights = xp.ones((1, n_terms), dtype=np.float64)
+            weights[0, 0] = 0.5
+
+            call = xp.exp(-r * t) * xp.sum(weights * f_k * u_k, axis=1)
+            call = xp.where(c >= d, 0.0, xp.maximum(call, 0.0))
+
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            regular = xp.where(option_type == QK_CALL, call, put)
+            intrinsic = xp.where(option_type == QK_CALL, xp.maximum(spot - strike, 0.0), xp.maximum(strike - spot, 0.0))
+            fwd = spot * xp.exp((r - q) * t)
+            det = xp.exp(-r * t) * xp.where(option_type == QK_CALL, xp.maximum(fwd - strike, 0.0), xp.maximum(strike - fwd, 0.0))
+            return xp.where(t <= eps, intrinsic, xp.where(vol <= eps, det, regular))
+
+        if method == "fractional_fft_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+
+            grid_size = int(jobs[0].get("grid_size", 256))
+            eta = float(jobs[0].get("eta", 0.25))
+            lambda_ = float(jobs[0].get("lambda_", 0.05))
+            alpha = float(jobs[0].get("alpha", 1.5))
+            if grid_size < 16 or eta <= 0.0 or lambda_ <= 0.0 or alpha <= 0.0:
+                raise RuntimeError("fractional_fft_price requires grid_size >= 16, eta > 0, lambda_ > 0, alpha > 0")
+
+            v = xp.arange(grid_size, dtype=np.float64) * eta
+            weights = xp.full((grid_size,), 2.0, dtype=np.float64)
+            weights[0] = 1.0
+            weights[1::2] = 4.0
+
+            vol2 = vol * vol
+            mu = xp.log(spot) + (r - q - 0.5 * vol2) * t
+            k_min = xp.log(spot) - 0.5 * grid_size * lambda_
+            den = (alpha * alpha + alpha - v * v) + 1j * (2.0 * alpha + 1.0) * v
+            u = v[None, :] - 1j * (alpha + 1.0)
+            psi = (
+                xp.exp(-r[:, None] * t[:, None])
+                * xp.exp(1j * u * mu[:, None] - 0.5 * vol2[:, None] * t[:, None] * (u * u))
+                / den[None, :]
+            )
+            x = psi * (eta * weights[None, :] / 3.0) * xp.exp(-1j * v[None, :] * k_min[:, None])
+
+            theta = eta * lambda_ / (2.0 * math.pi)
+            j = xp.arange(grid_size, dtype=np.float64)
+            m = xp.arange(grid_size, dtype=np.float64)
+            phase = xp.exp(-1j * 2.0 * math.pi * theta * (j[:, None] * m[None, :]))
+            y = x @ phase
+
+            k_grid = k_min[:, None] + m[None, :] * lambda_
+            call_grid = xp.maximum(0.0, xp.exp(-alpha * k_grid) * xp.real(y) / math.pi)
+            log_strike = xp.log(strike)
+
+            k_right = k_min + (grid_size - 1) * lambda_
+            below = log_strike <= k_min
+            above = log_strike >= k_right
+
+            idx = xp.floor((log_strike - k_min) / lambda_).astype(np.int32)
+            idx = xp.clip(idx, 0, grid_size - 2)
+            rows = xp.arange(len(jobs), dtype=np.int32)
+            left_k = k_min + idx * lambda_
+            w = (log_strike - left_k) / lambda_
+            left_v = call_grid[rows, idx]
+            right_v = call_grid[rows, idx + 1]
+            interp = (1.0 - w) * left_v + w * right_v
+            call = xp.where(below, call_grid[:, 0], xp.where(above, call_grid[:, -1], interp))
+
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            regular = xp.where(option_type == QK_CALL, call, put)
+            intrinsic = xp.where(option_type == QK_CALL, xp.maximum(spot - strike, 0.0), xp.maximum(strike - spot, 0.0))
+            fwd = spot * xp.exp((r - q) * t)
+            det = xp.exp(-r * t) * xp.where(option_type == QK_CALL, xp.maximum(fwd - strike, 0.0), xp.maximum(strike - fwd, 0.0))
+            return xp.where(t <= eps, intrinsic, xp.where(vol <= eps, det, regular))
+
+        if method == "lewis_fourier_inversion_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+
+            steps = int(jobs[0].get("integration_steps", 4096))
+            limit = float(jobs[0].get("integration_limit", 300.0))
+            if steps < 16 or limit <= 0.0:
+                raise RuntimeError("lewis_fourier_inversion_price requires integration_steps >= 16 and integration_limit > 0")
+
+            u = xp.linspace(1e-10, limit, steps, dtype=np.float64)
+            du = limit / float(steps - 1)
+            vol2 = vol * vol
+            mu = (r - q - 0.5 * vol2) * t
+            x = xp.log(spot / strike)
+
+            arg = u[None, :] - 0.5j
+            phi = xp.exp(1j * arg * mu[:, None] - 0.5 * vol2[:, None] * t[:, None] * (arg * arg))
+            integrand = xp.real(xp.exp(1j * u[None, :] * x[:, None]) * phi / (u[None, :] * u[None, :] + 0.25))
+            integral = du * (0.5 * integrand[:, 0] + xp.sum(integrand[:, 1:-1], axis=1) + 0.5 * integrand[:, -1])
+
+            call = spot * xp.exp(-q * t) - xp.sqrt(spot * strike) * xp.exp(-r * t) * integral / math.pi
+            call = xp.maximum(call, 0.0)
+
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            regular = xp.where(option_type == QK_CALL, call, put)
+            intrinsic = xp.where(option_type == QK_CALL, xp.maximum(spot - strike, 0.0), xp.maximum(strike - spot, 0.0))
+            fwd = spot * xp.exp((r - q) * t)
+            det = xp.exp(-r * t) * xp.where(option_type == QK_CALL, xp.maximum(fwd - strike, 0.0), xp.maximum(strike - fwd, 0.0))
+            return xp.where(t <= eps, intrinsic, xp.where(vol <= eps, det, regular))
+
+        if method == "hilbert_transform_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+
+            steps = int(jobs[0].get("integration_steps", 4096))
+            limit = float(jobs[0].get("integration_limit", 300.0))
+            if steps < 16 or limit <= 0.0:
+                raise RuntimeError("hilbert_transform_price requires integration_steps >= 16 and integration_limit > 0")
+
+            u = xp.linspace(1e-10, limit, steps, dtype=np.float64)
+            du = limit / float(steps - 1)
+            vol2 = vol * vol
+            mu = (r - q - 0.5 * vol2) * t
+            x = xp.log(strike / spot)
+
+            phi_u = xp.exp(1j * u[None, :] * mu[:, None] - 0.5 * vol2[:, None] * t[:, None] * (u[None, :] * u[None, :]))
+            u_shift = u[None, :] - 1j
+            phi_u_mi = xp.exp(1j * u_shift * mu[:, None] - 0.5 * vol2[:, None] * t[:, None] * (u_shift * u_shift))
+            phi_mi = xp.exp((r - q) * t)
+            phase = xp.exp(-1j * u[None, :] * x[:, None])
+
+            integ_p2 = xp.real(phase * phi_u / (1j * u[None, :]))
+            integ_p1 = xp.real(phase * phi_u_mi / (1j * u[None, :] * phi_mi[:, None]))
+            i_p2 = du * (0.5 * integ_p2[:, 0] + xp.sum(integ_p2[:, 1:-1], axis=1) + 0.5 * integ_p2[:, -1])
+            i_p1 = du * (0.5 * integ_p1[:, 0] + xp.sum(integ_p1[:, 1:-1], axis=1) + 0.5 * integ_p1[:, -1])
+
+            p1 = xp.clip(0.5 + i_p1 / math.pi, 0.0, 1.0)
+            p2 = xp.clip(0.5 + i_p2 / math.pi, 0.0, 1.0)
+            call = xp.maximum(spot * xp.exp(-q * t) * p1 - strike * xp.exp(-r * t) * p2, 0.0)
+
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            regular = xp.where(option_type == QK_CALL, call, put)
+            intrinsic = xp.where(option_type == QK_CALL, xp.maximum(spot - strike, 0.0), xp.maximum(strike - spot, 0.0))
+            fwd = spot * xp.exp((r - q) * t)
+            det = xp.exp(-r * t) * xp.where(option_type == QK_CALL, xp.maximum(fwd - strike, 0.0), xp.maximum(strike - fwd, 0.0))
+            return xp.where(t <= eps, intrinsic, xp.where(vol <= eps, det, regular))
 
         # --- Monte Carlo helpers ---
         def _mc_common_params(jobs, xp):

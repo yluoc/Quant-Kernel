@@ -92,3 +92,46 @@ def test_quantkernel_accelerator_cache_keyed_by_backend_and_workers(qk):
     a3 = qk.get_accelerator(backend="auto", max_workers=2)
     assert a1 is a2
     assert a1 is not a3
+
+
+def test_fourier_batch_matches_scalar_qk(qk):
+    accel = QuantAccelerator(qk=qk, backend="cpu")
+    jobs = [
+        {
+            "spot": 95.0,
+            "strike": 100.0,
+            "t": 0.5,
+            "vol": 0.22,
+            "r": 0.02,
+            "q": 0.01,
+            "option_type": QK_CALL,
+            "n_terms": 256,
+            "truncation_width": 10.0,
+        },
+        {
+            "spot": 100.0,
+            "strike": 100.0,
+            "t": 1.0,
+            "vol": 0.25,
+            "r": 0.03,
+            "q": 0.00,
+            "option_type": QK_CALL,
+            "n_terms": 256,
+            "truncation_width": 10.0,
+        },
+        {
+            "spot": 120.0,
+            "strike": 110.0,
+            "t": 2.0,
+            "vol": 0.18,
+            "r": 0.01,
+            "q": 0.02,
+            "option_type": QK_CALL,
+            "n_terms": 256,
+            "truncation_width": 10.0,
+        },
+    ]
+
+    batch = accel.price_batch("cos_method_fang_oosterlee_price", jobs)
+    scalar = np.array([qk.cos_method_fang_oosterlee_price(**j) for j in jobs], dtype=np.float64)
+    assert np.allclose(batch, scalar, atol=1e-6, rtol=1e-6)

@@ -4,13 +4,14 @@
 #include "algorithms/tree_lattice_methods/tree_lattice_models.h"
 #include "algorithms/finite_difference_methods/finite_difference_models.h"
 #include "algorithms/monte_carlo_methods/monte_carlo_models.h"
+#include "algorithms/fourier_transform_methods/fourier_transform_models.h"
 
 namespace {
 
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.closed_form_trees_fdm_mcm.v6"
+    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm.v7"
 };
 
 } /* namespace */
@@ -332,6 +333,59 @@ double qk_mcm_stratified_sampling_price(double spot, double strike, double t, do
     return qk::mcm::stratified_sampling_price(
         spot, strike, t, vol, r, q, option_type, paths, seed
     );
+}
+
+/* --- Fourier transform methods --- */
+
+double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t grid_size, double eta, double alpha) {
+    qk::ftm::CarrMadanFFTParams params{};
+    params.grid_size = grid_size;
+    params.eta = eta;
+    params.alpha = alpha;
+    return qk::ftm::carr_madan_fft_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ftm_cos_fang_oosterlee_price(double spot, double strike, double t, double vol,
+                                       double r, double q, int32_t option_type,
+                                       int32_t n_terms, double truncation_width) {
+    qk::ftm::COSMethodParams params{};
+    params.n_terms = n_terms;
+    params.truncation_width = truncation_width;
+    return qk::ftm::cos_method_fang_oosterlee_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ftm_fractional_fft_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t grid_size, double eta, double lambda,
+                                   double alpha) {
+    qk::ftm::FractionalFFTParams params{};
+    params.grid_size = grid_size;
+    params.eta = eta;
+    params.lambda = lambda;
+    params.alpha = alpha;
+    return qk::ftm::fractional_fft_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ftm_lewis_fourier_inversion_price(double spot, double strike, double t, double vol,
+                                            double r, double q, int32_t option_type,
+                                            int32_t integration_steps,
+                                            double integration_limit) {
+    qk::ftm::LewisFourierInversionParams params{};
+    params.integration_steps = integration_steps;
+    params.integration_limit = integration_limit;
+    return qk::ftm::lewis_fourier_inversion_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ftm_hilbert_transform_price(double spot, double strike, double t, double vol,
+                                      double r, double q, int32_t option_type,
+                                      int32_t integration_steps,
+                                      double integration_limit) {
+    qk::ftm::HilbertTransformParams params{};
+    params.integration_steps = integration_steps;
+    params.integration_limit = integration_limit;
+    return qk::ftm::hilbert_transform_price(spot, strike, t, vol, r, q, option_type, params);
 }
 
 } /* extern "C" */
