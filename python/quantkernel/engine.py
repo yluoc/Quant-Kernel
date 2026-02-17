@@ -287,3 +287,110 @@ class QuantKernel:
             spot, strike, t, vol, r, q, option_type,
             time_steps, spot_steps, omega, tol, max_iter
         )
+
+    # --- Monte Carlo methods ---
+
+    def _mc_price(
+        self, fn_name: str, spot: float, strike: float, t: float, vol: float,
+        r: float, q: float, option_type: int, *extra
+    ) -> float:
+        return self._call_checked(fn_name, spot, strike, t, vol, r, q, option_type, *extra)
+
+    def standard_monte_carlo_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_standard_monte_carlo_price",
+            spot, strike, t, vol, r, q, option_type, paths, seed
+        )
+
+    def euler_maruyama_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, steps: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_euler_maruyama_price",
+            spot, strike, t, vol, r, q, option_type, paths, steps, seed
+        )
+
+    def milstein_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, steps: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_milstein_price",
+            spot, strike, t, vol, r, q, option_type, paths, steps, seed
+        )
+
+    def longstaff_schwartz_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, steps: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_longstaff_schwartz_price",
+            spot, strike, t, vol, r, q, option_type, paths, steps, seed
+        )
+
+    def quasi_monte_carlo_sobol_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_quasi_monte_carlo_sobol_price",
+            spot, strike, t, vol, r, q, option_type, paths
+        )
+
+    def quasi_monte_carlo_halton_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_quasi_monte_carlo_halton_price",
+            spot, strike, t, vol, r, q, option_type, paths
+        )
+
+    def multilevel_monte_carlo_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, base_paths: int, levels: int, base_steps: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_multilevel_monte_carlo_price",
+            spot, strike, t, vol, r, q, option_type, base_paths, levels, base_steps, seed
+        )
+
+    def importance_sampling_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, shift: float, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_importance_sampling_price",
+            spot, strike, t, vol, r, q, option_type, paths, shift, seed
+        )
+
+    def control_variates_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_control_variates_price",
+            spot, strike, t, vol, r, q, option_type, paths, seed
+        )
+
+    def antithetic_variates_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_antithetic_variates_price",
+            spot, strike, t, vol, r, q, option_type, paths, seed
+        )
+
+    def stratified_sampling_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int, seed: int = 42
+    ) -> float:
+        return self._mc_price(
+            "qk_mcm_stratified_sampling_price",
+            spot, strike, t, vol, r, q, option_type, paths, seed
+        )

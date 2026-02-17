@@ -39,3 +39,9 @@ target_link_libraries(fuzz_finite_difference_models PRIVATE quantkernel gtest gm
 target_include_directories(fuzz_finite_difference_models PRIVATE ../cpp/src)
 link_fuzztest(fuzz_finite_difference_models)
 gtest_discover_tests(fuzz_finite_difference_models)
+
+add_executable(fuzz_monte_carlo_models fuzz_monte_carlo_models.cpp)
+target_link_libraries(fuzz_monte_carlo_models PRIVATE quantkernel gtest gmock)
+target_include_directories(fuzz_monte_carlo_models PRIVATE ../cpp/src)
+link_fuzztest(fuzz_monte_carlo_models)
+gtest_discover_tests(fuzz_monte_carlo_models)

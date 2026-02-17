@@ -155,6 +155,34 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
         ct.c_double, ct.c_double, ct.c_int32,
     ]
 
+    # --- Monte Carlo methods ---
+    mc_common = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_mcm_standard_monte_carlo_price.restype = ct.c_double
+    lib.qk_mcm_standard_monte_carlo_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_euler_maruyama_price.restype = ct.c_double
+    lib.qk_mcm_euler_maruyama_price.argtypes = mc_common + [ct.c_int32, ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_milstein_price.restype = ct.c_double
+    lib.qk_mcm_milstein_price.argtypes = mc_common + [ct.c_int32, ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_longstaff_schwartz_price.restype = ct.c_double
+    lib.qk_mcm_longstaff_schwartz_price.argtypes = mc_common + [ct.c_int32, ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_quasi_monte_carlo_sobol_price.restype = ct.c_double
+    lib.qk_mcm_quasi_monte_carlo_sobol_price.argtypes = mc_common + [ct.c_int32]
+    lib.qk_mcm_quasi_monte_carlo_halton_price.restype = ct.c_double
+    lib.qk_mcm_quasi_monte_carlo_halton_price.argtypes = mc_common + [ct.c_int32]
+    lib.qk_mcm_multilevel_monte_carlo_price.restype = ct.c_double
+    lib.qk_mcm_multilevel_monte_carlo_price.argtypes = mc_common + [ct.c_int32, ct.c_int32, ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_importance_sampling_price.restype = ct.c_double
+    lib.qk_mcm_importance_sampling_price.argtypes = mc_common + [ct.c_int32, ct.c_double, ct.c_uint64]
+    lib.qk_mcm_control_variates_price.restype = ct.c_double
+    lib.qk_mcm_control_variates_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_antithetic_variates_price.restype = ct.c_double
+    lib.qk_mcm_antithetic_variates_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_stratified_sampling_price.restype = ct.c_double
+    lib.qk_mcm_stratified_sampling_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
+
 
 def _verify_abi(lib: ct.CDLL) -> None:
     major = ct.c_int32(-1)

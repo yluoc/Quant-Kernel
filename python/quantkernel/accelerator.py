@@ -93,6 +93,17 @@ class QuantAccelerator:
         "implicit_fd_price",
         "crank_nicolson_price",
         "psor_price",
+        "standard_monte_carlo_price",
+        "euler_maruyama_price",
+        "milstein_price",
+        "longstaff_schwartz_price",
+        "quasi_monte_carlo_sobol_price",
+        "quasi_monte_carlo_halton_price",
+        "multilevel_monte_carlo_price",
+        "importance_sampling_price",
+        "control_variates_price",
+        "antithetic_variates_price",
+        "stratified_sampling_price",
     }
 
     _GPU_THRESHOLDS = {

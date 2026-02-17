@@ -24,7 +24,7 @@ from typing import Callable, Dict, List, Mapping, Sequence
 
 import numpy as np
 
-from quantkernel import QK_CALL, QuantKernel
+from quantkernel import QK_CALL, QK_PUT, QuantKernel
 
 GPU_VECTOR_METHODS = {
     "black_scholes_merton_price",
@@ -124,6 +124,17 @@ def algo_cases() -> List[AlgoCase]:
         AlgoCase("adi_craig_sneyd_price", {"spot": spot, "strike": strike, "t": t, "r": r, "q": q, "v0": vol * vol, "kappa": 2.0, "theta_v": vol * vol, "sigma": 0.3, "rho": -0.7, "option_type": QK_CALL, "s_steps": 40, "v_steps": 20, "time_steps": 40}, 64, 256),
         AlgoCase("adi_hundsdorfer_verwer_price", {"spot": spot, "strike": strike, "t": t, "r": r, "q": q, "v0": vol * vol, "kappa": 2.0, "theta_v": vol * vol, "sigma": 0.3, "rho": -0.7, "option_type": QK_CALL, "s_steps": 40, "v_steps": 20, "time_steps": 40}, 64, 256),
         AlgoCase("psor_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "time_steps": 140, "spot_steps": 140, "omega": 1.2, "tol": 1e-8, "max_iter": 8_000}, 64, 256),
+        AlgoCase("standard_monte_carlo_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 25_000, "seed": 42}, 128, 512),
+        AlgoCase("euler_maruyama_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 15_000, "steps": 64, "seed": 42}, 64, 256),
+        AlgoCase("milstein_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 15_000, "steps": 64, "seed": 42}, 64, 256),
+        AlgoCase("longstaff_schwartz_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_PUT, "paths": 8_000, "steps": 50, "seed": 42}, 32, 128),
+        AlgoCase("quasi_monte_carlo_sobol_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 16_384}, 128, 512),
+        AlgoCase("quasi_monte_carlo_halton_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 16_384}, 128, 512),
+        AlgoCase("multilevel_monte_carlo_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "base_paths": 8_192, "levels": 4, "base_steps": 8, "seed": 42}, 32, 128),
+        AlgoCase("importance_sampling_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 20_000, "shift": 0.5, "seed": 42}, 128, 512),
+        AlgoCase("control_variates_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 20_000, "seed": 42}, 128, 512),
+        AlgoCase("antithetic_variates_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 20_000, "seed": 42}, 128, 512),
+        AlgoCase("stratified_sampling_price", {"spot": spot, "strike": strike, "t": t, "vol": vol, "r": r, "q": q, "option_type": QK_CALL, "paths": 20_000, "seed": 42}, 128, 512),
     ]
 
 

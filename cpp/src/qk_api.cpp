@@ -3,13 +3,14 @@
 #include "algorithms/closed_form_semi_analytical/closed_form_models.h"
 #include "algorithms/tree_lattice_methods/tree_lattice_models.h"
 #include "algorithms/finite_difference_methods/finite_difference_models.h"
+#include "algorithms/monte_carlo_methods/monte_carlo_models.h"
 
 namespace {
 
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.closed_form_trees_fdm.v5"
+    "quantkernel.cpp.closed_form_trees_fdm_mcm.v6"
 };
 
 } /* namespace */
@@ -240,6 +241,97 @@ double qk_fdm_psor_price(double spot, double strike, double t, double vol,
                          double omega, double tol, int32_t max_iter) {
     return qk::fdm::psor_price(spot, strike, t, vol, r, q, option_type,
                                time_steps, spot_steps, omega, tol, max_iter);
+}
+
+/* --- Monte Carlo methods --- */
+
+double qk_mcm_standard_monte_carlo_price(double spot, double strike, double t, double vol,
+                                         double r, double q, int32_t option_type,
+                                         int32_t paths, uint64_t seed) {
+    return qk::mcm::standard_monte_carlo_price(
+        spot, strike, t, vol, r, q, option_type, paths, seed
+    );
+}
+
+double qk_mcm_euler_maruyama_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t paths, int32_t steps, uint64_t seed) {
+    return qk::mcm::euler_maruyama_price(
+        spot, strike, t, vol, r, q, option_type, paths, steps, seed
+    );
+}
+
+double qk_mcm_milstein_price(double spot, double strike, double t, double vol,
+                             double r, double q, int32_t option_type,
+                             int32_t paths, int32_t steps, uint64_t seed) {
+    return qk::mcm::milstein_price(
+        spot, strike, t, vol, r, q, option_type, paths, steps, seed
+    );
+}
+
+double qk_mcm_longstaff_schwartz_price(double spot, double strike, double t, double vol,
+                                       double r, double q, int32_t option_type,
+                                       int32_t paths, int32_t steps, uint64_t seed) {
+    return qk::mcm::longstaff_schwartz_price(
+        spot, strike, t, vol, r, q, option_type, paths, steps, seed
+    );
+}
+
+double qk_mcm_quasi_monte_carlo_sobol_price(double spot, double strike, double t, double vol,
+                                            double r, double q, int32_t option_type,
+                                            int32_t paths) {
+    return qk::mcm::quasi_monte_carlo_sobol_price(
+        spot, strike, t, vol, r, q, option_type, paths
+    );
+}
+
+double qk_mcm_quasi_monte_carlo_halton_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t paths) {
+    return qk::mcm::quasi_monte_carlo_halton_price(
+        spot, strike, t, vol, r, q, option_type, paths
+    );
+}
+
+double qk_mcm_multilevel_monte_carlo_price(double spot, double strike, double t, double vol,
+                                           double r, double q, int32_t option_type,
+                                           int32_t base_paths, int32_t levels, int32_t base_steps,
+                                           uint64_t seed) {
+    return qk::mcm::multilevel_monte_carlo_price(
+        spot, strike, t, vol, r, q, option_type, base_paths, levels, base_steps, seed
+    );
+}
+
+double qk_mcm_importance_sampling_price(double spot, double strike, double t, double vol,
+                                        double r, double q, int32_t option_type,
+                                        int32_t paths, double shift, uint64_t seed) {
+    return qk::mcm::importance_sampling_price(
+        spot, strike, t, vol, r, q, option_type, paths, shift, seed
+    );
+}
+
+double qk_mcm_control_variates_price(double spot, double strike, double t, double vol,
+                                     double r, double q, int32_t option_type,
+                                     int32_t paths, uint64_t seed) {
+    return qk::mcm::control_variates_price(
+        spot, strike, t, vol, r, q, option_type, paths, seed
+    );
+}
+
+double qk_mcm_antithetic_variates_price(double spot, double strike, double t, double vol,
+                                        double r, double q, int32_t option_type,
+                                        int32_t paths, uint64_t seed) {
+    return qk::mcm::antithetic_variates_price(
+        spot, strike, t, vol, r, q, option_type, paths, seed
+    );
+}
+
+double qk_mcm_stratified_sampling_price(double spot, double strike, double t, double vol,
+                                        double r, double q, int32_t option_type,
+                                        int32_t paths, uint64_t seed) {
+    return qk::mcm::stratified_sampling_price(
+        spot, strike, t, vol, r, q, option_type, paths, seed
+    );
 }
 
 } /* extern "C" */

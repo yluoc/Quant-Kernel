@@ -91,6 +91,41 @@ QK_EXPORT double qk_fdm_psor_price(double spot, double strike, double t, double 
                                    double r, double q, int32_t option_type,
                                    int32_t time_steps, int32_t spot_steps,
                                    double omega, double tol, int32_t max_iter);
+/* --- Monte Carlo methods --- */
+QK_EXPORT double qk_mcm_standard_monte_carlo_price(double spot, double strike, double t, double vol,
+                                                   double r, double q, int32_t option_type,
+                                                   int32_t paths, uint64_t seed);
+QK_EXPORT double qk_mcm_euler_maruyama_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t paths, int32_t steps, uint64_t seed);
+QK_EXPORT double qk_mcm_milstein_price(double spot, double strike, double t, double vol,
+                                       double r, double q, int32_t option_type,
+                                       int32_t paths, int32_t steps, uint64_t seed);
+QK_EXPORT double qk_mcm_longstaff_schwartz_price(double spot, double strike, double t, double vol,
+                                                 double r, double q, int32_t option_type,
+                                                 int32_t paths, int32_t steps, uint64_t seed);
+QK_EXPORT double qk_mcm_quasi_monte_carlo_sobol_price(double spot, double strike, double t, double vol,
+                                                      double r, double q, int32_t option_type,
+                                                      int32_t paths);
+QK_EXPORT double qk_mcm_quasi_monte_carlo_halton_price(double spot, double strike, double t, double vol,
+                                                       double r, double q, int32_t option_type,
+                                                       int32_t paths);
+QK_EXPORT double qk_mcm_multilevel_monte_carlo_price(double spot, double strike, double t, double vol,
+                                                     double r, double q, int32_t option_type,
+                                                     int32_t base_paths, int32_t levels, int32_t base_steps,
+                                                     uint64_t seed);
+QK_EXPORT double qk_mcm_importance_sampling_price(double spot, double strike, double t, double vol,
+                                                  double r, double q, int32_t option_type,
+                                                  int32_t paths, double shift, uint64_t seed);
+QK_EXPORT double qk_mcm_control_variates_price(double spot, double strike, double t, double vol,
+                                               double r, double q, int32_t option_type,
+                                               int32_t paths, uint64_t seed);
+QK_EXPORT double qk_mcm_antithetic_variates_price(double spot, double strike, double t, double vol,
+                                                  double r, double q, int32_t option_type,
+                                                  int32_t paths, uint64_t seed);
+QK_EXPORT double qk_mcm_stratified_sampling_price(double spot, double strike, double t, double vol,
+                                                  double r, double q, int32_t option_type,
+                                                  int32_t paths, uint64_t seed);
 
 #ifdef __cplusplus
 }

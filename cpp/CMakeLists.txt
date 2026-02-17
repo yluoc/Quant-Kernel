@@ -19,6 +19,16 @@ add_library(quantkernel SHARED
     src/algorithms/finite_difference_methods/crank_nicolson/crank_nicolson.cpp
     src/algorithms/finite_difference_methods/adi/adi.cpp
     src/algorithms/finite_difference_methods/psor/psor.cpp
+    src/algorithms/monte_carlo_methods/standard_monte_carlo/standard_monte_carlo.cpp
+    src/algorithms/monte_carlo_methods/euler_maruyama/euler_maruyama.cpp
+    src/algorithms/monte_carlo_methods/milstein/milstein.cpp
+    src/algorithms/monte_carlo_methods/longstaff_schwartz/longstaff_schwartz.cpp
+    src/algorithms/monte_carlo_methods/quasi_monte_carlo/quasi_monte_carlo.cpp
+    src/algorithms/monte_carlo_methods/multilevel_monte_carlo/multilevel_monte_carlo.cpp
+    src/algorithms/monte_carlo_methods/importance_sampling/importance_sampling.cpp
+    src/algorithms/monte_carlo_methods/control_variates/control_variates.cpp
+    src/algorithms/monte_carlo_methods/antithetic_variates/antithetic_variates.cpp
+    src/algorithms/monte_carlo_methods/stratified_sampling/stratified_sampling.cpp
 )
 
 target_include_directories(quantkernel
