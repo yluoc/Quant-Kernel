@@ -6,7 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Bring in fuzztest (bundles googletest + googlemock)
 set(FUZZTEST_FUZZING_MODE OFF CACHE BOOL "" FORCE)
-add_subdirectory(fuzztest)
+include(FetchContent)
+FetchContent_Declare(
+    fuzztest
+    GIT_REPOSITORY https://github.com/google/fuzztest.git
+    GIT_TAG        d8e979e  # matches local clone
+)
+FetchContent_MakeAvailable(fuzztest)
 
 # Bring in the quantkernel library from sibling directory.
 # Override -ffast-math because ASAN (used by fuzztest) conflicts with it.
