@@ -70,6 +70,30 @@ PYTHONPATH=python python3 python/examples/run_all_algos.py --profile quick
 - Backend options: `auto`, `cpu`, `gpu`.
 - GPU path is available when CuPy is installed.
 
+### CuPy-Accelerated Algorithms
+
+The following algorithms have fully vectorized NumPy/CuPy implementations in `QuantAccelerator`, enabling GPU acceleration for large batches:
+
+| Algorithm | GPU Threshold | Acceleration Approach |
+|-----------|--------------|----------------------|
+| Black-Scholes-Merton | 20,000 | Vectorized closed-form across batch |
+| Black-76 | 20,000 | Vectorized closed-form across batch |
+| Bachelier | 20,000 | Vectorized closed-form across batch |
+| SABR Hagan (lognormal IV) | 15,000 | Vectorized closed-form across batch |
+| SABR Hagan (Black-76 price) | 15,000 | Vectorized closed-form across batch |
+| Dupire Local Vol | 30,000 | Vectorized closed-form across batch |
+| Merton Jump Diffusion | 10,000 | Series expansion with vectorized BSM per term |
+| Standard Monte Carlo | 1 | (B, P) random normals on GPU, vectorized payoff |
+| Euler-Maruyama | 1 | Time-step loop, all (B, P) paths advance per step |
+| Milstein | 1 | Euler + higher-order correction, same path structure |
+| Importance Sampling | 1 | Shifted-drift MC with likelihood ratio weighting |
+| Control Variates | 1 | MC with analytical control variate (terminal stock) |
+| Antithetic Variates | 1 | Paired +Z/-Z paths for variance reduction |
+| Stratified Sampling | 1 | Stratified uniforms via inverse CDF, then MC |
+
+- **GPU Threshold**: minimum batch size before the GPU backend is selected (under `backend="auto"`). Monte Carlo methods use threshold 1 because path-level parallelism benefits from GPU even for a single job.
+- Algorithms not listed (Heston CF, tree/lattice, finite-difference, Longstaff-Schwartz, QMC Sobol/Halton, MLMC) run via threaded C++ scalar execution.
+
 Install CuPy (optional, for GPU backend):
 ```bash
 python3 -m pip install cupy-cuda12x

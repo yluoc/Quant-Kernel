@@ -8,6 +8,7 @@ This module operationalizes practical acceleration rules:
 
 from __future__ import annotations
 
+import math
 import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Mapping, Sequence
@@ -51,6 +52,59 @@ def _norm_pdf(xp, x):
     return 0.3989422804014327 * xp.exp(-0.5 * x * x)
 
 
+def _norm_ppf(xp, p):
+    """Inverse standard normal CDF using Acklam's rational approximation.
+
+    Accurate to ~1.15e-9 across the full range. Works with NumPy and CuPy arrays.
+    """
+    # Coefficients for the rational approximation
+    a1 = -3.969683028665376e+01
+    a2 = 2.209460984245205e+02
+    a3 = -2.759285104469687e+02
+    a4 = 1.383577518672690e+02
+    a5 = -3.066479806614716e+01
+    a6 = 2.506628277459239e+00
+
+    b1 = -5.447609879822406e+01
+    b2 = 1.615858368580409e+02
+    b3 = -1.556989798598866e+02
+    b4 = 6.680131188771972e+01
+    b5 = -1.328068155288572e+01
+
+    c1 = -7.784894002430293e-03
+    c2 = -3.223964580411365e-01
+    c3 = -2.400758277161838e+00
+    c4 = -2.549732539343734e+00
+    c5 = 4.374664141464968e+00
+    c6 = 2.938163982698783e+00
+
+    d1 = 7.784695709041462e-03
+    d2 = 3.224671290700398e-01
+    d3 = 2.445134137142996e+00
+    d4 = 3.754408661907416e+00
+
+    p_low = 0.02425
+    p_high = 1.0 - p_low
+
+    # Central region
+    q_c = p - 0.5
+    r_c = q_c * q_c
+    x_central = (((((a1 * r_c + a2) * r_c + a3) * r_c + a4) * r_c + a5) * r_c + a6) * q_c / \
+                (((((b1 * r_c + b2) * r_c + b3) * r_c + b4) * r_c + b5) * r_c + 1.0)
+
+    # Lower tail
+    q_l = xp.sqrt(-2.0 * xp.log(xp.maximum(p, 1e-300)))
+    x_low = (((((c1 * q_l + c2) * q_l + c3) * q_l + c4) * q_l + c5) * q_l + c6) / \
+            ((((d1 * q_l + d2) * q_l + d3) * q_l + d4) * q_l + 1.0)
+
+    # Upper tail
+    q_u = xp.sqrt(-2.0 * xp.log(xp.maximum(1.0 - p, 1e-300)))
+    x_high = -(((((c1 * q_u + c2) * q_u + c3) * q_u + c4) * q_u + c5) * q_u + c6) / \
+              ((((d1 * q_u + d2) * q_u + d3) * q_u + d4) * q_u + 1.0)
+
+    return xp.where(p < p_low, x_low, xp.where(p > p_high, x_high, x_central))
+
+
 class QuantAccelerator:
     """Batch pricing helper with rule-based acceleration strategy.
 
@@ -71,6 +125,14 @@ class QuantAccelerator:
         "sabr_hagan_lognormal_iv",
         "sabr_hagan_black76_price",
         "dupire_local_vol",
+        "merton_jump_diffusion_price",
+        "standard_monte_carlo_price",
+        "euler_maruyama_price",
+        "milstein_price",
+        "importance_sampling_price",
+        "control_variates_price",
+        "antithetic_variates_price",
+        "stratified_sampling_price",
     }
 
     _HIGH_PARALLEL_METHODS = {
@@ -82,7 +144,6 @@ class QuantAccelerator:
     }
 
     _MEDIUM_PARALLEL_METHODS = {
-        "merton_jump_diffusion_price",
         "crr_price",
         "jarrow_rudd_price",
         "tian_price",
@@ -93,17 +154,10 @@ class QuantAccelerator:
         "implicit_fd_price",
         "crank_nicolson_price",
         "psor_price",
-        "standard_monte_carlo_price",
-        "euler_maruyama_price",
-        "milstein_price",
         "longstaff_schwartz_price",
         "quasi_monte_carlo_sobol_price",
         "quasi_monte_carlo_halton_price",
         "multilevel_monte_carlo_price",
-        "importance_sampling_price",
-        "control_variates_price",
-        "antithetic_variates_price",
-        "stratified_sampling_price",
     }
 
     _GPU_THRESHOLDS = {
@@ -113,6 +167,14 @@ class QuantAccelerator:
         "sabr_hagan_lognormal_iv": 15_000,
         "sabr_hagan_black76_price": 15_000,
         "dupire_local_vol": 30_000,
+        "merton_jump_diffusion_price": 10_000,
+        "standard_monte_carlo_price": 1,
+        "euler_maruyama_price": 1,
+        "milstein_price": 1,
+        "importance_sampling_price": 1,
+        "control_variates_price": 1,
+        "antithetic_variates_price": 1,
+        "stratified_sampling_price": 1,
     }
 
     _THREAD_THRESHOLDS = {
@@ -381,5 +443,223 @@ class QuantAccelerator:
             ratio = num / safe_den
             out = xp.sqrt(xp.maximum(ratio, 0.0))
             return xp.where(valid, out, xp.nan)
+
+        if method == "merton_jump_diffusion_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            lam = self._column(xp, jobs, "jump_intensity")
+            jump_mean = self._column(xp, jobs, "jump_mean")
+            jump_vol = self._column(xp, jobs, "jump_vol")
+            max_terms = int(jobs[0]["max_terms"])
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+
+            k = xp.exp(jump_mean + 0.5 * jump_vol * jump_vol) - 1.0
+            lam_prime = lam * (1.0 + k)
+            result = xp.zeros_like(spot)
+
+            for n in range(max_terms):
+                n_f = float(n)
+                # Poisson weight: exp(-lam'*T) * (lam'*T)^n / n!
+                log_weight = -lam_prime * t + n_f * xp.log(xp.maximum(lam_prime * t, 1e-300)) - math.lgamma(n + 1)
+                weight = xp.exp(log_weight)
+
+                vol_n = xp.sqrt(vol * vol + n_f * jump_vol * jump_vol / xp.maximum(t, eps))
+                r_n = r - lam * k + n_f * xp.log(1.0 + k) / xp.maximum(t, eps)
+
+                sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+                vol_sqrt_t = vol_n * sqrt_t
+                d1 = (xp.log(spot / strike) + (r_n - q + 0.5 * vol_n * vol_n) * t) / xp.maximum(vol_sqrt_t, eps)
+                d2 = d1 - vol_sqrt_t
+
+                df = xp.exp(-r_n * t)
+                qf = xp.exp(-q * t)
+                call = spot * qf * _norm_cdf(xp, d1) - strike * df * _norm_cdf(xp, d2)
+                put = strike * df * _norm_cdf(xp, -d2) - spot * qf * _norm_cdf(xp, -d1)
+                bsm = xp.where(option_type == QK_CALL, call, put)
+
+                result = result + weight * bsm
+
+            return result
+
+        # --- Monte Carlo helpers ---
+        def _mc_common_params(jobs, xp):
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            return spot, strike, t, vol, r, q, option_type
+
+        def _mc_payoff(xp, s_t, strike, option_type):
+            return xp.where(option_type[:, None] == QK_CALL,
+                            xp.maximum(s_t - strike[:, None], 0.0),
+                            xp.maximum(strike[:, None] - s_t, 0.0))
+
+        if method == "standard_monte_carlo_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+
+            rng = xp.random.default_rng(seed)
+            Z = rng.standard_normal((B, paths))
+
+            drift = (r - q - 0.5 * vol * vol)
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            S_T = spot[:, None] * xp.exp(drift[:, None] * t[:, None] + vol[:, None] * sqrt_t[:, None] * Z)
+
+            payoffs = _mc_payoff(xp, S_T, strike, option_type)
+            df = xp.exp(-r * t)
+            return df * xp.mean(payoffs, axis=1)
+
+        if method == "euler_maruyama_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            steps = int(jobs[0].get("steps", 100))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+
+            dt = t / float(steps)
+            sqrt_dt = xp.sqrt(xp.maximum(dt, 0.0))
+            rng = xp.random.default_rng(seed)
+
+            S = xp.broadcast_to(spot[:, None], (B, paths)).copy()
+            mu = r - q
+
+            for _ in range(steps):
+                Z = rng.standard_normal((B, paths))
+                S = S * (1.0 + mu[:, None] * dt[:, None] + vol[:, None] * sqrt_dt[:, None] * Z)
+                S = xp.maximum(S, 0.0)
+
+            payoffs = _mc_payoff(xp, S, strike, option_type)
+            df = xp.exp(-r * t)
+            return df * xp.mean(payoffs, axis=1)
+
+        if method == "milstein_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            steps = int(jobs[0].get("steps", 100))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+
+            dt = t / float(steps)
+            sqrt_dt = xp.sqrt(xp.maximum(dt, 0.0))
+            rng = xp.random.default_rng(seed)
+
+            S = xp.broadcast_to(spot[:, None], (B, paths)).copy()
+            mu = r - q
+
+            for _ in range(steps):
+                Z = rng.standard_normal((B, paths))
+                S = S * (1.0 + mu[:, None] * dt[:, None]
+                         + vol[:, None] * sqrt_dt[:, None] * Z
+                         + 0.5 * vol[:, None] * vol[:, None] * (Z * Z - 1.0) * dt[:, None])
+                S = xp.maximum(S, 0.0)
+
+            payoffs = _mc_payoff(xp, S, strike, option_type)
+            df = xp.exp(-r * t)
+            return df * xp.mean(payoffs, axis=1)
+
+        if method == "importance_sampling_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            seed = int(jobs[0].get("seed", 42))
+            shift = self._column(xp, jobs, "shift")
+            B = len(jobs)
+
+            rng = xp.random.default_rng(seed)
+            Z = rng.standard_normal((B, paths))
+
+            Z_shifted = Z + shift[:, None]
+            drift = (r - q - 0.5 * vol * vol)
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            S_T = spot[:, None] * xp.exp(drift[:, None] * t[:, None] + vol[:, None] * sqrt_t[:, None] * Z_shifted)
+
+            payoffs = _mc_payoff(xp, S_T, strike, option_type)
+            likelihood = xp.exp(-shift[:, None] * Z - 0.5 * shift[:, None] * shift[:, None])
+            weighted = payoffs * likelihood
+
+            df = xp.exp(-r * t)
+            return df * xp.mean(weighted, axis=1)
+
+        if method == "control_variates_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+
+            rng = xp.random.default_rng(seed)
+            Z = rng.standard_normal((B, paths))
+
+            drift = (r - q - 0.5 * vol * vol)
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            S_T = spot[:, None] * xp.exp(drift[:, None] * t[:, None] + vol[:, None] * sqrt_t[:, None] * Z)
+
+            payoffs = _mc_payoff(xp, S_T, strike, option_type)
+            E_ST = spot * xp.exp((r - q) * t)
+            control = S_T - E_ST[:, None]
+
+            # Compute beta per batch item: cov(payoff, control) / var(control)
+            payoff_mean = xp.mean(payoffs, axis=1, keepdims=True)
+            control_mean = xp.mean(control, axis=1, keepdims=True)
+            cov = xp.mean((payoffs - payoff_mean) * (control - control_mean), axis=1)
+            var_c = xp.mean((control - control_mean) ** 2, axis=1)
+            beta = cov / xp.maximum(var_c, eps)
+
+            adjusted = payoffs - beta[:, None] * control
+            df = xp.exp(-r * t)
+            return df * xp.mean(adjusted, axis=1)
+
+        if method == "antithetic_variates_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+            half = paths // 2
+
+            rng = xp.random.default_rng(seed)
+            Z = rng.standard_normal((B, half))
+
+            drift = (r - q - 0.5 * vol * vol)
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+
+            S_T_pos = spot[:, None] * xp.exp(drift[:, None] * t[:, None] + vol[:, None] * sqrt_t[:, None] * Z)
+            S_T_neg = spot[:, None] * xp.exp(drift[:, None] * t[:, None] + vol[:, None] * sqrt_t[:, None] * (-Z))
+
+            payoffs_pos = _mc_payoff(xp, S_T_pos, strike, option_type)
+            payoffs_neg = _mc_payoff(xp, S_T_neg, strike, option_type)
+            payoffs = 0.5 * (payoffs_pos + payoffs_neg)
+
+            df = xp.exp(-r * t)
+            return df * xp.mean(payoffs, axis=1)
+
+        if method == "stratified_sampling_price":
+            spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
+            paths = int(jobs[0].get("paths", 100000))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+
+            rng = xp.random.default_rng(seed)
+            # Stratified uniforms: u_i = (i + U_i) / paths
+            strata = xp.arange(paths, dtype=np.float64)[None, :]
+            U = rng.uniform(size=(B, paths))
+            stratified_u = (strata + U) / float(paths)
+            # Clamp to avoid infinities at boundaries
+            stratified_u = xp.clip(stratified_u, 1e-10, 1.0 - 1e-10)
+            Z = _norm_ppf(xp, stratified_u)
+
+            drift = (r - q - 0.5 * vol * vol)
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            S_T = spot[:, None] * xp.exp(drift[:, None] * t[:, None] + vol[:, None] * sqrt_t[:, None] * Z)
+
+            payoffs = _mc_payoff(xp, S_T, strike, option_type)
+            df = xp.exp(-r * t)
+            return df * xp.mean(payoffs, axis=1)
 
         raise RuntimeError(f"Vectorized backend not implemented for method: {method}")
