@@ -22,5 +22,26 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
-      - name: Build and Test (C++ + Python)
+      - name: Build and run core tests
         run: make quick
+
+      - name: Configure fuzz tests
+        run: cmake -S fuzztest -B build/fuzztest
+
+      - name: Build fuzz test binaries
+        run: cmake --build build/fuzztest -j 4
+
+      - name: Run all fuzz test suites under fuzztest/
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for src in fuzztest/fuzz_*.cpp; do
+            bin="$(basename "${src%.cpp}")"
+            exe="./build/fuzztest/${bin}"
+            echo "Running ${exe}"
+            if [[ ! -x "${exe}" ]]; then
+              echo "Expected fuzz binary not found: ${exe}"
+              exit 1
+            fi
+            "${exe}"
+          done
