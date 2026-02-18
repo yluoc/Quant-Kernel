@@ -7,6 +7,7 @@ Linux/macOS is recommended.
 ## Models
 - Closed-form / semi-analytical: Black-Scholes-Merton, Black-76, Bachelier, Heston CF, Merton jump-diffusion, Variance Gamma CF, SABR (Hagan), Dupire local vol.
 - Fourier-transform methods: Carr-Madan FFT, COS (Fang-Oosterlee), Fractional FFT, Lewis Fourier inversion, Hilbert transform pricing.
+- Integral quadrature methods: Gauss-Hermite, Gauss-Laguerre, Gauss-Legendre, Adaptive quadrature.
 - Tree/lattice: CRR, Jarrow-Rudd, Tian, Leisen-Reimer, Trinomial, Derman-Kani (const local vol entrypoint).
 - Finite-difference: Explicit FD, Implicit FD, Crank-Nicolson, ADI (Douglas/Craig-Sneyd/Hundsdorfer-Verwer), PSOR.
 - Monte Carlo methods: Standard Monte Carlo, Euler-Maruyama, Milstein, Longstaff-Schwartz (LSMC), Quasi-Monte Carlo (Sobol/Halton), MLMC, Importance Sampling, Control Variates, Antithetic Variates, Stratified Sampling.
@@ -98,7 +99,7 @@ The following algorithms have fully vectorized NumPy/CuPy implementations in `Qu
 | Stratified Sampling | 1 | Stratified uniforms via inverse CDF, then MC |
 
 - **GPU Threshold**: minimum batch size before the GPU backend is selected (under `backend="auto"`). Monte Carlo methods use threshold 1 because path-level parallelism benefits from GPU even for a single job.
-- Algorithms not listed (Heston CF, tree/lattice, finite-difference, Longstaff-Schwartz, QMC Sobol/Halton, MLMC) run via threaded C++ scalar execution.
+- Algorithms not listed (Heston CF, integral quadrature, tree/lattice, finite-difference, Longstaff-Schwartz, QMC Sobol/Halton, MLMC) run via threaded C++ scalar execution.
 
 Install CuPy (optional, for GPU backend):
 ```bash
@@ -122,6 +123,42 @@ Run CPU vs GPU runtime simulation:
 ```bash
 PYTHONPATH=python python3 python/examples/run_all_algos.py --profile quick
 ```
+
+## IDE IntelliSense (`compile_commands.json`)
+
+If your editor (VS Code, CLion, etc.) shows `#include` errors or missing symbols for C++ files, you need to generate a `compile_commands.json` at the project root. This is needed when:
+
+- You have freshly cloned the repo and haven't built yet.
+- New C++ source files or fuzz tests have been added since your last build.
+- IntelliSense squiggles appear on valid `#include` directives.
+
+Generate it by running from the project root:
+
+```bash
+# Build both targets with compile_commands.json generation
+cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build -j
+
+cmake -S fuzztest -B fuzztest/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build fuzztest/build -j
+
+# Merge into a single root-level compile_commands.json
+python3 -c "
+import json, pathlib
+root = pathlib.Path('.')
+merged, seen = [], set()
+for f in [root/'build'/'compile_commands.json', root/'fuzztest'/'build'/'compile_commands.json']:
+    if f.exists():
+        for e in json.loads(f.read_text()):
+            if e['file'] not in seen:
+                seen.add(e['file'])
+                merged.append(e)
+pathlib.Path('compile_commands.json').write_text(json.dumps(merged, indent=2) + '\n')
+print(f'Wrote {len(merged)} entries to compile_commands.json')
+"
+```
+
+The `.vscode/c_cpp_properties.json` is pre-configured to read `${workspaceFolder}/compile_commands.json`. The file is in `.gitignore` since it contains machine-specific paths.
 
 ## Tests
 ```bash

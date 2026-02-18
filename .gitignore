@@ -29,3 +29,5 @@ venv/
 .coverage
 coverage.xml
 htmlcov/
+
+compile_commands.json
