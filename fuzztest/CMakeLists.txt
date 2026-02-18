@@ -57,3 +57,9 @@ target_link_libraries(fuzz_fourier_transform_models PRIVATE quantkernel gtest gm
 target_include_directories(fuzz_fourier_transform_models PRIVATE ../cpp/src)
 link_fuzztest(fuzz_fourier_transform_models)
 gtest_discover_tests(fuzz_fourier_transform_models)
+
+add_executable(fuzz_integral_quadrature_models fuzz_integral_quadrature_models.cpp)
+target_link_libraries(fuzz_integral_quadrature_models PRIVATE quantkernel gtest gmock)
+target_include_directories(fuzz_integral_quadrature_models PRIVATE ../cpp/src)
+link_fuzztest(fuzz_integral_quadrature_models)
+gtest_discover_tests(fuzz_integral_quadrature_models)

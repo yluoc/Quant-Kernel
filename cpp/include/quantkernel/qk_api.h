@@ -145,6 +145,20 @@ QK_EXPORT double qk_ftm_hilbert_transform_price(double spot, double strike, doub
                                                 double r, double q, int32_t option_type,
                                                 int32_t integration_steps,
                                                 double integration_limit);
+/* --- Integral quadrature methods --- */
+QK_EXPORT double qk_iqm_gauss_hermite_price(double spot, double strike, double t, double vol,
+                                            double r, double q, int32_t option_type,
+                                            int32_t n_points);
+QK_EXPORT double qk_iqm_gauss_laguerre_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t n_points);
+QK_EXPORT double qk_iqm_gauss_legendre_price(double spot, double strike, double t, double vol,
+                                             double r, double q, int32_t option_type,
+                                             int32_t n_points, double integration_limit);
+QK_EXPORT double qk_iqm_adaptive_quadrature_price(double spot, double strike, double t, double vol,
+                                                  double r, double q, int32_t option_type,
+                                                  double abs_tol, double rel_tol,
+                                                  int32_t max_depth, double integration_limit);
 
 #ifdef __cplusplus
 }

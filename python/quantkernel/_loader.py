@@ -122,6 +122,20 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_ftm_hilbert_transform_price.restype = ct.c_double
     lib.qk_ftm_hilbert_transform_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
 
+    # --- Integral Quadrature methods ---
+    iqm_common = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_iqm_gauss_hermite_price.restype = ct.c_double
+    lib.qk_iqm_gauss_hermite_price.argtypes = iqm_common + [ct.c_int32]
+    lib.qk_iqm_gauss_laguerre_price.restype = ct.c_double
+    lib.qk_iqm_gauss_laguerre_price.argtypes = iqm_common + [ct.c_int32]
+    lib.qk_iqm_gauss_legendre_price.restype = ct.c_double
+    lib.qk_iqm_gauss_legendre_price.argtypes = iqm_common + [ct.c_int32, ct.c_double]
+    lib.qk_iqm_adaptive_quadrature_price.restype = ct.c_double
+    lib.qk_iqm_adaptive_quadrature_price.argtypes = iqm_common + [ct.c_double, ct.c_double, ct.c_int32, ct.c_double]
+
     tlm_argtypes = [
         ct.c_double, ct.c_double, ct.c_double, ct.c_double,
         ct.c_double, ct.c_double, ct.c_int32, ct.c_int32, ct.c_int32,

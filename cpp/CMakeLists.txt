@@ -34,6 +34,10 @@ add_library(quantkernel SHARED
     src/algorithms/fourier_transform_methods/fractional_fft/fractional_fft.cpp
     src/algorithms/fourier_transform_methods/lewis_fourier_inversion/lewis_fourier_inversion.cpp
     src/algorithms/fourier_transform_methods/hilbert_transform/hilbert_transform.cpp
+    src/algorithms/integral_quadrature/gauss_hermite/gauss_hermite.cpp
+    src/algorithms/integral_quadrature/gauss_laguerre/gauss_laguerre.cpp
+    src/algorithms/integral_quadrature/gauss_legendre/gauss_legendre.cpp
+    src/algorithms/integral_quadrature/adaptive_quadrature/adaptive_quadrature.cpp
 )
 
 target_include_directories(quantkernel

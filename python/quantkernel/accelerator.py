@@ -163,6 +163,10 @@ class QuantAccelerator:
         "quasi_monte_carlo_sobol_price",
         "quasi_monte_carlo_halton_price",
         "multilevel_monte_carlo_price",
+        "gauss_hermite_price",
+        "gauss_laguerre_price",
+        "gauss_legendre_price",
+        "adaptive_quadrature_price",
     }
 
     _GPU_THRESHOLDS = {

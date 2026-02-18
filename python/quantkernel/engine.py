@@ -200,6 +200,46 @@ class QuantKernel:
             spot, strike, t, vol, r, q, option_type, integration_steps, integration_limit
         )
 
+    # --- Integral quadrature methods ---
+
+    def gauss_hermite_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, n_points: int = 128
+    ) -> float:
+        return self._call_checked(
+            "qk_iqm_gauss_hermite_price",
+            spot, strike, t, vol, r, q, option_type, n_points
+        )
+
+    def gauss_laguerre_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, n_points: int = 64
+    ) -> float:
+        return self._call_checked(
+            "qk_iqm_gauss_laguerre_price",
+            spot, strike, t, vol, r, q, option_type, n_points
+        )
+
+    def gauss_legendre_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, n_points: int = 128, integration_limit: float = 200.0
+    ) -> float:
+        return self._call_checked(
+            "qk_iqm_gauss_legendre_price",
+            spot, strike, t, vol, r, q, option_type, n_points, integration_limit
+        )
+
+    def adaptive_quadrature_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, abs_tol: float = 1e-9, rel_tol: float = 1e-8,
+        max_depth: int = 14, integration_limit: float = 200.0
+    ) -> float:
+        return self._call_checked(
+            "qk_iqm_adaptive_quadrature_price",
+            spot, strike, t, vol, r, q, option_type,
+            abs_tol, rel_tol, max_depth, integration_limit
+        )
+
     def crr_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
         option_type: int, steps: int, american_style: bool = False

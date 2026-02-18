@@ -5,13 +5,14 @@
 #include "algorithms/finite_difference_methods/finite_difference_models.h"
 #include "algorithms/monte_carlo_methods/monte_carlo_models.h"
 #include "algorithms/fourier_transform_methods/fourier_transform_models.h"
+#include "algorithms/integral_quadrature/integral_quadrature_models.h"
 
 namespace {
 
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm.v7"
+    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm_iqm.v8"
 };
 
 } /* namespace */
@@ -386,6 +387,45 @@ double qk_ftm_hilbert_transform_price(double spot, double strike, double t, doub
     params.integration_steps = integration_steps;
     params.integration_limit = integration_limit;
     return qk::ftm::hilbert_transform_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+/* --- Integral quadrature methods --- */
+
+double qk_iqm_gauss_hermite_price(double spot, double strike, double t, double vol,
+                                  double r, double q, int32_t option_type,
+                                  int32_t n_points) {
+    qk::iqm::GaussHermiteParams params{};
+    params.n_points = n_points;
+    return qk::iqm::gauss_hermite_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_iqm_gauss_laguerre_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t n_points) {
+    qk::iqm::GaussLaguerreParams params{};
+    params.n_points = n_points;
+    return qk::iqm::gauss_laguerre_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_iqm_gauss_legendre_price(double spot, double strike, double t, double vol,
+                                   double r, double q, int32_t option_type,
+                                   int32_t n_points, double integration_limit) {
+    qk::iqm::GaussLegendreParams params{};
+    params.n_points = n_points;
+    params.integration_limit = integration_limit;
+    return qk::iqm::gauss_legendre_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_iqm_adaptive_quadrature_price(double spot, double strike, double t, double vol,
+                                        double r, double q, int32_t option_type,
+                                        double abs_tol, double rel_tol,
+                                        int32_t max_depth, double integration_limit) {
+    qk::iqm::AdaptiveQuadratureParams params{};
+    params.abs_tol = abs_tol;
+    params.rel_tol = rel_tol;
+    params.max_depth = max_depth;
+    params.integration_limit = integration_limit;
+    return qk::iqm::adaptive_quadrature_price(spot, strike, t, vol, r, q, option_type, params);
 }
 
 } /* extern "C" */
