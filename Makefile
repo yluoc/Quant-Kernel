@@ -8,7 +8,7 @@ JOBS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 .DEFAULT_GOAL := quick
 
-.PHONY: help configure build test-cpp test-py test demo quick clean
+.PHONY: help configure build test-cpp test-py test demo quick clean clean-fuzz clean-caches clean-all clean-venv
 
 help:
 	@echo "Targets:"
@@ -17,6 +17,10 @@ help:
 	@echo "  make test          # Run C++ and Python tests"
 	@echo "  make demo          # Run Python demo (direct kernel path)"
 	@echo "  make clean         # Remove build artifacts"
+	@echo "  make clean-fuzz    # Remove fuzztest build artifacts"
+	@echo "  make clean-caches  # Remove local caches (pycache/pytest/compile_commands)"
+	@echo "  make clean-all     # clean + clean-fuzz + clean-caches"
+	@echo "  make clean-venv    # Remove local .venv"
 
 configure:
 	$(CMAKE) -S . -B $(BUILD_DIR)
@@ -40,3 +44,17 @@ quick: test
 clean:
 	$(CMAKE) -E rm -rf $(BUILD_DIR)
 	$(CMAKE) -E rm -rf target
+
+clean-fuzz:
+	$(CMAKE) -E rm -rf fuzztest/build
+	$(CMAKE) -E rm -rf fuzztest/dist
+
+clean-caches:
+	$(CMAKE) -E rm -rf .pytest_cache
+	find python -type d -name __pycache__ -prune -exec rm -rf {} +
+	$(CMAKE) -E rm -f compile_commands.json
+
+clean-all: clean clean-fuzz clean-caches
+
+clean-venv:
+	$(CMAKE) -E rm -rf .venv

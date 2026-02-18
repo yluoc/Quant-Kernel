@@ -18,7 +18,7 @@ This quick start assumes you clone/build QuantKernel once, then use it from any 
 1. Clone and build QuantKernel (one-time setup).
 ```bash
 git clone <your-repo-url> /opt/quantkernel
-cd /opt/quantkernel0
+cd /opt/quantkernel
 
 # Create isolated Python environment
 python3 -m venv .venv
@@ -158,7 +158,7 @@ print(f'Wrote {len(merged)} entries to compile_commands.json')
 "
 ```
 
-The `.vscode/c_cpp_properties.json` is pre-configured to read `${workspaceFolder}/compile_commands.json`. The file is in `.gitignore` since it contains machine-specific paths.
+If you're using VS Code, create a local `.vscode/c_cpp_properties.json` and set `compileCommands` to `${workspaceFolder}/compile_commands.json` (the `.vscode/` directory is ignored by default since it contains machine-specific paths).
 
 ## Tests
 ```bash
