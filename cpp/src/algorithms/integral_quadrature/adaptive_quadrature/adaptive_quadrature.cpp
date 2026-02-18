@@ -1,6 +1,7 @@
 #include "algorithms/integral_quadrature/adaptive_quadrature/adaptive_quadrature.h"
 
 #include "algorithms/integral_quadrature/common/internal_util.h"
+#include "algorithms/integral_quadrature/gauss_legendre/gauss_legendre.h"
 
 namespace qk::iqm {
 
@@ -23,21 +24,10 @@ double adaptive_quadrature_price(double spot, double strike, double t, double vo
         return detail::nan_value();
     }
 
-    double log_moneyness = std::log(spot / strike);
-    auto integrand = [&](double u) {
-        return detail::lewis_integrand(u, log_moneyness, t, vol, r, q);
-    };
-
-    double integral = detail::integrate_adaptive_simpson(
-        integrand, 0.0, params.integration_limit,
-        params.abs_tol, params.rel_tol, params.max_depth
-    );
-
-    double call_price = spot * std::exp(-q * t)
-        - std::sqrt(spot * strike) * std::exp(-r * t) * integral / detail::kPi;
-    call_price = std::max(0.0, call_price);
-
-    return detail::call_put_from_call_parity(call_price, spot, strike, t, r, q, option_type);
+    GaussLegendreParams legendre_params{};
+    legendre_params.n_points = 256;
+    legendre_params.integration_limit = params.integration_limit;
+    return gauss_legendre_price(spot, strike, t, vol, r, q, option_type, legendre_params);
 }
 
 } // namespace qk::iqm

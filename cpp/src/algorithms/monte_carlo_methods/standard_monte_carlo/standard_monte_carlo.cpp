@@ -26,9 +26,17 @@ double standard_monte_carlo_price(double spot, double strike, double t, double v
     const double disc = std::exp(-r * t);
 
     double sum = 0.0;
-    for (int32_t i = 0; i < paths; ++i) {
-        double z = normal(rng);
-        double st = detail::gbm_terminal(spot, t, r, q, vol, z);
+    const int32_t n_pairs = paths / 2;
+    for (int32_t i = 0; i < n_pairs; ++i) {
+        const double z = normal(rng);
+        const double st_up = detail::gbm_terminal(spot, t, r, q, vol, z);
+        const double st_dn = detail::gbm_terminal(spot, t, r, q, vol, -z);
+        sum += detail::payoff(st_up, strike, option_type);
+        sum += detail::payoff(st_dn, strike, option_type);
+    }
+    if ((paths & 1) != 0) {
+        const double z = normal(rng);
+        const double st = detail::gbm_terminal(spot, t, r, q, vol, z);
         sum += detail::payoff(st, strike, option_type);
     }
 

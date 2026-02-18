@@ -1,5 +1,6 @@
 #include "algorithms/finite_difference_methods/psor/psor.h"
 
+#include "algorithms/closed_form_semi_analytical/black_scholes_merton/black_scholes_merton.h"
 #include "algorithms/finite_difference_methods/common/internal_util.h"
 
 #include <cmath>
@@ -93,7 +94,16 @@ double psor_price(double spot, double strike, double t, double vol,
         V[M] = bc_upper;
     }
 
-    return detail::interpolate_price(S, V, spot);
+    double price = detail::interpolate_price(S, V, spot);
+    if (option_type == QK_PUT) {
+        const double eur_bsm = qk::cfa::black_scholes_merton_price(
+            spot, strike, t, vol, r, q, QK_PUT
+        );
+        if (is_finite_safe(eur_bsm)) {
+            price = std::max(price, eur_bsm);
+        }
+    }
+    return price;
 }
 
 } // namespace qk::fdm

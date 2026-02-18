@@ -29,25 +29,26 @@ double likelihood_ratio_delta(
     std::mt19937_64 rng(params.seed);
     std::normal_distribution<double> norm(0.0, 1.0);
 
-    double sum = 0.0;
-    for (int i = 0; i < n_paths; ++i) {
-        const double z = norm(rng);
+    auto sample_term = [&](double z) {
         const double S_T = spot * std::exp(drift + vol * sqrt_t * z);
-
-        // Payoff
-        double payoff = 0.0;
-        if (option_type == QK_CALL) {
-            payoff = std::max(S_T - strike, 0.0);
-        } else {
-            payoff = std::max(strike - S_T, 0.0);
-        }
-
-        // Score function: d/dS_0 log p(S_T|S_0) = z / (vol * sqrt_t * S_0)
+        const double payoff = (option_type == QK_CALL)
+            ? std::max(S_T - strike, 0.0)
+            : std::max(strike - S_T, 0.0);
         double score = z / (vol * sqrt_t * spot);
-        // Clip score for variance reduction
         score = std::max(-params.weight_clip, std::min(params.weight_clip, score));
+        return payoff * score;
+    };
 
-        sum += payoff * score;
+    // Antithetic pairing materially reduces LR variance in tail-heavy regimes.
+    double sum = 0.0;
+    const int n_pairs = n_paths / 2;
+    for (int i = 0; i < n_pairs; ++i) {
+        const double z = norm(rng);
+        sum += sample_term(z);
+        sum += sample_term(-z);
+    }
+    if ((n_paths & 1) != 0) {
+        sum += sample_term(norm(rng));
     }
 
     const double delta = disc * sum / static_cast<double>(n_paths);
