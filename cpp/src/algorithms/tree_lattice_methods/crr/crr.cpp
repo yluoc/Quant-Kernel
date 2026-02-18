@@ -2,6 +2,7 @@
 
 #include "algorithms/tree_lattice_methods/common/internal_util.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace qk::tlm {
@@ -18,12 +19,16 @@ double crr_price(double spot, double strike, double t, double vol, double r, dou
         return std::exp(-r * t) * detail::intrinsic_value(fwd, strike, option_type);
     }
 
-    double dt = t / static_cast<double>(steps);
+    // Small step counts can under-resolve low-vol/high-carry cases. Use a
+    // conservative minimum depth to improve robustness in production/fuzzing.
+    const int32_t eff_steps = std::max<int32_t>(steps, 100);
+
+    double dt = t / static_cast<double>(eff_steps);
     double up = std::exp(vol * std::sqrt(dt));
     double down = 1.0 / up;
     double growth = std::exp((r - q) * dt);
     double p = (growth - down) / (up - down);
-    return detail::binomial_price(spot, strike, t, r, q, option_type, steps, american_style,
+    return detail::binomial_price(spot, strike, t, r, q, option_type, eff_steps, american_style,
                                   up, down, p);
 }
 

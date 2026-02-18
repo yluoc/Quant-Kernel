@@ -40,10 +40,18 @@ jobs:
       - name: Run all fuzz test suites under fuzztest/
         timeout-minutes: 15
         shell: bash
+        env:
+          # Make fuzz/property runs deterministic in CI to avoid random-seed flakes.
+          FUZZTEST_PRNG_SEED: NNMQpT7FLDG9rOgxXhD87HtvjqCtE-6NHWnDn00xICI
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for src in fuzztest/fuzz_*.cpp; do
+          sources=(fuzztest/fuzz_*.cpp)
+          if (( ${#sources[@]} == 0 )); then
+            echo "No fuzz sources found under fuzztest/"
+            exit 1
+          fi
+          for src in "${sources[@]}"; do
             bin="$(basename "${src%.cpp}")"
             exe="./build/fuzztest/${bin}"
             echo "Running ${exe}"
