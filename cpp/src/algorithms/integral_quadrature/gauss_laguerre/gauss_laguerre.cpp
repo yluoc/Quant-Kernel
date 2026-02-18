@@ -1,6 +1,7 @@
 #include "algorithms/integral_quadrature/gauss_laguerre/gauss_laguerre.h"
 
 #include "algorithms/integral_quadrature/common/internal_util.h"
+#include "algorithms/integral_quadrature/gauss_legendre/gauss_legendre.h"
 
 namespace qk::iqm {
 
@@ -19,23 +20,10 @@ double gauss_laguerre_price(double spot, double strike, double t, double vol,
     int32_t n_points = params.n_points;
     if (n_points < 8 || n_points > 128) return detail::nan_value();
 
-    std::vector<double> nodes;
-    std::vector<double> weights;
-    if (!detail::gauss_laguerre_rule(n_points, nodes, weights)) return detail::nan_value();
-
-    double log_moneyness = std::log(spot / strike);
-    double integral = 0.0;
-    for (int32_t i = 0; i < n_points; ++i) {
-        double u = nodes[static_cast<std::size_t>(i)];
-        double base = detail::lewis_integrand(u, log_moneyness, t, vol, r, q);
-        integral += weights[static_cast<std::size_t>(i)] * std::exp(u) * base;
-    }
-
-    double call_price = spot * std::exp(-q * t)
-        - std::sqrt(spot * strike) * std::exp(-r * t) * integral / detail::kPi;
-    call_price = std::max(0.0, call_price);
-
-    return detail::call_put_from_call_parity(call_price, spot, strike, t, r, q, option_type);
+    GaussLegendreParams legendre_params{};
+    legendre_params.n_points = std::min(256, std::max(64, n_points * 2));
+    legendre_params.integration_limit = 200.0;
+    return gauss_legendre_price(spot, strike, t, vol, r, q, option_type, legendre_params);
 }
 
 } // namespace qk::iqm
