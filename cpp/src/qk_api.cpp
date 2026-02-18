@@ -6,13 +6,16 @@
 #include "algorithms/monte_carlo_methods/monte_carlo_models.h"
 #include "algorithms/fourier_transform_methods/fourier_transform_models.h"
 #include "algorithms/integral_quadrature/integral_quadrature_models.h"
+#include "algorithms/regression_approximation/regression_approximation_models.h"
+#include "algorithms/adjoint_greeks/adjoint_greeks_models.h"
+#include "algorithms/machine_learning/machine_learning_models.h"
 
 namespace {
 
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm_iqm.v8"
+    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm_iqm_ram_agm_mlm.v9"
 };
 
 } /* namespace */
@@ -426,6 +429,126 @@ double qk_iqm_adaptive_quadrature_price(double spot, double strike, double t, do
     params.max_depth = max_depth;
     params.integration_limit = integration_limit;
     return qk::iqm::adaptive_quadrature_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+/* --- Regression approximation methods --- */
+
+double qk_ram_polynomial_chaos_expansion_price(double spot, double strike, double t, double vol,
+                                               double r, double q, int32_t option_type,
+                                               int32_t polynomial_order,
+                                               int32_t quadrature_points) {
+    qk::ram::PolynomialChaosExpansionParams params{};
+    params.polynomial_order = polynomial_order;
+    params.quadrature_points = quadrature_points;
+    return qk::ram::polynomial_chaos_expansion_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ram_radial_basis_function_price(double spot, double strike, double t, double vol,
+                                          double r, double q, int32_t option_type,
+                                          int32_t centers, double rbf_shape, double ridge) {
+    qk::ram::RadialBasisFunctionParams params{};
+    params.centers = centers;
+    params.rbf_shape = rbf_shape;
+    params.ridge = ridge;
+    return qk::ram::radial_basis_function_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ram_sparse_grid_collocation_price(double spot, double strike, double t, double vol,
+                                            double r, double q, int32_t option_type,
+                                            int32_t level, int32_t nodes_per_dim) {
+    qk::ram::SparseGridCollocationParams params{};
+    params.level = level;
+    params.nodes_per_dim = nodes_per_dim;
+    return qk::ram::sparse_grid_collocation_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_ram_proper_orthogonal_decomposition_price(double spot, double strike, double t, double vol,
+                                                    double r, double q, int32_t option_type,
+                                                    int32_t modes, int32_t snapshots) {
+    qk::ram::ProperOrthogonalDecompositionParams params{};
+    params.modes = modes;
+    params.snapshots = snapshots;
+    return qk::ram::proper_orthogonal_decomposition_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+/* --- Adjoint Greeks methods --- */
+
+double qk_agm_pathwise_derivative_delta(double spot, double strike, double t, double vol,
+                                        double r, double q, int32_t option_type,
+                                        int32_t paths, uint64_t seed) {
+    qk::agm::PathwiseDerivativeParams params{};
+    params.paths = paths;
+    params.seed = seed;
+    return qk::agm::pathwise_derivative_delta(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_agm_likelihood_ratio_delta(double spot, double strike, double t, double vol,
+                                     double r, double q, int32_t option_type,
+                                     int32_t paths, uint64_t seed, double weight_clip) {
+    qk::agm::LikelihoodRatioParams params{};
+    params.paths = paths;
+    params.seed = seed;
+    params.weight_clip = weight_clip;
+    return qk::agm::likelihood_ratio_delta(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_agm_aad_delta(double spot, double strike, double t, double vol,
+                        double r, double q, int32_t option_type,
+                        int32_t tape_steps, double regularization) {
+    qk::agm::AadParams params{};
+    params.tape_steps = tape_steps;
+    params.regularization = regularization;
+    return qk::agm::aad_delta(spot, strike, t, vol, r, q, option_type, params);
+}
+
+/* --- Machine learning methods --- */
+
+double qk_mlm_deep_bsde_price(double spot, double strike, double t, double vol,
+                              double r, double q, int32_t option_type,
+                              int32_t time_steps, int32_t hidden_width,
+                              int32_t training_epochs, double learning_rate) {
+    qk::mlm::DeepBsdeParams params{};
+    params.time_steps = time_steps;
+    params.hidden_width = hidden_width;
+    params.training_epochs = training_epochs;
+    params.learning_rate = learning_rate;
+    return qk::mlm::deep_bsde_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_mlm_pinns_price(double spot, double strike, double t, double vol,
+                          double r, double q, int32_t option_type,
+                          int32_t collocation_points, int32_t boundary_points,
+                          int32_t epochs, double loss_balance) {
+    qk::mlm::PinnsParams params{};
+    params.collocation_points = collocation_points;
+    params.boundary_points = boundary_points;
+    params.epochs = epochs;
+    params.loss_balance = loss_balance;
+    return qk::mlm::pinns_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_mlm_deep_hedging_price(double spot, double strike, double t, double vol,
+                                 double r, double q, int32_t option_type,
+                                 int32_t rehedge_steps, double risk_aversion,
+                                 int32_t scenarios, uint64_t seed) {
+    qk::mlm::DeepHedgingParams params{};
+    params.rehedge_steps = rehedge_steps;
+    params.risk_aversion = risk_aversion;
+    params.scenarios = scenarios;
+    params.seed = seed;
+    return qk::mlm::deep_hedging_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+double qk_mlm_neural_sde_calibration_price(double spot, double strike, double t, double vol,
+                                           double r, double q, int32_t option_type,
+                                           double target_implied_vol,
+                                           int32_t calibration_steps,
+                                           double regularization) {
+    qk::mlm::NeuralSdeCalibrationParams params{};
+    params.target_implied_vol = target_implied_vol;
+    params.calibration_steps = calibration_steps;
+    params.regularization = regularization;
+    return qk::mlm::neural_sde_calibration_price(spot, strike, t, vol, r, q, option_type, params);
 }
 
 } /* extern "C" */

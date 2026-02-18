@@ -138,6 +138,14 @@ class QuantAccelerator:
         "control_variates_price",
         "antithetic_variates_price",
         "stratified_sampling_price",
+        "polynomial_chaos_expansion_price",
+        "radial_basis_function_price",
+        "sparse_grid_collocation_price",
+        "proper_orthogonal_decomposition_price",
+        "pathwise_derivative_delta",
+        "likelihood_ratio_delta",
+        "aad_delta",
+        "neural_sde_calibration_price",
     }
 
     _HIGH_PARALLEL_METHODS = {
@@ -146,6 +154,8 @@ class QuantAccelerator:
         "adi_douglas_price",
         "adi_craig_sneyd_price",
         "adi_hundsdorfer_verwer_price",
+        "deep_bsde_price",
+        "deep_hedging_price",
     }
 
     _MEDIUM_PARALLEL_METHODS = {
@@ -167,6 +177,7 @@ class QuantAccelerator:
         "gauss_laguerre_price",
         "gauss_legendre_price",
         "adaptive_quadrature_price",
+        "pinns_price",
     }
 
     _GPU_THRESHOLDS = {
@@ -189,6 +200,14 @@ class QuantAccelerator:
         "control_variates_price": 1,
         "antithetic_variates_price": 1,
         "stratified_sampling_price": 1,
+        "polynomial_chaos_expansion_price": 20_000,
+        "radial_basis_function_price": 20_000,
+        "sparse_grid_collocation_price": 20_000,
+        "proper_orthogonal_decomposition_price": 20_000,
+        "pathwise_derivative_delta": 1,
+        "likelihood_ratio_delta": 1,
+        "aad_delta": 20_000,
+        "neural_sde_calibration_price": 20_000,
     }
 
     _THREAD_THRESHOLDS = {
@@ -932,5 +951,200 @@ class QuantAccelerator:
             payoffs = _mc_payoff(xp, S_T, strike, option_type)
             df = xp.exp(-r * t)
             return df * xp.mean(payoffs, axis=1)
+
+        # --- Regression Approximation Methods (BSM + scalar correction) ---
+        def _ram_bsm_call(xp, spot, strike, t, vol, r, q):
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            vol_sqrt_t = vol * sqrt_t
+            d1 = (xp.log(spot / strike) + (r - q + 0.5 * vol * vol) * t) / xp.maximum(vol_sqrt_t, eps)
+            d2 = d1 - vol_sqrt_t
+            df = xp.exp(-r * t)
+            qf = xp.exp(-q * t)
+            return spot * qf * _norm_cdf(xp, d1) - strike * df * _norm_cdf(xp, d2)
+
+        def _ram_apply(xp, spot, strike, t, vol, r, q, option_type, correction):
+            bsm_call = _ram_bsm_call(xp, spot, strike, t, vol, r, q)
+            approx_call = xp.maximum(0.0, bsm_call * (1.0 - correction))
+            put = approx_call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            return xp.where(option_type == QK_CALL, approx_call, put)
+
+        if method == "polynomial_chaos_expansion_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            order = int(jobs[0].get("polynomial_order", 4))
+            quad = int(jobs[0].get("quadrature_points", 32))
+            order_term = 1.0 / float(order + 1)
+            quad_term = 1.0 / math.sqrt(float(quad))
+            moneyness = xp.abs(xp.log(spot / strike))
+            correction = xp.minimum(0.25, 0.08 * order_term + 0.03 * quad_term + 0.01 * moneyness)
+            return _ram_apply(xp, spot, strike, t, vol, r, q, option_type, correction)
+
+        if method == "radial_basis_function_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            centers = int(jobs[0].get("centers", 24))
+            rbf_shape = float(jobs[0].get("rbf_shape", 1.0))
+            ridge = float(jobs[0].get("ridge", 1e-4))
+            center_term = 1.0 / math.sqrt(float(centers))
+            shape_term = math.exp(-0.15 * rbf_shape)
+            ridge_term = min(0.1, 0.2 * ridge)
+            correction = min(0.22, 0.06 * center_term + 0.04 * shape_term + ridge_term)
+            return _ram_apply(xp, spot, strike, t, vol, r, q, option_type, correction)
+
+        if method == "sparse_grid_collocation_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            level = int(jobs[0].get("level", 3))
+            nodes = int(jobs[0].get("nodes_per_dim", 9))
+            level_term = 1.0 / float(level + 1)
+            node_term = 1.0 / math.sqrt(float(nodes))
+            dim_proxy = xp.abs(xp.log(spot / strike))
+            correction = xp.minimum(0.2, 0.05 * level_term + 0.04 * node_term + 0.005 * dim_proxy)
+            return _ram_apply(xp, spot, strike, t, vol, r, q, option_type, correction)
+
+        if method == "proper_orthogonal_decomposition_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            modes = int(jobs[0].get("modes", 8))
+            snapshots = int(jobs[0].get("snapshots", 64))
+            mode_term = 1.0 / math.sqrt(float(modes))
+            snapshot_term = 1.0 / math.sqrt(float(snapshots))
+            correction = min(0.2, 0.05 * mode_term + 0.04 * snapshot_term)
+            return _ram_apply(xp, spot, strike, t, vol, r, q, option_type, correction)
+
+        # --- Adjoint Greeks Methods ---
+        if method == "pathwise_derivative_delta":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            paths = int(jobs[0].get("paths", 20000))
+            seed = int(jobs[0].get("seed", 42))
+            B = len(jobs)
+
+            rng = xp.random.default_rng(seed)
+            Z = rng.standard_normal((B, paths))
+
+            drift = (r - q - 0.5 * vol * vol) * t
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            S_T = spot[:, None] * xp.exp(drift[:, None] + vol[:, None] * sqrt_t[:, None] * Z)
+
+            contrib = S_T / spot[:, None]
+            contrib = xp.where(
+                option_type[:, None] == QK_CALL,
+                xp.where(S_T > strike[:, None], contrib, 0.0),
+                xp.where(S_T < strike[:, None], -contrib, 0.0),
+            )
+
+            disc = xp.exp(-r * t)
+            qf = xp.exp(-q * t)
+            delta = disc * xp.mean(contrib, axis=1)
+            return xp.clip(delta, -qf, qf)
+
+        if method == "likelihood_ratio_delta":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            paths = int(jobs[0].get("paths", 20000))
+            seed = int(jobs[0].get("seed", 42))
+            weight_clip = float(jobs[0].get("weight_clip", 6.0))
+            B = len(jobs)
+
+            rng = xp.random.default_rng(seed)
+            Z = rng.standard_normal((B, paths))
+
+            drift = (r - q - 0.5 * vol * vol) * t
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            S_T = spot[:, None] * xp.exp(drift[:, None] + vol[:, None] * sqrt_t[:, None] * Z)
+
+            payoff = xp.where(
+                option_type[:, None] == QK_CALL,
+                xp.maximum(S_T - strike[:, None], 0.0),
+                xp.maximum(strike[:, None] - S_T, 0.0),
+            )
+
+            score = Z / (vol[:, None] * sqrt_t[:, None] * spot[:, None])
+            score = xp.clip(score, -weight_clip, weight_clip)
+
+            disc = xp.exp(-r * t)
+            qf = xp.exp(-q * t)
+            delta = disc * xp.mean(payoff * score, axis=1)
+            return xp.clip(delta, -qf, qf)
+
+        if method == "aad_delta":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            regularization = float(jobs[0].get("regularization", 1e-6))
+
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            vol_sqrt_t = vol * sqrt_t
+            d1 = (xp.log(spot / strike) + (r - q + 0.5 * vol * vol) * t) / xp.maximum(vol_sqrt_t, eps)
+            Nd1 = _norm_cdf(xp, d1)
+            qf = xp.exp(-q * t)
+
+            delta = xp.where(option_type == QK_CALL, qf * Nd1, qf * (Nd1 - 1.0))
+
+            reg_strength = regularization / (1.0 + regularization)
+            atm_prior = xp.where(option_type == QK_CALL, 0.5 * qf, -0.5 * qf)
+            delta = delta * (1.0 - reg_strength) + atm_prior * reg_strength
+            return xp.clip(delta, -qf, qf)
+
+        # --- Neural SDE Calibration (BSM at corrected vol) ---
+        if method == "neural_sde_calibration_price":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            vol = self._column(xp, jobs, "vol")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            target_iv = float(jobs[0].get("target_implied_vol", 0.2))
+
+            # Use target_implied_vol as effective vol (converged state)
+            eff_vol = xp.full_like(vol, target_iv)
+            eff_vol = xp.maximum(eff_vol, 0.01)
+
+            sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
+            vol_sqrt_t = eff_vol * sqrt_t
+            d1 = (xp.log(spot / strike) + (r - q + 0.5 * eff_vol * eff_vol) * t) / xp.maximum(vol_sqrt_t, eps)
+            d2 = d1 - vol_sqrt_t
+            df = xp.exp(-r * t)
+            qf = xp.exp(-q * t)
+
+            call = xp.maximum(0.0, spot * qf * _norm_cdf(xp, d1) - strike * df * _norm_cdf(xp, d2))
+            put = call - spot * qf + strike * df
+            return xp.where(option_type == QK_CALL, call, put)
 
         raise RuntimeError(f"Vectorized backend not implemented for method: {method}")

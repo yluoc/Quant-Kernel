@@ -240,6 +240,119 @@ class QuantKernel:
             abs_tol, rel_tol, max_depth, integration_limit
         )
 
+    # --- Regression approximation methods ---
+
+    def polynomial_chaos_expansion_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, polynomial_order: int = 4, quadrature_points: int = 32
+    ) -> float:
+        return self._call_checked(
+            "qk_ram_polynomial_chaos_expansion_price",
+            spot, strike, t, vol, r, q, option_type, polynomial_order, quadrature_points
+        )
+
+    def radial_basis_function_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, centers: int = 24, rbf_shape: float = 1.0, ridge: float = 1e-4
+    ) -> float:
+        return self._call_checked(
+            "qk_ram_radial_basis_function_price",
+            spot, strike, t, vol, r, q, option_type, centers, rbf_shape, ridge
+        )
+
+    def sparse_grid_collocation_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, level: int = 3, nodes_per_dim: int = 9
+    ) -> float:
+        return self._call_checked(
+            "qk_ram_sparse_grid_collocation_price",
+            spot, strike, t, vol, r, q, option_type, level, nodes_per_dim
+        )
+
+    def proper_orthogonal_decomposition_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, modes: int = 8, snapshots: int = 64
+    ) -> float:
+        return self._call_checked(
+            "qk_ram_proper_orthogonal_decomposition_price",
+            spot, strike, t, vol, r, q, option_type, modes, snapshots
+        )
+
+    # --- Adjoint Greeks methods ---
+
+    def pathwise_derivative_delta(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int = 20000, seed: int = 42
+    ) -> float:
+        return self._call_checked(
+            "qk_agm_pathwise_derivative_delta",
+            spot, strike, t, vol, r, q, option_type, paths, seed
+        )
+
+    def likelihood_ratio_delta(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, paths: int = 20000, seed: int = 42, weight_clip: float = 6.0
+    ) -> float:
+        return self._call_checked(
+            "qk_agm_likelihood_ratio_delta",
+            spot, strike, t, vol, r, q, option_type, paths, seed, weight_clip
+        )
+
+    def aad_delta(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, tape_steps: int = 64, regularization: float = 1e-6
+    ) -> float:
+        return self._call_checked(
+            "qk_agm_aad_delta",
+            spot, strike, t, vol, r, q, option_type, tape_steps, regularization
+        )
+
+    # --- Machine learning methods ---
+
+    def deep_bsde_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, time_steps: int = 50, hidden_width: int = 64,
+        training_epochs: int = 400, learning_rate: float = 5e-3
+    ) -> float:
+        return self._call_checked(
+            "qk_mlm_deep_bsde_price",
+            spot, strike, t, vol, r, q, option_type,
+            time_steps, hidden_width, training_epochs, learning_rate
+        )
+
+    def pinns_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, collocation_points: int = 5000, boundary_points: int = 400,
+        epochs: int = 300, loss_balance: float = 1.0
+    ) -> float:
+        return self._call_checked(
+            "qk_mlm_pinns_price",
+            spot, strike, t, vol, r, q, option_type,
+            collocation_points, boundary_points, epochs, loss_balance
+        )
+
+    def deep_hedging_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, rehedge_steps: int = 26, risk_aversion: float = 0.5,
+        scenarios: int = 20000, seed: int = 42
+    ) -> float:
+        return self._call_checked(
+            "qk_mlm_deep_hedging_price",
+            spot, strike, t, vol, r, q, option_type,
+            rehedge_steps, risk_aversion, scenarios, seed
+        )
+
+    def neural_sde_calibration_price(
+        self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
+        option_type: int, target_implied_vol: float = 0.2,
+        calibration_steps: int = 200, regularization: float = 1e-3
+    ) -> float:
+        return self._call_checked(
+            "qk_mlm_neural_sde_calibration_price",
+            spot, strike, t, vol, r, q, option_type,
+            target_implied_vol, calibration_steps, regularization
+        )
+
     def crr_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
         option_type: int, steps: int, american_style: bool = False

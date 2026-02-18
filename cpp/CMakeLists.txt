@@ -38,6 +38,17 @@ add_library(quantkernel SHARED
     src/algorithms/integral_quadrature/gauss_laguerre/gauss_laguerre.cpp
     src/algorithms/integral_quadrature/gauss_legendre/gauss_legendre.cpp
     src/algorithms/integral_quadrature/adaptive_quadrature/adaptive_quadrature.cpp
+    src/algorithms/regression_approximation/polynomial_chaos_expansion/polynomial_chaos_expansion.cpp
+    src/algorithms/regression_approximation/radial_basis_functions/radial_basis_functions.cpp
+    src/algorithms/regression_approximation/sparse_grid_collocation/sparse_grid_collocation.cpp
+    src/algorithms/regression_approximation/proper_orthogonal_decomposition/proper_orthogonal_decomposition.cpp
+    src/algorithms/adjoint_greeks/pathwise_derivative/pathwise_derivative.cpp
+    src/algorithms/adjoint_greeks/likelihood_ratio/likelihood_ratio.cpp
+    src/algorithms/adjoint_greeks/aad/aad.cpp
+    src/algorithms/machine_learning/deep_bsde/deep_bsde.cpp
+    src/algorithms/machine_learning/pinns/pinns.cpp
+    src/algorithms/machine_learning/deep_hedging/deep_hedging.cpp
+    src/algorithms/machine_learning/neural_sde_calibration/neural_sde_calibration.cpp
 )
 
 target_include_directories(quantkernel

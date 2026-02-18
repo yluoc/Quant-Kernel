@@ -213,6 +213,46 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_mcm_stratified_sampling_price.restype = ct.c_double
     lib.qk_mcm_stratified_sampling_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
 
+    # --- Regression approximation methods ---
+    ram_common = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_ram_polynomial_chaos_expansion_price.restype = ct.c_double
+    lib.qk_ram_polynomial_chaos_expansion_price.argtypes = ram_common + [ct.c_int32, ct.c_int32]
+    lib.qk_ram_radial_basis_function_price.restype = ct.c_double
+    lib.qk_ram_radial_basis_function_price.argtypes = ram_common + [ct.c_int32, ct.c_double, ct.c_double]
+    lib.qk_ram_sparse_grid_collocation_price.restype = ct.c_double
+    lib.qk_ram_sparse_grid_collocation_price.argtypes = ram_common + [ct.c_int32, ct.c_int32]
+    lib.qk_ram_proper_orthogonal_decomposition_price.restype = ct.c_double
+    lib.qk_ram_proper_orthogonal_decomposition_price.argtypes = ram_common + [ct.c_int32, ct.c_int32]
+
+    # --- Adjoint Greeks methods ---
+    agm_common = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_agm_pathwise_derivative_delta.restype = ct.c_double
+    lib.qk_agm_pathwise_derivative_delta.argtypes = agm_common + [ct.c_int32, ct.c_uint64]
+    lib.qk_agm_likelihood_ratio_delta.restype = ct.c_double
+    lib.qk_agm_likelihood_ratio_delta.argtypes = agm_common + [ct.c_int32, ct.c_uint64, ct.c_double]
+    lib.qk_agm_aad_delta.restype = ct.c_double
+    lib.qk_agm_aad_delta.argtypes = agm_common + [ct.c_int32, ct.c_double]
+
+    # --- Machine learning methods ---
+    mlm_common = [
+        ct.c_double, ct.c_double, ct.c_double, ct.c_double,
+        ct.c_double, ct.c_double, ct.c_int32,
+    ]
+    lib.qk_mlm_deep_bsde_price.restype = ct.c_double
+    lib.qk_mlm_deep_bsde_price.argtypes = mlm_common + [ct.c_int32, ct.c_int32, ct.c_int32, ct.c_double]
+    lib.qk_mlm_pinns_price.restype = ct.c_double
+    lib.qk_mlm_pinns_price.argtypes = mlm_common + [ct.c_int32, ct.c_int32, ct.c_int32, ct.c_double]
+    lib.qk_mlm_deep_hedging_price.restype = ct.c_double
+    lib.qk_mlm_deep_hedging_price.argtypes = mlm_common + [ct.c_int32, ct.c_double, ct.c_int32, ct.c_uint64]
+    lib.qk_mlm_neural_sde_calibration_price.restype = ct.c_double
+    lib.qk_mlm_neural_sde_calibration_price.argtypes = mlm_common + [ct.c_double, ct.c_int32, ct.c_double]
+
 
 def _verify_abi(lib: ct.CDLL) -> None:
     major = ct.c_int32(-1)

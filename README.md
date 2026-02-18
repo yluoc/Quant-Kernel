@@ -5,12 +5,15 @@ Linux/macOS is recommended.
 
 
 ## Models
-- Closed-form / semi-analytical: Black-Scholes-Merton, Black-76, Bachelier, Heston CF, Merton jump-diffusion, Variance Gamma CF, SABR (Hagan), Dupire local vol.
-- Fourier-transform methods: Carr-Madan FFT, COS (Fang-Oosterlee), Fractional FFT, Lewis Fourier inversion, Hilbert transform pricing.
-- Integral quadrature methods: Gauss-Hermite, Gauss-Laguerre, Gauss-Legendre, Adaptive quadrature.
-- Tree/lattice: CRR, Jarrow-Rudd, Tian, Leisen-Reimer, Trinomial, Derman-Kani (const local vol entrypoint).
-- Finite-difference: Explicit FD, Implicit FD, Crank-Nicolson, ADI (Douglas/Craig-Sneyd/Hundsdorfer-Verwer), PSOR.
-- Monte Carlo methods: Standard Monte Carlo, Euler-Maruyama, Milstein, Longstaff-Schwartz (LSMC), Quasi-Monte Carlo (Sobol/Halton), MLMC, Importance Sampling, Control Variates, Antithetic Variates, Stratified Sampling.
+- **Closed-form / semi-analytical**: Black-Scholes-Merton, Black-76, Bachelier, Heston CF, Merton jump-diffusion, Variance Gamma CF, SABR (Hagan), Dupire local vol.
+- **Fourier-transform methods**: Carr-Madan FFT, COS (Fang-Oosterlee), Fractional FFT, Lewis Fourier inversion, Hilbert transform pricing.
+- **Integral quadrature methods**: Gauss-Hermite, Gauss-Laguerre, Gauss-Legendre, Adaptive quadrature.
+- **Tree/lattice**: CRR, Jarrow-Rudd, Tian, Leisen-Reimer, Trinomial, Derman-Kani (const local vol entrypoint).
+- **Finite-difference**: Explicit FD, Implicit FD, Crank-Nicolson, ADI (Douglas/Craig-Sneyd/Hundsdorfer-Verwer), PSOR.
+- **Monte Carlo methods**: Standard Monte Carlo, Euler-Maruyama, Milstein, Longstaff-Schwartz (LSMC), Quasi-Monte Carlo (Sobol/Halton), MLMC, Importance Sampling, Control Variates, Antithetic Variates, Stratified Sampling.
+- **Regression approximation**: Polynomial Chaos Expansion, Radial Basis Functions, Sparse Grid Collocation, Proper Orthogonal Decomposition.
+- **Adjoint Greeks**: Pathwise Derivative Method, Likelihood Ratio Method, Adjoint Algorithmic Differentiation (AAD).
+- **Machine-learning methods**: Deep BSDE, Physics-Informed Neural Networks (PINNs), Deep Hedging, Neural SDE Calibration.
 
 ## Quick Start (Use From Another Project)
 This quick start assumes you clone/build QuantKernel once, then use it from any working directory.
@@ -40,7 +43,7 @@ export QK_LIB_PATH=$QK_ROOT/build/cpp
 
 Make it permanent (bash):
 ```bash
-nano ~/.bashrc
+nano ~/.bashrc # under Linux/Unix
 # QuantKernel (local), add the following 3 lines to ~/.bashrc
 export QK_ROOT=/opt/quantkernel
 export PYTHONPATH="$QK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
@@ -51,7 +54,6 @@ source ~/.bashrc
 
 3. Call it from anywhere.
 ```bash
-python3
 # run the following python code.
 from quantkernel import QuantKernel, QK_CALL
 qk = QuantKernel()
@@ -74,32 +76,40 @@ PYTHONPATH=python python3 python/examples/run_all_algos.py --profile quick
 
 ### CuPy-Accelerated Algorithms
 
-The following algorithms have fully vectorized NumPy/CuPy implementations in `QuantAccelerator`, enabling GPU acceleration for large batches:
+The following `method` names have explicit NumPy/CuPy vectorized implementations in `QuantAccelerator`:
 
-| Algorithm | GPU Threshold | Acceleration Approach |
+| Method (`price_batch` / `QuantAccelerator`) | GPU Threshold | Acceleration Approach |
 |-----------|--------------|----------------------|
-| Black-Scholes-Merton | 20,000 | Vectorized closed-form across batch |
-| Black-76 | 20,000 | Vectorized closed-form across batch |
-| Bachelier | 20,000 | Vectorized closed-form across batch |
-| SABR Hagan (lognormal IV) | 15,000 | Vectorized closed-form across batch |
-| SABR Hagan (Black-76 price) | 15,000 | Vectorized closed-form across batch |
-| Dupire Local Vol | 30,000 | Vectorized closed-form across batch |
-| Merton Jump Diffusion | 10,000 | Series expansion with vectorized BSM per term |
-| Carr-Madan FFT | 512 | Batched damped-CF FFT across frequency grid |
-| COS (Fang-Oosterlee) | 1,024 | Batched cosine-expansion coefficients and reductions |
-| Fractional FFT | 256 | Batched fractional-phase transform on shared grid |
-| Lewis Fourier Inversion | 1,024 | Batched Fourier integral with vectorized quadrature |
-| Hilbert Transform Method | 1,024 | Batched Fourier-probability inversion (P1/P2) |
-| Standard Monte Carlo | 1 | (B, P) random normals on GPU, vectorized payoff |
-| Euler-Maruyama | 1 | Time-step loop, all (B, P) paths advance per step |
-| Milstein | 1 | Euler + higher-order correction, same path structure |
-| Importance Sampling | 1 | Shifted-drift MC with likelihood ratio weighting |
-| Control Variates | 1 | MC with analytical control variate (terminal stock) |
-| Antithetic Variates | 1 | Paired +Z/-Z paths for variance reduction |
-| Stratified Sampling | 1 | Stratified uniforms via inverse CDF, then MC |
+| `black_scholes_merton_price` | 20,000 | Vectorized closed-form across batch |
+| `black76_price` | 20,000 | Vectorized closed-form across batch |
+| `bachelier_price` | 20,000 | Vectorized closed-form across batch |
+| `sabr_hagan_lognormal_iv` | 15,000 | Vectorized SABR Hagan IV across batch |
+| `sabr_hagan_black76_price` | 15,000 | Vectorized SABR IV + Black-76 pricing |
+| `dupire_local_vol` | 30,000 | Vectorized Dupire local-vol inversion |
+| `merton_jump_diffusion_price` | 10,000 | Vectorized jump-series summation |
+| `carr_madan_fft_price` | 512 | Batched damped-CF FFT across frequency grid |
+| `cos_method_fang_oosterlee_price` | 1,024 | Batched COS coefficient assembly and reduction |
+| `fractional_fft_price` | 256 | Batched fractional-phase transform on shared grid |
+| `lewis_fourier_inversion_price` | 1,024 | Batched Fourier integral with vectorized quadrature |
+| `hilbert_transform_price` | 1,024 | Batched Fourier-probability inversion (P1/P2) |
+| `standard_monte_carlo_price` | 1 | `(B, P)` random normals and vectorized payoff |
+| `euler_maruyama_price` | 1 | Time-step loop with batched path evolution |
+| `milstein_price` | 1 | Milstein path update with batched correction term |
+| `importance_sampling_price` | 1 | Shifted-drift MC with likelihood-ratio weighting |
+| `control_variates_price` | 1 | MC with batched control-variate adjustment |
+| `antithetic_variates_price` | 1 | Paired `+Z/-Z` paths for variance reduction |
+| `stratified_sampling_price` | 1 | Stratified uniforms + inverse-normal mapping |
+| `polynomial_chaos_expansion_price` | 20,000 | Vectorized surrogate correction over BSM baseline |
+| `radial_basis_function_price` | 20,000 | Vectorized surrogate correction over BSM baseline |
+| `sparse_grid_collocation_price` | 20,000 | Vectorized surrogate correction over BSM baseline |
+| `proper_orthogonal_decomposition_price` | 20,000 | Vectorized surrogate correction over BSM baseline |
+| `pathwise_derivative_delta` | 1 | Batched pathwise Greek estimator |
+| `likelihood_ratio_delta` | 1 | Batched likelihood-ratio Greek estimator |
+| `aad_delta` | 20,000 | Vectorized closed-form delta with regularization |
+| `neural_sde_calibration_price` | 20,000 | Vectorized BSM pricing at calibrated effective vol |
 
-- **GPU Threshold**: minimum batch size before the GPU backend is selected (under `backend="auto"`). Monte Carlo methods use threshold 1 because path-level parallelism benefits from GPU even for a single job.
-- Algorithms not listed (Heston CF, integral quadrature, tree/lattice, finite-difference, Longstaff-Schwartz, QMC Sobol/Halton, MLMC) run via threaded C++ scalar execution.
+- **GPU Threshold**: minimum batch size before `gpu_vectorized` is selected in the current strategy logic (when `backend` is `auto` or `gpu` and CuPy is available).
+- Methods not listed above use the C++ scalar path, dispatched as `threaded` or `sequential` depending on method class and batch size.
 
 Install CuPy (optional, for GPU backend):
 ```bash

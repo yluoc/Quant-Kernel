@@ -63,3 +63,21 @@ target_link_libraries(fuzz_integral_quadrature_models PRIVATE quantkernel gtest 
 target_include_directories(fuzz_integral_quadrature_models PRIVATE ../cpp/src)
 link_fuzztest(fuzz_integral_quadrature_models)
 gtest_discover_tests(fuzz_integral_quadrature_models)
+
+add_executable(fuzz_regression_approximation_models fuzz_regression_approximation_models.cpp)
+target_link_libraries(fuzz_regression_approximation_models PRIVATE quantkernel gtest gmock)
+target_include_directories(fuzz_regression_approximation_models PRIVATE ../cpp/src)
+link_fuzztest(fuzz_regression_approximation_models)
+gtest_discover_tests(fuzz_regression_approximation_models)
+
+add_executable(fuzz_adjoint_greeks_models fuzz_adjoint_greeks_models.cpp)
+target_link_libraries(fuzz_adjoint_greeks_models PRIVATE quantkernel gtest gmock)
+target_include_directories(fuzz_adjoint_greeks_models PRIVATE ../cpp/src)
+link_fuzztest(fuzz_adjoint_greeks_models)
+gtest_discover_tests(fuzz_adjoint_greeks_models)
+
+add_executable(fuzz_machine_learning_models fuzz_machine_learning_models.cpp)
+target_link_libraries(fuzz_machine_learning_models PRIVATE quantkernel gtest gmock)
+target_include_directories(fuzz_machine_learning_models PRIVATE ../cpp/src)
+link_fuzztest(fuzz_machine_learning_models)
+gtest_discover_tests(fuzz_machine_learning_models)

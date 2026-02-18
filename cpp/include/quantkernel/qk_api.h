@@ -159,6 +159,48 @@ QK_EXPORT double qk_iqm_adaptive_quadrature_price(double spot, double strike, do
                                                   double r, double q, int32_t option_type,
                                                   double abs_tol, double rel_tol,
                                                   int32_t max_depth, double integration_limit);
+/* --- Regression approximation methods --- */
+QK_EXPORT double qk_ram_polynomial_chaos_expansion_price(double spot, double strike, double t, double vol,
+                                                         double r, double q, int32_t option_type,
+                                                         int32_t polynomial_order,
+                                                         int32_t quadrature_points);
+QK_EXPORT double qk_ram_radial_basis_function_price(double spot, double strike, double t, double vol,
+                                                    double r, double q, int32_t option_type,
+                                                    int32_t centers, double rbf_shape, double ridge);
+QK_EXPORT double qk_ram_sparse_grid_collocation_price(double spot, double strike, double t, double vol,
+                                                      double r, double q, int32_t option_type,
+                                                      int32_t level, int32_t nodes_per_dim);
+QK_EXPORT double qk_ram_proper_orthogonal_decomposition_price(double spot, double strike, double t, double vol,
+                                                              double r, double q, int32_t option_type,
+                                                              int32_t modes, int32_t snapshots);
+/* --- Adjoint Greeks methods --- */
+QK_EXPORT double qk_agm_pathwise_derivative_delta(double spot, double strike, double t, double vol,
+                                                  double r, double q, int32_t option_type,
+                                                  int32_t paths, uint64_t seed);
+QK_EXPORT double qk_agm_likelihood_ratio_delta(double spot, double strike, double t, double vol,
+                                               double r, double q, int32_t option_type,
+                                               int32_t paths, uint64_t seed, double weight_clip);
+QK_EXPORT double qk_agm_aad_delta(double spot, double strike, double t, double vol,
+                                  double r, double q, int32_t option_type,
+                                  int32_t tape_steps, double regularization);
+/* --- Machine learning methods --- */
+QK_EXPORT double qk_mlm_deep_bsde_price(double spot, double strike, double t, double vol,
+                                        double r, double q, int32_t option_type,
+                                        int32_t time_steps, int32_t hidden_width,
+                                        int32_t training_epochs, double learning_rate);
+QK_EXPORT double qk_mlm_pinns_price(double spot, double strike, double t, double vol,
+                                    double r, double q, int32_t option_type,
+                                    int32_t collocation_points, int32_t boundary_points,
+                                    int32_t epochs, double loss_balance);
+QK_EXPORT double qk_mlm_deep_hedging_price(double spot, double strike, double t, double vol,
+                                           double r, double q, int32_t option_type,
+                                           int32_t rehedge_steps, double risk_aversion,
+                                           int32_t scenarios, uint64_t seed);
+QK_EXPORT double qk_mlm_neural_sde_calibration_price(double spot, double strike, double t, double vol,
+                                                     double r, double q, int32_t option_type,
+                                                     double target_implied_vol,
+                                                     int32_t calibration_steps,
+                                                     double regularization);
 
 #ifdef __cplusplus
 }
