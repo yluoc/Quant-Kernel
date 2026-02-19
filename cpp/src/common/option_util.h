@@ -5,6 +5,7 @@
 
 #include <quantkernel/qk_abi.h>
 
+#include <algorithm>
 #include <cstdint>
 
 namespace qk {
@@ -17,6 +18,12 @@ inline double nan_value() {
 
 inline bool valid_option_type(int32_t option_type) {
     return option_type == QK_CALL || option_type == QK_PUT;
+}
+
+inline double intrinsic_value(double x, double y, int32_t option_type) {
+    if (option_type == QK_CALL) return std::max(0.0, x - y);
+    if (option_type == QK_PUT)  return std::max(0.0, y - x);
+    return nan_value();
 }
 
 inline bool valid_common_inputs(double spot, double strike, double t, double vol,

@@ -1,8 +1,7 @@
 #ifndef QK_FTM_INTERNAL_UTIL_H
 #define QK_FTM_INTERNAL_UTIL_H
 
-#include "common/math_util.h"
-#include <quantkernel/qk_abi.h>
+#include "common/option_util.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,20 +15,12 @@ constexpr double kPi = 3.1415926535897932384626433832795;
 constexpr double kEps = 1e-12;
 const std::complex<double> kI(0.0, 1.0);
 
-inline double nan_value() {
-    double out = 0.0;
-    write_nan(&out);
-    return out;
-}
+inline double nan_value() { return qk::nan_value(); }
 
-inline bool valid_option_type(int32_t option_type) {
-    return option_type == QK_CALL || option_type == QK_PUT;
-}
+inline bool valid_option_type(int32_t option_type) { return qk::valid_option_type(option_type); }
 
 inline double intrinsic_value(double x, double y, int32_t option_type) {
-    if (option_type == QK_CALL) return std::max(0.0, x - y);
-    if (option_type == QK_PUT) return std::max(0.0, y - x);
-    return nan_value();
+    return qk::intrinsic_value(x, y, option_type);
 }
 
 inline double clamp01(double x) {

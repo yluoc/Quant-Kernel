@@ -31,3 +31,5 @@ coverage.xml
 htmlcov/
 
 compile_commands.json
+python/quantkernel/_native_batch.cpp
+python/quantkernel/_native_batch*.so

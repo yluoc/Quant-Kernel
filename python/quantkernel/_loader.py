@@ -75,6 +75,21 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_cf_bachelier_price.argtypes = [
         ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_int32,
     ]
+    lib.qk_cf_black_scholes_merton_price_batch.restype = ct.c_int32
+    lib.qk_cf_black_scholes_merton_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_black76_price_batch.restype = ct.c_int32
+    lib.qk_cf_black76_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_bachelier_price_batch.restype = ct.c_int32
+    lib.qk_cf_bachelier_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
     lib.qk_cf_heston_price_cf.restype = ct.c_double
     lib.qk_cf_heston_price_cf.argtypes = [
         ct.c_double, ct.c_double, ct.c_double, ct.c_double, ct.c_double,
@@ -105,6 +120,46 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
         ct.c_double, ct.c_double, ct.c_double, ct.c_double,
         ct.c_double, ct.c_double, ct.c_double, ct.c_double,
     ]
+    # --- Closed-form batch APIs (extended) ---
+    lib.qk_cf_heston_price_cf_batch.restype = ct.c_int32
+    lib.qk_cf_heston_price_cf_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32),
+        ct.POINTER(ct.c_double), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_merton_jump_diffusion_price_batch.restype = ct.c_int32
+    lib.qk_cf_merton_jump_diffusion_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_variance_gamma_price_cf_batch.restype = ct.c_int32
+    lib.qk_cf_variance_gamma_price_cf_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_double),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_sabr_hagan_lognormal_iv_batch.restype = ct.c_int32
+    lib.qk_cf_sabr_hagan_lognormal_iv_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_sabr_hagan_black76_price_batch.restype = ct.c_int32
+    lib.qk_cf_sabr_hagan_black76_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_cf_dupire_local_vol_batch.restype = ct.c_int32
+    lib.qk_cf_dupire_local_vol_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
 
     # --- Fourier Transform methods ---
     ftm_common = [
@@ -113,6 +168,12 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     ]
     lib.qk_ftm_carr_madan_fft_price.restype = ct.c_double
     lib.qk_ftm_carr_madan_fft_price.argtypes = ftm_common + [ct.c_int32, ct.c_double, ct.c_double]
+    lib.qk_ftm_carr_madan_fft_price_batch.restype = ct.c_int32
+    lib.qk_ftm_carr_madan_fft_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
     lib.qk_ftm_cos_fang_oosterlee_price.restype = ct.c_double
     lib.qk_ftm_cos_fang_oosterlee_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
     lib.qk_ftm_fractional_fft_price.restype = ct.c_double
@@ -121,6 +182,26 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_ftm_lewis_fourier_inversion_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
     lib.qk_ftm_hilbert_transform_price.restype = ct.c_double
     lib.qk_ftm_hilbert_transform_price.argtypes = ftm_common + [ct.c_int32, ct.c_double]
+    # --- Fourier Transform batch APIs (extended) ---
+    ftm_batch_base = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32),
+    ]
+    lib.qk_ftm_cos_fang_oosterlee_price_batch.restype = ct.c_int32
+    lib.qk_ftm_cos_fang_oosterlee_price_batch.argtypes = ftm_batch_base + [
+        ct.POINTER(ct.c_int32), ct.POINTER(ct.c_double), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    lib.qk_ftm_fractional_fft_price_batch.restype = ct.c_int32
+    lib.qk_ftm_fractional_fft_price_batch.argtypes = ftm_batch_base + [
+        ct.POINTER(ct.c_int32), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    ftm_is_batch = ftm_batch_base + [
+        ct.POINTER(ct.c_int32), ct.POINTER(ct.c_double), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    for _ftm_name in ("qk_ftm_lewis_fourier_inversion_price_batch", "qk_ftm_hilbert_transform_price_batch"):
+        getattr(lib, _ftm_name).restype = ct.c_int32
+        getattr(lib, _ftm_name).argtypes = ftm_is_batch
 
     # --- Integral Quadrature methods ---
     iqm_common = [
@@ -152,6 +233,22 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_tlm_trinomial_tree_price.argtypes = tlm_argtypes
     lib.qk_tlm_derman_kani_const_local_vol_price.restype = ct.c_double
     lib.qk_tlm_derman_kani_const_local_vol_price.argtypes = tlm_argtypes
+    lib.qk_tlm_crr_price_batch.restype = ct.c_int32
+    lib.qk_tlm_crr_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32),
+        ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    tlm_batch_argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32),
+        ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    for _tlm_name in ("qk_tlm_jarrow_rudd_price_batch", "qk_tlm_tian_price_batch",
+                       "qk_tlm_leisen_reimer_price_batch", "qk_tlm_trinomial_tree_price_batch",
+                       "qk_tlm_derman_kani_const_local_vol_price_batch"):
+        getattr(lib, _tlm_name).restype = ct.c_int32
+        getattr(lib, _tlm_name).argtypes = tlm_batch_argtypes
 
     # --- Finite Difference methods ---
     fdm_argtypes = [
@@ -192,6 +289,12 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     ]
     lib.qk_mcm_standard_monte_carlo_price.restype = ct.c_double
     lib.qk_mcm_standard_monte_carlo_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
+    lib.qk_mcm_standard_monte_carlo_price_batch.restype = ct.c_int32
+    lib.qk_mcm_standard_monte_carlo_price_batch.argtypes = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32),
+        ct.POINTER(ct.c_uint64), ct.c_int32, ct.POINTER(ct.c_double),
+    ]
     lib.qk_mcm_euler_maruyama_price.restype = ct.c_double
     lib.qk_mcm_euler_maruyama_price.argtypes = mc_common + [ct.c_int32, ct.c_int32, ct.c_uint64]
     lib.qk_mcm_milstein_price.restype = ct.c_double
@@ -212,6 +315,42 @@ def _configure_function_signatures(lib: ct.CDLL) -> None:
     lib.qk_mcm_antithetic_variates_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
     lib.qk_mcm_stratified_sampling_price.restype = ct.c_double
     lib.qk_mcm_stratified_sampling_price.argtypes = mc_common + [ct.c_int32, ct.c_uint64]
+    # --- Monte Carlo batch APIs (extended) ---
+    mc_batch_base = [
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_int32),
+    ]
+    # euler_maruyama, milstein, longstaff_schwartz: + paths(i32), steps(i32), seed(u64)
+    mc_pss_batch = mc_batch_base + [ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_uint64),
+                                     ct.c_int32, ct.POINTER(ct.c_double)]
+    for _mc_name in ("qk_mcm_euler_maruyama_price_batch", "qk_mcm_milstein_price_batch",
+                      "qk_mcm_longstaff_schwartz_price_batch"):
+        getattr(lib, _mc_name).restype = ct.c_int32
+        getattr(lib, _mc_name).argtypes = mc_pss_batch
+    # quasi MC sobol/halton: + paths(i32) only
+    mc_p_batch = mc_batch_base + [ct.POINTER(ct.c_int32), ct.c_int32, ct.POINTER(ct.c_double)]
+    for _mc_name in ("qk_mcm_quasi_monte_carlo_sobol_price_batch", "qk_mcm_quasi_monte_carlo_halton_price_batch"):
+        getattr(lib, _mc_name).restype = ct.c_int32
+        getattr(lib, _mc_name).argtypes = mc_p_batch
+    # multilevel: + base_paths(i32), levels(i32), base_steps(i32), seed(u64)
+    lib.qk_mcm_multilevel_monte_carlo_price_batch.restype = ct.c_int32
+    lib.qk_mcm_multilevel_monte_carlo_price_batch.argtypes = mc_batch_base + [
+        ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_int32), ct.POINTER(ct.c_uint64),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    # importance_sampling: + paths(i32), shift(f64), seed(u64)
+    lib.qk_mcm_importance_sampling_price_batch.restype = ct.c_int32
+    lib.qk_mcm_importance_sampling_price_batch.argtypes = mc_batch_base + [
+        ct.POINTER(ct.c_int32), ct.POINTER(ct.c_double), ct.POINTER(ct.c_uint64),
+        ct.c_int32, ct.POINTER(ct.c_double),
+    ]
+    # control_variates, antithetic_variates, stratified_sampling: + paths(i32), seed(u64)
+    mc_ps_batch = mc_batch_base + [ct.POINTER(ct.c_int32), ct.POINTER(ct.c_uint64),
+                                    ct.c_int32, ct.POINTER(ct.c_double)]
+    for _mc_name in ("qk_mcm_control_variates_price_batch", "qk_mcm_antithetic_variates_price_batch",
+                      "qk_mcm_stratified_sampling_price_batch"):
+        getattr(lib, _mc_name).restype = ct.c_int32
+        getattr(lib, _mc_name).argtypes = mc_ps_batch
 
     # --- Regression approximation methods ---
     ram_common = [

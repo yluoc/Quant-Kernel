@@ -1,8 +1,7 @@
 #ifndef QK_TLM_INTERNAL_UTIL_H
 #define QK_TLM_INTERNAL_UTIL_H
 
-#include "common/math_util.h"
-#include <quantkernel/qk_abi.h>
+#include "common/option_util.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,15 +16,9 @@ static constexpr int32_t kStackThreshold = 1025; // steps+1 <= 1025 uses stack
 
 constexpr double kEps = 1e-12;
 
-inline double nan_value() {
-    double out = 0.0;
-    write_nan(&out);
-    return out;
-}
+inline double nan_value() { return qk::nan_value(); }
 
-inline bool valid_option_type(int32_t option_type) {
-    return option_type == QK_CALL || option_type == QK_PUT;
-}
+inline bool valid_option_type(int32_t option_type) { return qk::valid_option_type(option_type); }
 
 inline bool valid_inputs(double spot, double strike, double t, double vol,
                          int32_t steps, int32_t option_type) {
@@ -38,9 +31,7 @@ inline bool valid_inputs(double spot, double strike, double t, double vol,
 }
 
 inline double intrinsic_value(double x, double y, int32_t option_type) {
-    if (option_type == QK_CALL) return std::max(0.0, x - y);
-    if (option_type == QK_PUT) return std::max(0.0, y - x);
-    return nan_value();
+    return qk::intrinsic_value(x, y, option_type);
 }
 
 inline double clamp_probability(double p) {

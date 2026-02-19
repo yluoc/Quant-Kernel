@@ -8,12 +8,14 @@ JOBS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 .DEFAULT_GOAL := quick
 
-.PHONY: help configure build test-cpp test-py test demo quick clean clean-fuzz clean-caches clean-all clean-venv
+.PHONY: help configure build build-native bench test-cpp test-py test demo quick clean clean-fuzz clean-caches clean-all clean-venv
 
 help:
 	@echo "Targets:"
 	@echo "  make quick         # Configure, build, C++ tests, Python tests"
 	@echo "  make build         # Configure + C++ build"
+	@echo "  make build-native  # Build optional Cython native batch extension"
+	@echo "  make bench         # Run scalar/batch benchmark table script"
 	@echo "  make test          # Run C++ and Python tests"
 	@echo "  make demo          # Run Python demo (direct kernel path)"
 	@echo "  make clean         # Remove build artifacts"
@@ -28,11 +30,17 @@ configure:
 build: configure
 	$(CMAKE) --build $(BUILD_DIR) -j $(JOBS)
 
+build-native: build
+	cd python && QK_LIB_PATH="$(CURDIR)/$(BUILD_DIR)/cpp" $(PYTHON) setup.py build_ext --inplace
+
+bench: build-native
+	PYTHONPATH=python QK_LIB_PATH="$(CURDIR)/$(BUILD_DIR)/cpp" $(PYTHON) python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3
+
 test-cpp: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
 
 test-py: build
-	PYTHONPATH=python $(PYTEST) -q python/tests
+	PYTHONPATH=python QK_LIB_PATH="$(CURDIR)/$(BUILD_DIR)/cpp" $(PYTEST) -q python/tests
 
 test: test-cpp test-py
 

@@ -28,6 +28,9 @@ def _load_cupy():
         return None
 
 
+_M_SQRT1_2 = 0.7071067811865475244  # 1/sqrt(2), matches C++ M_SQRT1_2
+
+
 def _norm_cdf(xp, x):
     # Abramowitz & Stegun 7.1.26 (same approximation family as C++ core).
     a1 = 0.254829592
@@ -38,7 +41,7 @@ def _norm_cdf(xp, x):
     p = 0.3275911
 
     sign = xp.where(x < 0.0, -1.0, 1.0)
-    ax = xp.abs(x) * (2.0 ** -0.5)
+    ax = xp.abs(x) * _M_SQRT1_2
     t = 1.0 / (1.0 + p * ax)
     t2 = t * t
     t3 = t2 * t
@@ -156,6 +159,7 @@ class QuantAccelerator:
         "adi_hundsdorfer_verwer_price",
         "deep_bsde_price",
         "deep_hedging_price",
+        "pinns_price",
     }
 
     _MEDIUM_PARALLEL_METHODS = {
@@ -177,7 +181,6 @@ class QuantAccelerator:
         "gauss_laguerre_price",
         "gauss_legendre_price",
         "adaptive_quadrature_price",
-        "pinns_price",
     }
 
     _GPU_THRESHOLDS = {
@@ -292,6 +295,20 @@ class QuantAccelerator:
     @staticmethod
     def _column(xp, jobs: Sequence[Mapping[str, Any]], key: str, dtype=np.float64):
         return xp.asarray([job[key] for job in jobs], dtype=dtype)
+
+    @staticmethod
+    def _assert_uniform_param(jobs: Sequence[Mapping[str, Any]], key: str, default=None) -> Any:
+        """Assert that an algorithm-specific parameter is the same across all jobs."""
+        val = jobs[0].get(key, default) if default is not None else jobs[0][key]
+        for i, job in enumerate(jobs[1:], 1):
+            v = job.get(key, default) if default is not None else job[key]
+            if v != val:
+                raise ValueError(
+                    f"Vectorized batch requires uniform '{key}' across all jobs, "
+                    f"but job[0] has {val!r} and job[{i}] has {v!r}. "
+                    f"Use the threaded/sequential backend for heterogeneous parameters."
+                )
+        return val
 
     def _vectorized_price(self, method: str, jobs: Sequence[Mapping[str, Any]], use_gpu: bool):
         xp = self._cp if use_gpu and self.gpu_available else np
@@ -487,7 +504,7 @@ class QuantAccelerator:
             lam = self._column(xp, jobs, "jump_intensity")
             jump_mean = self._column(xp, jobs, "jump_mean")
             jump_vol = self._column(xp, jobs, "jump_vol")
-            max_terms = int(jobs[0]["max_terms"])
+            max_terms = int(self._assert_uniform_param(jobs, "max_terms"))
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
 
             k = xp.exp(jump_mean + 0.5 * jump_vol * jump_vol) - 1.0
@@ -527,9 +544,9 @@ class QuantAccelerator:
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
 
-            grid_size = int(jobs[0].get("grid_size", 4096))
-            eta = float(jobs[0].get("eta", 0.25))
-            alpha = float(jobs[0].get("alpha", 1.5))
+            grid_size = int(self._assert_uniform_param(jobs, "grid_size", 4096))
+            eta = float(self._assert_uniform_param(jobs, "eta", 0.25))
+            alpha = float(self._assert_uniform_param(jobs, "alpha", 1.5))
             if grid_size < 16 or (grid_size & (grid_size - 1)) != 0:
                 raise RuntimeError("carr_madan_fft_price requires power-of-two grid_size >= 16")
             if eta <= 0.0 or alpha <= 0.0:
@@ -585,8 +602,8 @@ class QuantAccelerator:
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
 
-            n_terms = int(jobs[0].get("n_terms", 256))
-            truncation_width = float(jobs[0].get("truncation_width", 10.0))
+            n_terms = int(self._assert_uniform_param(jobs, "n_terms", 256))
+            truncation_width = float(self._assert_uniform_param(jobs, "truncation_width", 10.0))
             if n_terms < 8 or truncation_width <= 0.0:
                 raise RuntimeError("cos_method_fang_oosterlee_price requires n_terms >= 8 and truncation_width > 0")
 
@@ -643,10 +660,10 @@ class QuantAccelerator:
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
 
-            grid_size = int(jobs[0].get("grid_size", 256))
-            eta = float(jobs[0].get("eta", 0.25))
-            lambda_ = float(jobs[0].get("lambda_", 0.05))
-            alpha = float(jobs[0].get("alpha", 1.5))
+            grid_size = int(self._assert_uniform_param(jobs, "grid_size", 256))
+            eta = float(self._assert_uniform_param(jobs, "eta", 0.25))
+            lambda_ = float(self._assert_uniform_param(jobs, "lambda_", 0.05))
+            alpha = float(self._assert_uniform_param(jobs, "alpha", 1.5))
             if grid_size < 16 or eta <= 0.0 or lambda_ <= 0.0 or alpha <= 0.0:
                 raise RuntimeError("fractional_fft_price requires grid_size >= 16, eta > 0, lambda_ > 0, alpha > 0")
 
@@ -707,8 +724,8 @@ class QuantAccelerator:
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
 
-            steps = int(jobs[0].get("integration_steps", 4096))
-            limit = float(jobs[0].get("integration_limit", 300.0))
+            steps = int(self._assert_uniform_param(jobs, "integration_steps", 4096))
+            limit = float(self._assert_uniform_param(jobs, "integration_limit", 300.0))
             if steps < 16 or limit <= 0.0:
                 raise RuntimeError("lewis_fourier_inversion_price requires integration_steps >= 16 and integration_limit > 0")
 
@@ -742,8 +759,8 @@ class QuantAccelerator:
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
 
-            steps = int(jobs[0].get("integration_steps", 4096))
-            limit = float(jobs[0].get("integration_limit", 300.0))
+            steps = int(self._assert_uniform_param(jobs, "integration_steps", 4096))
+            limit = float(self._assert_uniform_param(jobs, "integration_limit", 300.0))
             if steps < 16 or limit <= 0.0:
                 raise RuntimeError("hilbert_transform_price requires integration_steps >= 16 and integration_limit > 0")
 
@@ -791,14 +808,47 @@ class QuantAccelerator:
                             xp.maximum(s_t - strike[:, None], 0.0),
                             xp.maximum(strike[:, None] - s_t, 0.0))
 
+        def _mc_random_matrix(xp, jobs, shape, key="seed", default=42):
+            """Generate a (B, cols) matrix with per-row independent randomness.
+
+            Each job's seed produces an independent row via SeedSequence spawning,
+            matching the C++ scalar path where each call has its own seed.
+            """
+            B, cols = shape
+            seeds = [int(job.get(key, default)) for job in jobs]
+            rows = []
+            for s in seeds:
+                rng = xp.random.default_rng(np.random.SeedSequence(s))
+                rows.append(rng.standard_normal(cols))
+            return xp.stack(rows)
+
+        def _mc_random_uniform_matrix(xp, jobs, shape, key="seed", default=42):
+            """Generate a (B, cols) uniform matrix with per-row independent randomness."""
+            B, cols = shape
+            seeds = [int(job.get(key, default)) for job in jobs]
+            rows = []
+            for s in seeds:
+                rng = xp.random.default_rng(np.random.SeedSequence(s))
+                rows.append(rng.uniform(size=cols))
+            return xp.stack(rows)
+
+        def _mc_random_step_matrices(xp, jobs, n_steps, shape_per_step, key="seed", default=42):
+            """Generate n_steps matrices of (B, paths) with per-row independent randomness."""
+            B, paths = shape_per_step
+            seeds = [int(job.get(key, default)) for job in jobs]
+            rngs = [xp.random.default_rng(np.random.SeedSequence(s)) for s in seeds]
+            matrices = []
+            for _ in range(n_steps):
+                rows = [rng.standard_normal(paths) for rng in rngs]
+                matrices.append(xp.stack(rows))
+            return matrices
+
         if method == "standard_monte_carlo_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
             B = len(jobs)
 
-            rng = xp.random.default_rng(seed)
-            Z = rng.standard_normal((B, paths))
+            Z = _mc_random_matrix(xp, jobs, (B, paths))
 
             drift = (r - q - 0.5 * vol * vol)
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
@@ -810,20 +860,19 @@ class QuantAccelerator:
 
         if method == "euler_maruyama_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            steps = int(jobs[0].get("steps", 100))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
+            steps = int(self._assert_uniform_param(jobs, "steps", 100))
             B = len(jobs)
 
             dt = t / float(steps)
             sqrt_dt = xp.sqrt(xp.maximum(dt, 0.0))
-            rng = xp.random.default_rng(seed)
+            step_Zs = _mc_random_step_matrices(xp, jobs, steps, (B, paths))
 
             S = xp.broadcast_to(spot[:, None], (B, paths)).copy()
             mu = r - q
 
-            for _ in range(steps):
-                Z = rng.standard_normal((B, paths))
+            for step_i in range(steps):
+                Z = step_Zs[step_i]
                 S = S * (1.0 + mu[:, None] * dt[:, None] + vol[:, None] * sqrt_dt[:, None] * Z)
                 S = xp.maximum(S, 0.0)
 
@@ -833,20 +882,19 @@ class QuantAccelerator:
 
         if method == "milstein_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            steps = int(jobs[0].get("steps", 100))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
+            steps = int(self._assert_uniform_param(jobs, "steps", 100))
             B = len(jobs)
 
             dt = t / float(steps)
             sqrt_dt = xp.sqrt(xp.maximum(dt, 0.0))
-            rng = xp.random.default_rng(seed)
+            step_Zs = _mc_random_step_matrices(xp, jobs, steps, (B, paths))
 
             S = xp.broadcast_to(spot[:, None], (B, paths)).copy()
             mu = r - q
 
-            for _ in range(steps):
-                Z = rng.standard_normal((B, paths))
+            for step_i in range(steps):
+                Z = step_Zs[step_i]
                 S = S * (1.0 + mu[:, None] * dt[:, None]
                          + vol[:, None] * sqrt_dt[:, None] * Z
                          + 0.5 * vol[:, None] * vol[:, None] * (Z * Z - 1.0) * dt[:, None])
@@ -858,13 +906,11 @@ class QuantAccelerator:
 
         if method == "importance_sampling_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
             shift = self._column(xp, jobs, "shift")
             B = len(jobs)
 
-            rng = xp.random.default_rng(seed)
-            Z = rng.standard_normal((B, paths))
+            Z = _mc_random_matrix(xp, jobs, (B, paths))
 
             Z_shifted = Z + shift[:, None]
             drift = (r - q - 0.5 * vol * vol)
@@ -880,12 +926,10 @@ class QuantAccelerator:
 
         if method == "control_variates_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
             B = len(jobs)
 
-            rng = xp.random.default_rng(seed)
-            Z = rng.standard_normal((B, paths))
+            Z = _mc_random_matrix(xp, jobs, (B, paths))
 
             drift = (r - q - 0.5 * vol * vol)
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
@@ -908,13 +952,11 @@ class QuantAccelerator:
 
         if method == "antithetic_variates_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
             B = len(jobs)
             half = paths // 2
 
-            rng = xp.random.default_rng(seed)
-            Z = rng.standard_normal((B, half))
+            Z = _mc_random_matrix(xp, jobs, (B, half))
 
             drift = (r - q - 0.5 * vol * vol)
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
@@ -931,14 +973,12 @@ class QuantAccelerator:
 
         if method == "stratified_sampling_price":
             spot, strike, t, vol, r, q, option_type = _mc_common_params(jobs, xp)
-            paths = int(jobs[0].get("paths", 100000))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 100000))
             B = len(jobs)
 
-            rng = xp.random.default_rng(seed)
+            U = _mc_random_uniform_matrix(xp, jobs, (B, paths))
             # Stratified uniforms: u_i = (i + U_i) / paths
             strata = xp.arange(paths, dtype=np.float64)[None, :]
-            U = rng.uniform(size=(B, paths))
             stratified_u = (strata + U) / float(paths)
             # Clamp to avoid infinities at boundaries
             stratified_u = xp.clip(stratified_u, 1e-10, 1.0 - 1e-10)
@@ -976,8 +1016,8 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            order = int(jobs[0].get("polynomial_order", 4))
-            quad = int(jobs[0].get("quadrature_points", 32))
+            order = int(self._assert_uniform_param(jobs, "polynomial_order", 4))
+            quad = int(self._assert_uniform_param(jobs, "quadrature_points", 32))
             order_term = 1.0 / float(order + 1)
             quad_term = 1.0 / math.sqrt(float(quad))
             moneyness = xp.abs(xp.log(spot / strike))
@@ -992,9 +1032,9 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            centers = int(jobs[0].get("centers", 24))
-            rbf_shape = float(jobs[0].get("rbf_shape", 1.0))
-            ridge = float(jobs[0].get("ridge", 1e-4))
+            centers = int(self._assert_uniform_param(jobs, "centers", 24))
+            rbf_shape = float(self._assert_uniform_param(jobs, "rbf_shape", 1.0))
+            ridge = float(self._assert_uniform_param(jobs, "ridge", 1e-4))
             center_term = 1.0 / math.sqrt(float(centers))
             shape_term = math.exp(-0.15 * rbf_shape)
             ridge_term = min(0.1, 0.2 * ridge)
@@ -1009,8 +1049,8 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            level = int(jobs[0].get("level", 3))
-            nodes = int(jobs[0].get("nodes_per_dim", 9))
+            level = int(self._assert_uniform_param(jobs, "level", 3))
+            nodes = int(self._assert_uniform_param(jobs, "nodes_per_dim", 9))
             level_term = 1.0 / float(level + 1)
             node_term = 1.0 / math.sqrt(float(nodes))
             dim_proxy = xp.abs(xp.log(spot / strike))
@@ -1025,8 +1065,8 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            modes = int(jobs[0].get("modes", 8))
-            snapshots = int(jobs[0].get("snapshots", 64))
+            modes = int(self._assert_uniform_param(jobs, "modes", 8))
+            snapshots = int(self._assert_uniform_param(jobs, "snapshots", 64))
             mode_term = 1.0 / math.sqrt(float(modes))
             snapshot_term = 1.0 / math.sqrt(float(snapshots))
             correction = min(0.2, 0.05 * mode_term + 0.04 * snapshot_term)
@@ -1041,12 +1081,10 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            paths = int(jobs[0].get("paths", 20000))
-            seed = int(jobs[0].get("seed", 42))
+            paths = int(self._assert_uniform_param(jobs, "paths", 20000))
             B = len(jobs)
 
-            rng = xp.random.default_rng(seed)
-            Z = rng.standard_normal((B, paths))
+            Z = _mc_random_matrix(xp, jobs, (B, paths))
 
             drift = (r - q - 0.5 * vol * vol) * t
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
@@ -1072,13 +1110,11 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            paths = int(jobs[0].get("paths", 20000))
-            seed = int(jobs[0].get("seed", 42))
-            weight_clip = float(jobs[0].get("weight_clip", 6.0))
+            paths = int(self._assert_uniform_param(jobs, "paths", 20000))
+            weight_clip = float(self._assert_uniform_param(jobs, "weight_clip", 6.0))
             B = len(jobs)
 
-            rng = xp.random.default_rng(seed)
-            Z = rng.standard_normal((B, paths))
+            Z = _mc_random_matrix(xp, jobs, (B, paths))
 
             drift = (r - q - 0.5 * vol * vol) * t
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
@@ -1106,7 +1142,7 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            regularization = float(jobs[0].get("regularization", 1e-6))
+            regularization = float(self._assert_uniform_param(jobs, "regularization", 1e-6))
 
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
             vol_sqrt_t = vol * sqrt_t
@@ -1130,7 +1166,7 @@ class QuantAccelerator:
             r = self._column(xp, jobs, "r")
             q = self._column(xp, jobs, "q")
             option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
-            target_iv = float(jobs[0].get("target_implied_vol", 0.2))
+            target_iv = float(self._assert_uniform_param(jobs, "target_implied_vol", 0.2))
 
             # Use target_implied_vol as effective vol (converged state)
             eff_vol = xp.full_like(vol, target_iv)

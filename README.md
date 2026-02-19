@@ -68,6 +68,70 @@ PYTHONPATH=python python3 python/examples/demo_accelerator.py
 PYTHONPATH=python python3 python/examples/run_all_algos.py --profile quick
 ```
 
+## Native Batch APIs (Recommended)
+- Scalar methods remain available for convenience.
+- For throughput-sensitive workloads, prefer native batch entrypoints backed by C++ array-in/array-out kernels.
+- Batch APIs currently available:
+  - **Closed-form / semi-analytical**: `black_scholes_merton_price_batch`, `black76_price_batch`, `bachelier_price_batch`, `heston_price_cf_batch`, `merton_jump_diffusion_price_batch`, `variance_gamma_price_cf_batch`, `sabr_hagan_lognormal_iv_batch`, `sabr_hagan_black76_price_batch`, `dupire_local_vol_batch`
+  - **Fourier-transform**: `carr_madan_fft_price_batch`, `cos_method_fang_oosterlee_price_batch`, `fractional_fft_price_batch`, `lewis_fourier_inversion_price_batch`, `hilbert_transform_price_batch`
+  - **Tree/lattice**: `crr_price_batch`, `jarrow_rudd_price_batch`, `tian_price_batch`, `leisen_reimer_price_batch`, `trinomial_tree_price_batch`, `derman_kani_const_local_vol_price_batch`
+  - **Monte Carlo**: `standard_monte_carlo_price_batch`, `euler_maruyama_price_batch`, `milstein_price_batch`, `longstaff_schwartz_price_batch`, `quasi_monte_carlo_sobol_price_batch`, `quasi_monte_carlo_halton_price_batch`, `multilevel_monte_carlo_price_batch`, `importance_sampling_price_batch`, `control_variates_price_batch`, `antithetic_variates_price_batch`, `stratified_sampling_price_batch`
+
+Build optional Cython native module (releases GIL during long batch calls):
+```bash
+cd $QK_ROOT/python
+QK_LIB_PATH=$QK_ROOT/build/cpp python3 setup.py build_ext --inplace
+```
+If the native extension is not built, QuantKernel automatically falls back to
+the ctypes batch path (same API, slightly higher overhead).
+
+Example:
+```python
+import numpy as np
+from quantkernel import QuantKernel, QK_CALL, QK_PUT
+
+qk = QuantKernel()
+n = 100000
+rng = np.random.default_rng(42)
+spot = rng.uniform(80.0, 120.0, n)
+strike = rng.uniform(80.0, 120.0, n)
+t = rng.uniform(0.25, 2.0, n)
+vol = rng.uniform(0.1, 0.6, n)
+r = rng.uniform(0.0, 0.08, n)
+q = rng.uniform(0.0, 0.04, n)
+option_type = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+
+prices = qk.black_scholes_merton_price_batch(spot, strike, t, vol, r, q, option_type)
+print(prices[:3])
+```
+
+## Performance Snapshot
+Use the reproducible benchmark script:
+```bash
+PYTHONPATH=python QK_LIB_PATH=$QK_ROOT/build/cpp \
+python3 python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3
+```
+
+Representative sample output (Ubuntu, `n=50000`, `repeats=3`; hardware-dependent):
+
+| Mode | Median ms | Throughput (prices/s) | Speedup vs Python scalar |
+|---|---:|---:|---:|
+| Python scalar | 93.611 | 534,125 | 1.00x |
+| Python batch (price_batch) | 35.282 | 1,417,151 | 2.65x |
+| C++ batch API via Python | 2.214 | 22,583,202 | 42.28x |
+| C++ direct executable (scalar) | 2.810 | 17,793,746 | 33.31x |
+| C++ direct executable (batch) | 2.565 | 19,495,594 | 36.50x |
+
+## Developer Commands
+Useful local commands from the repo root:
+
+```bash
+make build         # build shared library and C++ targets
+make build-native  # build optional Cython native batch extension
+make bench         # run scalar/batch benchmark table script
+make quick         # C++ + Python test suite
+```
+
 ## Batch + GPU Acceleration (Python layer)
 - No CUDA integration in C++ is required.
 - Use `QuantKernel.price_batch(...)` or `QuantAccelerator`.
@@ -146,7 +210,7 @@ Generate it by running from the project root:
 
 ```bash
 # Build both targets with compile_commands.json generation
-cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j
 
 cmake -S fuzztest -B fuzztest/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -156,12 +220,14 @@ cmake --build fuzztest/build -j
 python3 -c "
 import json, pathlib
 root = pathlib.Path('.')
-merged, seen = [], set()
+merged = []
+seen = set()
 for f in [root/'build'/'compile_commands.json', root/'fuzztest'/'build'/'compile_commands.json']:
     if f.exists():
         for e in json.loads(f.read_text()):
-            if e['file'] not in seen:
-                seen.add(e['file'])
+            key = (e.get('file'), e.get('directory'), e.get('command', e.get('arguments')))
+            if key not in seen:
+                seen.add(key)
                 merged.append(e)
 pathlib.Path('compile_commands.json').write_text(json.dumps(merged, indent=2) + '\n')
 print(f'Wrote {len(merged)} entries to compile_commands.json')
@@ -175,3 +241,12 @@ If you're using VS Code, create a local `.vscode/c_cpp_properties.json` and set 
 make quick
 make test-py
 ```
+
+Deterministic native batch/perf checks:
+```bash
+PYTHONPATH=python QK_LIB_PATH=$QK_ROOT/build/cpp \
+pytest -q python/tests/test_batch_api.py python/tests/test_perf_regression.py
+```
+
+CI runs deterministic fuzz/property checks (`FUZZTEST_PRNG_SEED` fixed), batch
+accuracy checks, and performance regression guards.

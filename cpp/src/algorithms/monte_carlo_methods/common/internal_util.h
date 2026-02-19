@@ -1,8 +1,7 @@
 #ifndef QK_MCM_INTERNAL_UTIL_H
 #define QK_MCM_INTERNAL_UTIL_H
 
-#include "common/math_util.h"
-#include <quantkernel/qk_abi.h>
+#include "common/option_util.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,25 +12,13 @@ namespace qk::mcm::detail {
 
 constexpr double kEps = 1e-12;
 
-inline double nan_value() {
-    double out = 0.0;
-    write_nan(&out);
-    return out;
-}
+inline double nan_value() { return qk::nan_value(); }
 
-inline bool valid_option_type(int32_t option_type) {
-    return option_type == QK_CALL || option_type == QK_PUT;
-}
+inline bool valid_option_type(int32_t option_type) { return qk::valid_option_type(option_type); }
 
 inline bool valid_common_inputs(double spot, double strike, double t, double vol,
                                 double r, double q, int32_t option_type) {
-    if (!valid_option_type(option_type)) return false;
-    if (!is_finite_safe(spot) || !is_finite_safe(strike) || !is_finite_safe(t) ||
-        !is_finite_safe(vol) || !is_finite_safe(r) || !is_finite_safe(q)) {
-        return false;
-    }
-    if (spot <= 0.0 || strike <= 0.0 || t < 0.0 || vol < 0.0) return false;
-    return true;
+    return qk::valid_common_inputs(spot, strike, t, vol, r, q, option_type);
 }
 
 inline bool valid_mc_counts(int32_t paths, int32_t steps) {
@@ -39,9 +26,7 @@ inline bool valid_mc_counts(int32_t paths, int32_t steps) {
 }
 
 inline double intrinsic_value(double s, double k, int32_t option_type) {
-    if (option_type == QK_CALL) return std::max(0.0, s - k);
-    if (option_type == QK_PUT) return std::max(0.0, k - s);
-    return nan_value();
+    return qk::intrinsic_value(s, k, option_type);
 }
 
 inline double gbm_terminal(double spot, double t, double r, double q, double vol, double z) {
@@ -116,29 +101,18 @@ inline int trailing_zero_count(uint32_t x) {
 }
 
 inline double sobol_1d(uint32_t index) {
-    static thread_local uint32_t x = 0U;
-    static thread_local uint32_t prev = 0U;
+    if (index == 0U) return 0.0;
 
-    if (index == 0U) {
-        x = 0U;
-        prev = 0U;
-        return 0.0;
-    }
-
-    if (index != prev + 1U) {
-        x = 0U;
-        prev = 0U;
-        for (uint32_t i = 1U; i <= index; ++i) {
-            uint32_t c = static_cast<uint32_t>(trailing_zero_count(i));
-            x ^= (1U << (31U - c));
-            prev = i;
+    // Stateless computation via Gray code: XOR successive direction numbers.
+    // Direction number for bit j is 1 << (31 - j).
+    // Gray code of index = index ^ (index >> 1).
+    uint32_t gray = index ^ (index >> 1U);
+    uint32_t x = 0U;
+    for (uint32_t bit = 0; gray != 0U; ++bit, gray >>= 1U) {
+        if (gray & 1U) {
+            x ^= (1U << (31U - bit));
         }
-    } else {
-        uint32_t c = static_cast<uint32_t>(trailing_zero_count(index));
-        x ^= (1U << (31U - c));
-        prev = index;
     }
-
     return (static_cast<double>(x) + 0.5) / 4294967296.0;
 }
 

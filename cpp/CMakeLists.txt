@@ -68,3 +68,9 @@ set_target_properties(quantkernel PROPERTIES
     SOVERSION 1
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
+
+add_executable(qk_bench_bsm_batch
+    bench/benchmark_bsm_batch.cpp
+)
+target_link_libraries(qk_bench_bsm_batch PRIVATE quantkernel)
+target_include_directories(qk_bench_bsm_batch PRIVATE include)

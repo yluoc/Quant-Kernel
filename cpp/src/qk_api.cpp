@@ -15,8 +15,12 @@ namespace {
 const QKPluginAPI k_plugin_api = {
     QK_ABI_MAJOR,
     QK_ABI_MINOR,
-    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm_iqm_ram_agm_mlm.v9"
+    "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm_iqm_ram_agm_mlm.v10"
 };
+
+inline int32_t validate_batch_size(int32_t n) {
+    return (n > 0) ? QK_OK : QK_ERR_BAD_SIZE;
+}
 
 } /* namespace */
 
@@ -31,7 +35,7 @@ int32_t qk_plugin_get_api(int32_t host_abi_major,
                           int32_t host_abi_minor,
                           const QKPluginAPI** out_api) {
     if (!out_api) return QK_ERR_NULL_PTR;
-    if (host_abi_major != QK_ABI_MAJOR || host_abi_minor < QK_ABI_MINOR) {
+    if (host_abi_major != QK_ABI_MAJOR || host_abi_minor > QK_ABI_MINOR) {
         *out_api = nullptr;
         return QK_ERR_ABI_MISMATCH;
     }
@@ -52,6 +56,73 @@ double qk_cf_black76_price(double forward, double strike, double t, double vol,
 double qk_cf_bachelier_price(double forward, double strike, double t, double normal_vol,
                              double r, int32_t option_type) {
     return qk::cfa::bachelier_price(forward, strike, t, normal_vol, r, option_type);
+}
+
+int32_t qk_cf_black_scholes_merton_price_batch(const double* spot,
+                                               const double* strike,
+                                               const double* t,
+                                               const double* vol,
+                                               const double* r,
+                                               const double* q,
+                                               const int32_t* option_type,
+                                               int32_t n,
+                                               double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::cfa::black_scholes_merton_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_black76_price_batch(const double* forward,
+                                  const double* strike,
+                                  const double* t,
+                                  const double* vol,
+                                  const double* r,
+                                  const int32_t* option_type,
+                                  int32_t n,
+                                  double* out_prices) {
+    if (!forward || !strike || !t || !vol || !r || !option_type || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::cfa::black76_price(
+            forward[i], strike[i], t[i], vol[i], r[i], option_type[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_bachelier_price_batch(const double* forward,
+                                    const double* strike,
+                                    const double* t,
+                                    const double* normal_vol,
+                                    const double* r,
+                                    const int32_t* option_type,
+                                    int32_t n,
+                                    double* out_prices) {
+    if (!forward || !strike || !t || !normal_vol || !r || !option_type || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::cfa::bachelier_price(
+            forward[i], strike[i], t[i], normal_vol[i], r[i], option_type[i]
+        );
+    }
+    return QK_OK;
 }
 
 double qk_cf_heston_price_cf(double spot, double strike, double t, double r, double q,
@@ -119,10 +190,170 @@ double qk_cf_dupire_local_vol(double strike, double t, double call_price,
     return qk::cfa::dupire_local_vol(strike, t, call_price, dC_dT, dC_dK, d2C_dK2, r, q);
 }
 
+int32_t qk_cf_heston_price_cf_batch(const double* spot, const double* strike,
+                                     const double* t, const double* r, const double* q,
+                                     const double* v0, const double* kappa, const double* theta,
+                                     const double* sigma, const double* rho,
+                                     const int32_t* option_type, const int32_t* integration_steps,
+                                     const double* integration_limit,
+                                     int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !r || !q || !v0 || !kappa || !theta
+        || !sigma || !rho || !option_type || !integration_steps || !integration_limit || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::cfa::HestonParams params{};
+        params.v0 = v0[i]; params.kappa = kappa[i]; params.theta = theta[i];
+        params.sigma = sigma[i]; params.rho = rho[i];
+        out_prices[i] = qk::cfa::heston_price_cf(
+            spot[i], strike[i], t[i], r[i], q[i], params,
+            option_type[i], integration_steps[i], integration_limit[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_merton_jump_diffusion_price_batch(const double* spot, const double* strike,
+                                                  const double* t, const double* vol,
+                                                  const double* r, const double* q,
+                                                  const double* jump_intensity, const double* jump_mean,
+                                                  const double* jump_vol, const int32_t* max_terms,
+                                                  const int32_t* option_type,
+                                                  int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !jump_intensity || !jump_mean
+        || !jump_vol || !max_terms || !option_type || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::cfa::MertonJumpDiffusionParams params{};
+        params.jump_intensity = jump_intensity[i]; params.jump_mean = jump_mean[i];
+        params.jump_vol = jump_vol[i]; params.max_terms = max_terms[i];
+        out_prices[i] = qk::cfa::merton_jump_diffusion_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], params, option_type[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_variance_gamma_price_cf_batch(const double* spot, const double* strike,
+                                              const double* t, const double* r, const double* q,
+                                              const double* sigma, const double* theta, const double* nu,
+                                              const int32_t* option_type, const int32_t* integration_steps,
+                                              const double* integration_limit,
+                                              int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !r || !q || !sigma || !theta || !nu
+        || !option_type || !integration_steps || !integration_limit || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::cfa::VarianceGammaParams params{};
+        params.sigma = sigma[i]; params.theta = theta[i]; params.nu = nu[i];
+        out_prices[i] = qk::cfa::variance_gamma_price_cf(
+            spot[i], strike[i], t[i], r[i], q[i], params,
+            option_type[i], integration_steps[i], integration_limit[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_sabr_hagan_lognormal_iv_batch(const double* forward, const double* strike,
+                                              const double* t, const double* alpha,
+                                              const double* beta, const double* rho,
+                                              const double* nu,
+                                              int32_t n, double* out_prices) {
+    if (!forward || !strike || !t || !alpha || !beta || !rho || !nu || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::cfa::SABRParams params{};
+        params.alpha = alpha[i]; params.beta = beta[i];
+        params.rho = rho[i]; params.nu = nu[i];
+        out_prices[i] = qk::cfa::sabr_hagan_lognormal_iv(forward[i], strike[i], t[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_sabr_hagan_black76_price_batch(const double* forward, const double* strike,
+                                               const double* t, const double* r,
+                                               const double* alpha, const double* beta,
+                                               const double* rho, const double* nu,
+                                               const int32_t* option_type,
+                                               int32_t n, double* out_prices) {
+    if (!forward || !strike || !t || !r || !alpha || !beta || !rho || !nu
+        || !option_type || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::cfa::SABRParams params{};
+        params.alpha = alpha[i]; params.beta = beta[i];
+        params.rho = rho[i]; params.nu = nu[i];
+        out_prices[i] = qk::cfa::sabr_hagan_black76_price(
+            forward[i], strike[i], t[i], r[i], params, option_type[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_cf_dupire_local_vol_batch(const double* strike, const double* t,
+                                      const double* call_price, const double* dC_dT,
+                                      const double* dC_dK, const double* d2C_dK2,
+                                      const double* r, const double* q,
+                                      int32_t n, double* out_prices) {
+    if (!strike || !t || !call_price || !dC_dT || !dC_dK || !d2C_dK2
+        || !r || !q || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::cfa::dupire_local_vol(
+            strike[i], t[i], call_price[i], dC_dT[i], dC_dK[i], d2C_dK2[i], r[i], q[i]
+        );
+    }
+    return QK_OK;
+}
+
 double qk_tlm_crr_price(double spot, double strike, double t, double vol,
                         double r, double q, int32_t option_type,
                         int32_t steps, int32_t american_style) {
     return qk::tlm::crr_price(spot, strike, t, vol, r, q, option_type, steps, american_style != 0);
+}
+
+int32_t qk_tlm_crr_price_batch(const double* spot,
+                               const double* strike,
+                               const double* t,
+                               const double* vol,
+                               const double* r,
+                               const double* q,
+                               const int32_t* option_type,
+                               const int32_t* steps,
+                               const int32_t* american_style,
+                               int32_t n,
+                               double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !steps || !american_style || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::tlm::crr_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
 }
 
 double qk_tlm_jarrow_rudd_price(double spot, double strike, double t, double vol,
@@ -164,6 +395,114 @@ double qk_tlm_derman_kani_const_local_vol_price(double spot, double strike, doub
     cfg.steps = steps;
     cfg.american_style = (american_style != 0);
     return qk::tlm::derman_kani_implied_tree_price(spot, strike, t, r, q, option_type, surface, cfg);
+}
+
+int32_t qk_tlm_jarrow_rudd_price_batch(const double* spot, const double* strike,
+                                         const double* t, const double* vol,
+                                         const double* r, const double* q,
+                                         const int32_t* option_type, const int32_t* steps,
+                                         const int32_t* american_style,
+                                         int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !steps || !american_style || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::tlm::jarrow_rudd_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_tlm_tian_price_batch(const double* spot, const double* strike,
+                                  const double* t, const double* vol,
+                                  const double* r, const double* q,
+                                  const int32_t* option_type, const int32_t* steps,
+                                  const int32_t* american_style,
+                                  int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !steps || !american_style || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::tlm::tian_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_tlm_leisen_reimer_price_batch(const double* spot, const double* strike,
+                                           const double* t, const double* vol,
+                                           const double* r, const double* q,
+                                           const int32_t* option_type, const int32_t* steps,
+                                           const int32_t* american_style,
+                                           int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !steps || !american_style || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::tlm::leisen_reimer_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_tlm_trinomial_tree_price_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type, const int32_t* steps,
+                                            const int32_t* american_style,
+                                            int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !steps || !american_style || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::tlm::trinomial_tree_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_tlm_derman_kani_const_local_vol_price_batch(const double* spot, const double* strike,
+                                                         const double* t, const double* local_vol,
+                                                         const double* r, const double* q,
+                                                         const int32_t* option_type, const int32_t* steps,
+                                                         const int32_t* american_style,
+                                                         int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !local_vol || !r || !q || !option_type
+        || !steps || !american_style || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        auto surface = [lv = local_vol[i]](double, double) { return lv; };
+        qk::tlm::ImpliedTreeConfig cfg{};
+        cfg.steps = steps[i];
+        cfg.american_style = (american_style[i] != 0);
+        out_prices[i] = qk::tlm::derman_kani_implied_tree_price(
+            spot[i], strike[i], t[i], r[i], q[i], option_type[i], surface, cfg
+        );
+    }
+    return QK_OK;
 }
 
 /* --- Finite Difference methods --- */
@@ -258,6 +597,33 @@ double qk_mcm_standard_monte_carlo_price(double spot, double strike, double t, d
     );
 }
 
+int32_t qk_mcm_standard_monte_carlo_price_batch(const double* spot,
+                                                const double* strike,
+                                                const double* t,
+                                                const double* vol,
+                                                const double* r,
+                                                const double* q,
+                                                const int32_t* option_type,
+                                                const int32_t* paths,
+                                                const uint64_t* seed,
+                                                int32_t n,
+                                                double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::standard_monte_carlo_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
 double qk_mcm_euler_maruyama_price(double spot, double strike, double t, double vol,
                                    double r, double q, int32_t option_type,
                                    int32_t paths, int32_t steps, uint64_t seed) {
@@ -339,6 +705,213 @@ double qk_mcm_stratified_sampling_price(double spot, double strike, double t, do
     );
 }
 
+int32_t qk_mcm_euler_maruyama_price_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type, const int32_t* paths,
+                                            const int32_t* steps, const uint64_t* seed,
+                                            int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !steps || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::euler_maruyama_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], steps[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_milstein_price_batch(const double* spot, const double* strike,
+                                      const double* t, const double* vol,
+                                      const double* r, const double* q,
+                                      const int32_t* option_type, const int32_t* paths,
+                                      const int32_t* steps, const uint64_t* seed,
+                                      int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !steps || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::milstein_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], steps[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_longstaff_schwartz_price_batch(const double* spot, const double* strike,
+                                                const double* t, const double* vol,
+                                                const double* r, const double* q,
+                                                const int32_t* option_type, const int32_t* paths,
+                                                const int32_t* steps, const uint64_t* seed,
+                                                int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !steps || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::longstaff_schwartz_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], steps[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_quasi_monte_carlo_sobol_price_batch(const double* spot, const double* strike,
+                                                     const double* t, const double* vol,
+                                                     const double* r, const double* q,
+                                                     const int32_t* option_type, const int32_t* paths,
+                                                     int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::quasi_monte_carlo_sobol_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], paths[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_quasi_monte_carlo_halton_price_batch(const double* spot, const double* strike,
+                                                      const double* t, const double* vol,
+                                                      const double* r, const double* q,
+                                                      const int32_t* option_type, const int32_t* paths,
+                                                      int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::quasi_monte_carlo_halton_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], paths[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_multilevel_monte_carlo_price_batch(const double* spot, const double* strike,
+                                                    const double* t, const double* vol,
+                                                    const double* r, const double* q,
+                                                    const int32_t* option_type, const int32_t* base_paths,
+                                                    const int32_t* levels, const int32_t* base_steps,
+                                                    const uint64_t* seed,
+                                                    int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !base_paths || !levels || !base_steps || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::multilevel_monte_carlo_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            base_paths[i], levels[i], base_steps[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_importance_sampling_price_batch(const double* spot, const double* strike,
+                                                const double* t, const double* vol,
+                                                const double* r, const double* q,
+                                                const int32_t* option_type, const int32_t* paths,
+                                                const double* shift, const uint64_t* seed,
+                                                int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !shift || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::importance_sampling_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], shift[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_control_variates_price_batch(const double* spot, const double* strike,
+                                              const double* t, const double* vol,
+                                              const double* r, const double* q,
+                                              const int32_t* option_type, const int32_t* paths,
+                                              const uint64_t* seed,
+                                              int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::control_variates_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_antithetic_variates_price_batch(const double* spot, const double* strike,
+                                                 const double* t, const double* vol,
+                                                 const double* r, const double* q,
+                                                 const int32_t* option_type, const int32_t* paths,
+                                                 const uint64_t* seed,
+                                                 int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::antithetic_variates_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_mcm_stratified_sampling_price_batch(const double* spot, const double* strike,
+                                                 const double* t, const double* vol,
+                                                 const double* r, const double* q,
+                                                 const int32_t* option_type, const int32_t* paths,
+                                                 const uint64_t* seed,
+                                                 int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !paths || !seed || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::stratified_sampling_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            paths[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
 /* --- Fourier transform methods --- */
 
 double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
@@ -349,6 +922,37 @@ double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double 
     params.eta = eta;
     params.alpha = alpha;
     return qk::ftm::carr_madan_fft_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+int32_t qk_ftm_carr_madan_fft_price_batch(const double* spot,
+                                          const double* strike,
+                                          const double* t,
+                                          const double* vol,
+                                          const double* r,
+                                          const double* q,
+                                          const int32_t* option_type,
+                                          const int32_t* grid_size,
+                                          const double* eta,
+                                          const double* alpha,
+                                          int32_t n,
+                                          double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !grid_size || !eta || !alpha || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::CarrMadanFFTParams params{};
+        params.grid_size = grid_size[i];
+        params.eta = eta[i];
+        params.alpha = alpha[i];
+        out_prices[i] = qk::ftm::carr_madan_fft_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params
+        );
+    }
+    return QK_OK;
 }
 
 double qk_ftm_cos_fang_oosterlee_price(double spot, double strike, double t, double vol,
@@ -390,6 +994,103 @@ double qk_ftm_hilbert_transform_price(double spot, double strike, double t, doub
     params.integration_steps = integration_steps;
     params.integration_limit = integration_limit;
     return qk::ftm::hilbert_transform_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+int32_t qk_ftm_cos_fang_oosterlee_price_batch(const double* spot, const double* strike,
+                                                const double* t, const double* vol,
+                                                const double* r, const double* q,
+                                                const int32_t* option_type, const int32_t* n_terms,
+                                                const double* truncation_width,
+                                                int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !n_terms || !truncation_width || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::COSMethodParams params{};
+        params.n_terms = n_terms[i];
+        params.truncation_width = truncation_width[i];
+        out_prices[i] = qk::ftm::cos_method_fang_oosterlee_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_fractional_fft_price_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type, const int32_t* grid_size,
+                                            const double* eta, const double* lambda_,
+                                            const double* alpha,
+                                            int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !grid_size || !eta || !lambda_ || !alpha || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::FractionalFFTParams params{};
+        params.grid_size = grid_size[i];
+        params.eta = eta[i];
+        params.lambda = lambda_[i];
+        params.alpha = alpha[i];
+        out_prices[i] = qk::ftm::fractional_fft_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_lewis_fourier_inversion_price_batch(const double* spot, const double* strike,
+                                                     const double* t, const double* vol,
+                                                     const double* r, const double* q,
+                                                     const int32_t* option_type,
+                                                     const int32_t* integration_steps,
+                                                     const double* integration_limit,
+                                                     int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !integration_steps || !integration_limit || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::LewisFourierInversionParams params{};
+        params.integration_steps = integration_steps[i];
+        params.integration_limit = integration_limit[i];
+        out_prices[i] = qk::ftm::lewis_fourier_inversion_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_hilbert_transform_price_batch(const double* spot, const double* strike,
+                                               const double* t, const double* vol,
+                                               const double* r, const double* q,
+                                               const int32_t* option_type,
+                                               const int32_t* integration_steps,
+                                               const double* integration_limit,
+                                               int32_t n, double* out_prices) {
+    if (!spot || !strike || !t || !vol || !r || !q || !option_type
+        || !integration_steps || !integration_limit || !out_prices) {
+        return QK_ERR_NULL_PTR;
+    }
+    const int32_t size_status = validate_batch_size(n);
+    if (size_status != QK_OK) return size_status;
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::HilbertTransformParams params{};
+        params.integration_steps = integration_steps[i];
+        params.integration_limit = integration_limit[i];
+        out_prices[i] = qk::ftm::hilbert_transform_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params
+        );
+    }
+    return QK_OK;
 }
 
 /* --- Integral quadrature methods --- */

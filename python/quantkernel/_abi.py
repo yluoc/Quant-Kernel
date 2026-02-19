@@ -1,7 +1,7 @@
 """Basic ABI constants expected by the Python wrapper."""
 
 ABI_MAJOR = 2
-ABI_MINOR = 7
+ABI_MINOR = 8
 
 QK_OK = 0
 QK_ERR_NULL_PTR = -1

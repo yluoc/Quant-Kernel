@@ -31,6 +31,33 @@ jobs:
       - name: Build and run core tests
         run: make quick
 
+      - name: Build native batch Python extension (Cython)
+        env:
+          QK_LIB_PATH: ${{ github.workspace }}/build/cpp
+        run: |
+          cd python
+          python setup.py build_ext --inplace
+
+      - name: Run deterministic batch/perf regression tests
+        env:
+          PYTHONPATH: python
+          QK_LIB_PATH: ${{ github.workspace }}/build/cpp
+          PYTHONHASHSEED: "0"
+          OMP_NUM_THREADS: "1"
+        run: |
+          python -m pytest -q python/tests/test_batch_api.py python/tests/test_perf_regression.py
+
+      - name: Generate benchmark comparison table
+        env:
+          PYTHONPATH: python
+          QK_LIB_PATH: ${{ github.workspace }}/build/cpp
+          PYTHONHASHSEED: "0"
+          OMP_NUM_THREADS: "1"
+        run: |
+          cmake --build build -j 4 --target qk_bench_bsm_batch
+          python python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3 | tee benchmark_table.md
+          cat benchmark_table.md >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Configure fuzz tests
         run: cmake -S fuzztest -B build/fuzztest
 
