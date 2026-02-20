@@ -1,7 +1,7 @@
 # QuantKernel
 
-> If you are using this kernel and it helps you, give it a star.
-
+> If the goal is a lightweight setup focused on option pricing throughput and batch jobs from Python, this kernel is usually a better fit than QuantLib-Python because it is explicitly optimized for batch execution and low Python overhead.  
+> QuantLib-Python is still the better choice when you need broad instrument coverage, rates/curve infrastructure, calendars/conventions, and mature end-to-end quant workflows.
 > [!WARNING]
 > Issues are welcome, PR's not available yet.
 
