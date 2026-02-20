@@ -25,7 +25,7 @@ help:
 	@echo "  make clean-venv    # Remove local .venv"
 
 configure:
-	$(CMAKE) -S . -B $(BUILD_DIR)
+	$(CMAKE) -S . -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 build: configure
 	$(CMAKE) --build $(BUILD_DIR) -j $(JOBS)

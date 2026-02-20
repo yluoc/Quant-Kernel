@@ -3,6 +3,7 @@ project(algorithm_fuzztest LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Bring in fuzztest (bundles googletest + googlemock)
 set(FUZZTEST_FUZZING_MODE OFF CACHE BOOL "" FORCE)

@@ -307,10 +307,7 @@ print(f'Wrote {len(merged)} entries to compile_commands.json')
 
 If you're using VS Code, create a local `.vscode/c_cpp_properties.json` and set `compileCommands` to `${workspaceFolder}/compile_commands.json` (the `.vscode/` directory is ignored by default since it contains machine-specific paths).
 
-For tools expecting a singular file name, keep `compile_command.json` in sync:
-```bash
-cp build/compile_commands.json compile_command.json
-```
+Use `compile_commands.json` (plural) as the canonical compilation database file.
 
 ## Tests
 
