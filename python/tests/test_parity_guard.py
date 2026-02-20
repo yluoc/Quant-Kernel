@@ -145,6 +145,32 @@ def test_c_api_scalar_batch_pairs_are_complete() -> None:
     assert not missing, f"C API scalar functions missing *_batch variants: {missing}"
 
 
+def test_accelerator_vectorized_methods_all_implemented() -> None:
+    """Every method in _VECTORIZED_METHODS must be handled in _vectorized_price source."""
+    accel_text = _read(ACCEL_PATH)
+    # Extract _VECTORIZED_METHODS entries
+    tree = ast.parse(accel_text)
+    vec_methods: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == "QuantAccelerator":
+            for stmt in node.body:
+                if (
+                    isinstance(stmt, ast.Assign)
+                    and len(stmt.targets) == 1
+                    and isinstance(stmt.targets[0], ast.Name)
+                    and stmt.targets[0].id == "_VECTORIZED_METHODS"
+                    and isinstance(stmt.value, ast.Set)
+                ):
+                    for elt in stmt.value.elts:
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            vec_methods.add(elt.value)
+    assert vec_methods, "Could not locate _VECTORIZED_METHODS"
+
+    # Check each method appears as `if method == "<name>"` in _vectorized_price
+    missing = sorted(m for m in vec_methods if f'method == "{m}"' not in accel_text)
+    assert not missing, f"_VECTORIZED_METHODS without _vectorized_price branch: {missing}"
+
+
 def test_every_engine_api_has_explicit_python_test_wiring() -> None:
     """Fail when new APIs land without test references.
 

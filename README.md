@@ -196,6 +196,11 @@ make test-py       # run Python tests only (via pytest)
 - Backend options: `auto`, `cpu`, `gpu`.
 - GPU path is available when CuPy is installed.
 
+Current backend behavior:
+- `backend="auto"`: prefers native C++ batch for all mapped methods (CPU path).
+- `backend="gpu"`: forces GPU vectorized path and is only valid for CuPy-vectorized methods.
+- For non-vectorized methods, `backend="gpu"` raises an error (use `auto` or `cpu`).
+
 ### CuPy-Accelerated Algorithms
 
 The following `method` names have explicit NumPy/CuPy vectorized implementations in `QuantAccelerator`:
@@ -209,6 +214,8 @@ The following `method` names have explicit NumPy/CuPy vectorized implementations
 | `sabr_hagan_black76_price` | 15,000 | Vectorized SABR IV + Black-76 pricing |
 | `dupire_local_vol` | 30,000 | Vectorized Dupire local-vol inversion |
 | `merton_jump_diffusion_price` | 10,000 | Vectorized jump-series summation |
+| `heston_price_cf` | 256 | Vectorized Heston CF integration across batch |
+| `variance_gamma_price_cf` | 256 | Vectorized Variance-Gamma CF integration across batch |
 | `carr_madan_fft_price` | 512 | Batched damped-CF FFT across frequency grid |
 | `cos_method_fang_oosterlee_price` | 1,024 | Batched COS coefficient assembly and reduction |
 | `fractional_fft_price` | 256 | Batched fractional-phase transform on shared grid |
@@ -230,8 +237,9 @@ The following `method` names have explicit NumPy/CuPy vectorized implementations
 | `aad_delta` | 20,000 | Vectorized closed-form delta with regularization |
 | `neural_sde_calibration_price` | 20,000 | Vectorized BSM pricing at calibrated effective vol |
 
-- **GPU Threshold**: minimum batch size before `gpu_vectorized` is selected in the current strategy logic (when `backend` is `auto` or `gpu` and CuPy is available).
-- Methods not listed above use the C++ scalar path, dispatched as `threaded` or `sequential` depending on method class and batch size.
+- **GPU Threshold**: used only when a vectorized path is eligible in strategy selection.
+- In the current implementation, `auto` prefers native C++ batch for mapped methods and `backend="gpu"` forces GPU for supported methods, so thresholds are largely informational unless native mapping/policy changes.
+- Methods not listed above use native C++ batch (or threaded/sequential fallback if native batch is unavailable).
 
 Install CuPy (optional, for GPU backend):
 ```bash
@@ -248,6 +256,11 @@ jobs = [
 ]
 prices = qk.price_batch("black_scholes_merton_price", jobs, backend="auto")
 print(prices)
+```
+
+To force GPU for a supported method:
+```python
+prices = qk.price_batch("black_scholes_merton_price", jobs, backend="gpu")
 ```
 
 Run CPU vs GPU runtime simulation:

@@ -20,10 +20,13 @@ def test_bsm_batch_matches_scalar_qk(qk):
     assert np.allclose(batch, scalar, atol=1e-6, rtol=1e-6)
 
 
-def test_heston_uses_threaded_strategy_for_large_batch(qk):
+def test_native_batch_strategy_preferred_on_cpu(qk):
+    """On CPU, suggest_strategy should return native_batch for methods with C++ batch support."""
     accel = QuantAccelerator(qk=qk, backend="cpu")
-    assert accel.suggest_strategy("heston_price_cf", 16) == "sequential"
-    assert accel.suggest_strategy("heston_price_cf", 128) == "threaded"
+    assert accel.suggest_strategy("heston_price_cf", 16) == "native_batch"
+    assert accel.suggest_strategy("heston_price_cf", 128) == "native_batch"
+    assert accel.suggest_strategy("black_scholes_merton_price", 1) == "native_batch"
+    assert accel.suggest_strategy("crr_price", 1000) == "native_batch"
 
 
 def test_heston_batch_matches_scalar_qk(qk):
@@ -65,6 +68,47 @@ def test_heston_batch_matches_scalar_qk(qk):
     scalar = np.array([qk.heston_price_cf(**j) for j in jobs], dtype=np.float64)
 
     assert np.allclose(batch, scalar, atol=1e-10, rtol=1e-10)
+
+
+def test_heston_cpu_vectorized_matches_scalar(qk):
+    """Heston CuPy/NumPy vectorized path should closely match C++ scalar."""
+    accel = QuantAccelerator(qk=qk, backend="cpu")
+    jobs = [
+        {
+            "spot": 100.0, "strike": 100.0, "t": 1.0, "r": 0.02, "q": 0.01,
+            "v0": 0.04, "kappa": 2.0, "theta": 0.04, "sigma": 0.5, "rho": -0.5,
+            "option_type": QK_CALL, "integration_steps": 2048, "integration_limit": 120.0,
+        },
+        {
+            "spot": 95.0, "strike": 100.0, "t": 0.75, "r": 0.015, "q": 0.005,
+            "v0": 0.05, "kappa": 1.8, "theta": 0.04, "sigma": 0.45, "rho": -0.3,
+            "option_type": QK_PUT, "integration_steps": 2048, "integration_limit": 120.0,
+        },
+    ]
+    # Force cpu_vectorized by using the vectorized path directly
+    out = accel._vectorized_price("heston_price_cf", jobs, use_gpu=False)
+    scalar = np.array([qk.heston_price_cf(**j) for j in jobs], dtype=np.float64)
+    assert np.allclose(out, scalar, atol=0.01, rtol=0.01)
+
+
+def test_variance_gamma_cpu_vectorized_matches_scalar(qk):
+    """Variance Gamma CuPy/NumPy vectorized path should closely match C++ scalar."""
+    accel = QuantAccelerator(qk=qk, backend="cpu")
+    jobs = [
+        {
+            "spot": 100.0, "strike": 100.0, "t": 1.0, "r": 0.03, "q": 0.01,
+            "sigma": 0.2, "theta": -0.1, "nu": 0.2, "option_type": QK_CALL,
+            "integration_steps": 2048, "integration_limit": 120.0,
+        },
+        {
+            "spot": 95.0, "strike": 100.0, "t": 0.5, "r": 0.02, "q": 0.0,
+            "sigma": 0.25, "theta": -0.15, "nu": 0.3, "option_type": QK_PUT,
+            "integration_steps": 2048, "integration_limit": 120.0,
+        },
+    ]
+    out = accel._vectorized_price("variance_gamma_price_cf", jobs, use_gpu=False)
+    scalar = np.array([qk.variance_gamma_price_cf(**j) for j in jobs], dtype=np.float64)
+    assert np.allclose(out, scalar, atol=0.05, rtol=0.05)
 
 
 def test_unknown_method_raises(qk):
@@ -185,6 +229,17 @@ def test_gpu_backend_raises_without_cupy_for_mlm_method(qk):
         accel.price_batch("deep_bsde_price", jobs)
 
 
+def test_gpu_backend_raises_for_non_vectorizable_method(qk):
+    """backend='gpu' must raise for non-vectorizable methods even with CuPy available."""
+    accel = QuantAccelerator(qk=qk, backend="gpu")
+    # Simulate CuPy available
+    accel._cp = np
+    with pytest.raises(RuntimeError, match="not supported"):
+        accel.suggest_strategy("explicit_fd_price", 100)
+    with pytest.raises(RuntimeError, match="not supported"):
+        accel.suggest_strategy("deep_bsde_price", 100)
+
+
 # --- Native batch routing completeness tests ---
 
 def test_native_batch_routing_covers_all_families(qk):
@@ -271,3 +326,74 @@ def test_empty_batch_returns_empty(qk):
     result = accel.price_batch("black_scholes_merton_price", [])
     assert result.shape == (0,)
     assert result.dtype == np.float64
+
+
+# --- Strategy table completeness ---
+
+def test_all_vectorized_methods_have_implementation(qk):
+    """Every method in _VECTORIZED_METHODS must be handled in _vectorized_price."""
+    accel = QuantAccelerator(qk=qk, backend="cpu")
+    # Use a single trivial job per vectorized method — should not raise RuntimeError
+    # about missing implementation.
+    common = {
+        "spot": 100.0, "strike": 100.0, "t": 1.0, "vol": 0.2,
+        "r": 0.03, "q": 0.01, "option_type": QK_CALL,
+    }
+    extra_params = {
+        "black_scholes_merton_price": {},
+        "black76_price": {"forward": 100.0},
+        "bachelier_price": {"forward": 100.0, "normal_vol": 20.0},
+        "sabr_hagan_lognormal_iv": {"forward": 100.0, "alpha": 0.2, "beta": 0.5, "rho": -0.3, "nu": 0.4},
+        "sabr_hagan_black76_price": {"forward": 100.0, "alpha": 0.2, "beta": 0.5, "rho": -0.3, "nu": 0.4},
+        "dupire_local_vol": {"call_price": 10.0, "dC_dT": 5.0, "dC_dK": -0.03, "d2C_dK2": 0.02},
+        "merton_jump_diffusion_price": {"jump_intensity": 1.0, "jump_mean": 0.0, "jump_vol": 0.1, "max_terms": 10},
+        "heston_price_cf": {"v0": 0.04, "kappa": 2.0, "theta": 0.04, "sigma": 0.5, "rho": -0.5,
+                            "integration_steps": 256, "integration_limit": 80.0},
+        "variance_gamma_price_cf": {"sigma": 0.2, "theta": -0.1, "nu": 0.2,
+                                     "integration_steps": 256, "integration_limit": 80.0},
+        "carr_madan_fft_price": {"grid_size": 64, "eta": 0.25, "alpha": 1.5},
+        "cos_method_fang_oosterlee_price": {"n_terms": 64, "truncation_width": 10.0},
+        "fractional_fft_price": {"grid_size": 64, "eta": 0.25, "lambda_": 0.05, "alpha": 1.5},
+        "lewis_fourier_inversion_price": {"integration_steps": 256, "integration_limit": 200.0},
+        "hilbert_transform_price": {"integration_steps": 256, "integration_limit": 200.0},
+        "standard_monte_carlo_price": {"paths": 1024, "seed": 42},
+        "euler_maruyama_price": {"paths": 1024, "steps": 10, "seed": 42},
+        "milstein_price": {"paths": 1024, "steps": 10, "seed": 42},
+        "importance_sampling_price": {"paths": 1024, "shift": 0.3, "seed": 42},
+        "control_variates_price": {"paths": 1024, "seed": 42},
+        "antithetic_variates_price": {"paths": 1024, "seed": 42},
+        "stratified_sampling_price": {"paths": 1024, "seed": 42},
+        "polynomial_chaos_expansion_price": {"polynomial_order": 4, "quadrature_points": 16},
+        "radial_basis_function_price": {"centers": 8, "rbf_shape": 1.0, "ridge": 1e-4},
+        "sparse_grid_collocation_price": {"level": 3, "nodes_per_dim": 5},
+        "proper_orthogonal_decomposition_price": {"modes": 4, "snapshots": 16},
+        "pathwise_derivative_delta": {"paths": 1024, "seed": 42},
+        "likelihood_ratio_delta": {"paths": 1024, "seed": 42, "weight_clip": 6.0},
+        "aad_delta": {"regularization": 1e-6},
+        "neural_sde_calibration_price": {"target_implied_vol": 0.2},
+    }
+    missing = []
+    for method in accel._VECTORIZED_METHODS:
+        params = dict(common)
+        # Remove params that forward-based methods don't use
+        if method in ("black76_price",):
+            params.pop("q", None)
+        if method in ("bachelier_price", "sabr_hagan_lognormal_iv",
+                       "sabr_hagan_black76_price"):
+            params.pop("vol", None)
+            params.pop("q", None)
+        if method == "dupire_local_vol":
+            params.pop("spot", None)
+            params.pop("vol", None)
+            params.pop("option_type", None)
+        if method == "sabr_hagan_lognormal_iv":
+            params.pop("option_type", None)
+            params.pop("r", None)
+        if method in extra_params:
+            params.update(extra_params[method])
+        try:
+            accel._vectorized_price(method, [params], use_gpu=False)
+        except RuntimeError as e:
+            if "not implemented" in str(e).lower():
+                missing.append(method)
+    assert not missing, f"_VECTORIZED_METHODS without _vectorized_price implementation: {missing}"

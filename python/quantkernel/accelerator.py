@@ -129,6 +129,8 @@ class QuantAccelerator:
         "sabr_hagan_black76_price",
         "dupire_local_vol",
         "merton_jump_diffusion_price",
+        "heston_price_cf",
+        "variance_gamma_price_cf",
         "carr_madan_fft_price",
         "cos_method_fang_oosterlee_price",
         "fractional_fft_price",
@@ -152,8 +154,6 @@ class QuantAccelerator:
     }
 
     _HIGH_PARALLEL_METHODS = {
-        "heston_price_cf",
-        "variance_gamma_price_cf",
         "adi_douglas_price",
         "adi_craig_sneyd_price",
         "adi_hundsdorfer_verwer_price",
@@ -191,6 +191,8 @@ class QuantAccelerator:
         "sabr_hagan_black76_price": 15_000,
         "dupire_local_vol": 30_000,
         "merton_jump_diffusion_price": 10_000,
+        "heston_price_cf": 256,
+        "variance_gamma_price_cf": 256,
         "carr_madan_fft_price": 512,
         "cos_method_fang_oosterlee_price": 1_024,
         "fractional_fft_price": 256,
@@ -299,10 +301,26 @@ class QuantAccelerator:
     def suggest_strategy(self, method: str, batch_size: int) -> str:
         """Return chosen strategy for a method and batch size.
 
-        Strategies: ``gpu_vectorized``, ``cpu_vectorized``, ``threaded``, ``sequential``.
+        Strategies: ``gpu_vectorized``, ``cpu_vectorized``, ``native_batch``,
+        ``threaded``, ``sequential``.
         """
+        # GPU backend: only vectorized methods are GPU-capable.
+        if self.backend == "gpu":
+            if method in self._VECTORIZED_METHODS:
+                return "gpu_vectorized"
+            raise RuntimeError(
+                f"backend='gpu' not supported for method '{method}' "
+                f"(no GPU vectorization available; use backend='auto' or 'cpu')"
+            )
+
+        # CPU / auto: prefer native C++ batch (exact scalar parity).
+        batch_name = self._NATIVE_BATCH_METHODS.get(method)
+        if batch_name is not None and hasattr(self.qk, batch_name):
+            return "native_batch"
+
+        # Vectorized CPU/GPU fallback when native batch unavailable.
         if method in self._VECTORIZED_METHODS:
-            if self.backend in {"auto", "gpu"} and self.gpu_available:
+            if self.backend == "auto" and self.gpu_available:
                 gpu_threshold = self._GPU_THRESHOLDS.get(method, 25_000)
                 if batch_size >= gpu_threshold:
                     return "gpu_vectorized"
@@ -334,16 +352,14 @@ class QuantAccelerator:
         if n == 0:
             return np.empty((0,), dtype=np.float64)
 
-        # Prefer native C++ batch when available (CPU path — exact scalar parity)
-        if self.backend != "gpu":
-            batch_method_name = self._NATIVE_BATCH_METHODS.get(method)
-            if batch_method_name is not None and hasattr(self.qk, batch_method_name):
-                batch_fn = getattr(self.qk, batch_method_name)
-                keys = list(jobs[0].keys())
-                arrays = {k: [job[k] for job in jobs] for k in keys}
-                return batch_fn(**arrays)
-
         strategy = self.suggest_strategy(method, n)
+
+        if strategy == "native_batch":
+            batch_method_name = self._NATIVE_BATCH_METHODS[method]
+            batch_fn = getattr(self.qk, batch_method_name)
+            keys = list(jobs[0].keys())
+            arrays = {k: [job[k] for job in jobs] for k in keys}
+            return batch_fn(**arrays)
 
         if strategy == "gpu_vectorized":
             out = self._vectorized_price(method, jobs, use_gpu=True)
@@ -606,6 +622,103 @@ class QuantAccelerator:
                 result = result + weight * bsm
 
             return result
+
+        if method == "heston_price_cf":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            v0 = self._column(xp, jobs, "v0")
+            kappa = self._column(xp, jobs, "kappa")
+            theta = self._column(xp, jobs, "theta")
+            sigma = self._column(xp, jobs, "sigma")
+            rho = self._column(xp, jobs, "rho")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            integration_steps = int(self._assert_uniform_param(jobs, "integration_steps", 1024))
+            integration_limit = float(self._assert_uniform_param(jobs, "integration_limit", 120.0))
+
+            # Lewis (2001) representation: single integral, no P1/P2 split.
+            u_grid = xp.linspace(1e-10, integration_limit, integration_steps, dtype=np.float64)
+            du = integration_limit / float(integration_steps - 1)
+            u = u_grid[None, :]
+            x = xp.log(spot / strike)[:, None]
+
+            # Evaluate Heston CF at arg = u - 0.5i
+            arg = u - 0.5j
+            kappa_b = kappa[:, None]
+            theta_b = theta[:, None]
+            sigma_b = sigma[:, None]
+            rho_b = rho[:, None]
+            v0_b = v0[:, None]
+            t_b = t[:, None]
+            r_b = r[:, None]
+            q_b = q[:, None]
+            sigma2 = sigma_b * sigma_b
+
+            xi = kappa_b - rho_b * sigma_b * 1j * arg
+            d = xp.sqrt(xi * xi + sigma2 * (1j * arg + arg * arg))
+            g = (xi - d) / (xi + d)
+            exp_dt = xp.exp(-d * t_b)
+            C = (kappa_b * theta_b / sigma2) * (
+                (xi - d) * t_b - 2.0 * xp.log((1.0 - g * exp_dt) / (1.0 - g))
+            )
+            D = ((xi - d) / sigma2) * ((1.0 - exp_dt) / (1.0 - g * exp_dt))
+            psi = xp.exp(1j * arg * (r_b - q_b) * t_b + C + D * v0_b)
+
+            integrand = xp.real(xp.exp(1j * u * x) * psi / (u * u + 0.25))
+            integral = du * (
+                0.5 * integrand[:, 0] + xp.sum(integrand[:, 1:-1], axis=1) + 0.5 * integrand[:, -1]
+            )
+            call = xp.maximum(
+                spot * xp.exp(-q * t) - xp.sqrt(spot * strike) * xp.exp(-r * t) * integral / math.pi,
+                0.0,
+            )
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            return xp.where(option_type == QK_CALL, call, put)
+
+        if method == "variance_gamma_price_cf":
+            spot = self._column(xp, jobs, "spot")
+            strike = self._column(xp, jobs, "strike")
+            t = self._column(xp, jobs, "t")
+            r = self._column(xp, jobs, "r")
+            q = self._column(xp, jobs, "q")
+            vg_sigma = self._column(xp, jobs, "sigma")
+            vg_theta = self._column(xp, jobs, "theta")
+            nu = self._column(xp, jobs, "nu")
+            option_type = self._column(xp, jobs, "option_type", dtype=np.int32)
+            integration_steps = int(self._assert_uniform_param(jobs, "integration_steps", 1024))
+            integration_limit = float(self._assert_uniform_param(jobs, "integration_limit", 120.0))
+
+            # Lewis (2001) representation with VG characteristic function.
+            u_grid = xp.linspace(1e-10, integration_limit, integration_steps, dtype=np.float64)
+            du = integration_limit / float(integration_steps - 1)
+            u = u_grid[None, :]
+            x = xp.log(spot / strike)[:, None]
+
+            arg = u - 0.5j
+            sigma_b = vg_sigma[:, None]
+            theta_b = vg_theta[:, None]
+            nu_b = nu[:, None]
+            t_b = t[:, None]
+            r_b = r[:, None]
+            q_b = q[:, None]
+            omega = xp.log(1.0 - theta_b * nu_b - 0.5 * sigma_b * sigma_b * nu_b) / nu_b
+
+            vg_base = 1.0 - 1j * theta_b * nu_b * arg + 0.5 * sigma_b * sigma_b * nu_b * arg * arg
+            vg_cf = xp.power(vg_base, -t_b / nu_b)
+            psi = xp.exp(1j * arg * (r_b - q_b + omega) * t_b) * vg_cf
+
+            integrand = xp.real(xp.exp(1j * u * x) * psi / (u * u + 0.25))
+            integral = du * (
+                0.5 * integrand[:, 0] + xp.sum(integrand[:, 1:-1], axis=1) + 0.5 * integrand[:, -1]
+            )
+            call = xp.maximum(
+                spot * xp.exp(-q * t) - xp.sqrt(spot * strike) * xp.exp(-r * t) * integral / math.pi,
+                0.0,
+            )
+            put = call - spot * xp.exp(-q * t) + strike * xp.exp(-r * t)
+            return xp.where(option_type == QK_CALL, call, put)
 
         if method == "carr_madan_fft_price":
             spot = self._column(xp, jobs, "spot")
