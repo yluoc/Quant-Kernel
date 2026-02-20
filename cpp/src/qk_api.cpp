@@ -265,7 +265,7 @@ int32_t qk_cf_heston_price_cf_batch(const double* spot, const double* strike,
     QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
                         option_type, integration_steps, integration_limit, out_prices);
     QK_BATCH_VALIDATE_N(n);
-    #pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for if(n >= 512) schedule(static)
     for (int32_t i = 0; i < n; ++i) {
         qk::cfa::HestonParams params{};
         params.v0 = v0[i]; params.kappa = kappa[i]; params.theta = theta[i];
