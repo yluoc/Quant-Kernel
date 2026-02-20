@@ -1,5 +1,10 @@
 # QuantKernel
 
+> If you are using this kernel and it helps you, give it a star.
+
+> [!WARNING]
+> Issues are welcome, PR's not available yet.
+
 QuantKernel is a C++17 quant pricing kernel with a Python wrapper.  
 Linux/macOS is recommended.
 
