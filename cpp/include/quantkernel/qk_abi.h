@@ -9,7 +9,7 @@
 
 /* ABI version — bump major on breaking changes, minor on additions */
 #define QK_ABI_MAJOR 2
-#define QK_ABI_MINOR 9
+#define QK_ABI_MINOR 10
 
 /* Return codes */
 #define QK_OK             0

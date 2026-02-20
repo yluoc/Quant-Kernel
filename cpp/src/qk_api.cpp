@@ -42,11 +42,41 @@ static void set_error_bad_size(int32_t n) {
 #define QK_BATCH_NULL_CHECK_1(a) \
     do { if (!(a)) { set_error_null_ptr(#a); return QK_ERR_NULL_PTR; } } while(0)
 
+#define QK_BATCH_NULL_CHECK_INNER(ptrs, n, ...) \
+    do { const char* _all_names[] = {__VA_ARGS__}; \
+         for (size_t _i = 0; _i < (n); ++_i) \
+             if (!(ptrs)[_i]) { set_error_null_ptr(_all_names[_i]); return QK_ERR_NULL_PTR; } \
+    } while(0)
+
+/* Stringify each argument individually so _names[_i] works correctly. */
+#define QK_BNCS_1(a) #a
+#define QK_BNCS_2(a,b) #a,#b
+#define QK_BNCS_3(a,b,c) #a,#b,#c
+#define QK_BNCS_4(a,b,c,d) #a,#b,#c,#d
+#define QK_BNCS_5(a,b,c,d,e) #a,#b,#c,#d,#e
+#define QK_BNCS_6(a,b,c,d,e,f) #a,#b,#c,#d,#e,#f
+#define QK_BNCS_7(a,b,c,d,e,f,g) #a,#b,#c,#d,#e,#f,#g
+#define QK_BNCS_8(a,b,c,d,e,f,g,h) #a,#b,#c,#d,#e,#f,#g,#h
+#define QK_BNCS_9(a,b,c,d,e,f,g,h,i) #a,#b,#c,#d,#e,#f,#g,#h,#i
+#define QK_BNCS_10(a,b,c,d,e,f,g,h,i,j) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j
+#define QK_BNCS_11(a,b,c,d,e,f,g,h,i,j,k) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j,#k
+#define QK_BNCS_12(a,b,c,d,e,f,g,h,i,j,k,l) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j,#k,#l
+#define QK_BNCS_13(a,b,c,d,e,f,g,h,i,j,k,l,m) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j,#k,#l,#m
+#define QK_BNCS_14(a,b,c,d,e,f,g,h,i,j,k,l,m,nn) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j,#k,#l,#m,#nn
+#define QK_BNCS_15(a,b,c,d,e,f,g,h,i,j,k,l,m,nn,o) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j,#k,#l,#m,#nn,#o
+#define QK_BNCS_16(a,b,c,d,e,f,g,h,i,j,k,l,m,nn,o,p) #a,#b,#c,#d,#e,#f,#g,#h,#i,#j,#k,#l,#m,#nn,#o,#p
+
+#define QK_BNC_COUNT(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,N,...) N
+#define QK_BNC_N(...) QK_BNC_COUNT(__VA_ARGS__,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1)
+#define QK_BNC_CAT(a,b) a##b
+#define QK_BNC_SEL(n) QK_BNC_CAT(QK_BNCS_,n)
+#define QK_BNC_EXPAND(...) __VA_ARGS__
+#define QK_BNC_NAMES2(n,...) QK_BNC_EXPAND(QK_BNC_SEL(n)(__VA_ARGS__))
+#define QK_BNC_NAMES(...) QK_BNC_NAMES2(QK_BNC_N(__VA_ARGS__),__VA_ARGS__)
+
 #define QK_BATCH_NULL_CHECK(...) \
     do { const void* _ptrs[] = {__VA_ARGS__}; \
-         const char* _names[] = {#__VA_ARGS__}; \
-         for (size_t _i = 0; _i < sizeof(_ptrs)/sizeof(_ptrs[0]); ++_i) \
-             if (!_ptrs[_i]) { set_error_null_ptr(_names[0]); return QK_ERR_NULL_PTR; } \
+         QK_BATCH_NULL_CHECK_INNER(_ptrs, sizeof(_ptrs)/sizeof(_ptrs[0]), QK_BNC_NAMES(__VA_ARGS__)); \
     } while(0)
 
 namespace {
@@ -590,6 +620,151 @@ double qk_fdm_psor_price(double spot, double strike, double t, double vol,
                          double omega, double tol, int32_t max_iter) {
     return qk::fdm::psor_price(spot, strike, t, vol, r, q, option_type,
                                time_steps, spot_steps, omega, tol, max_iter);
+}
+
+/* --- Finite Difference batch APIs --- */
+
+int32_t qk_fdm_explicit_fd_price_batch(const double* spot, const double* strike,
+                                         const double* t, const double* vol,
+                                         const double* r, const double* q,
+                                         const int32_t* option_type,
+                                         const int32_t* time_steps, const int32_t* spot_steps,
+                                         const int32_t* american_style,
+                                         int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::fdm::explicit_fd_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            time_steps[i], spot_steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_fdm_implicit_fd_price_batch(const double* spot, const double* strike,
+                                         const double* t, const double* vol,
+                                         const double* r, const double* q,
+                                         const int32_t* option_type,
+                                         const int32_t* time_steps, const int32_t* spot_steps,
+                                         const int32_t* american_style,
+                                         int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::fdm::implicit_fd_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            time_steps[i], spot_steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_fdm_crank_nicolson_price_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type,
+                                            const int32_t* time_steps, const int32_t* spot_steps,
+                                            const int32_t* american_style,
+                                            int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::fdm::crank_nicolson_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            time_steps[i], spot_steps[i], american_style[i] != 0
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_fdm_adi_douglas_price_batch(const double* spot, const double* strike,
+                                          const double* t, const double* r, const double* q,
+                                          const double* v0, const double* kappa,
+                                          const double* theta_v, const double* sigma,
+                                          const double* rho, const int32_t* option_type,
+                                          const int32_t* s_steps, const int32_t* v_steps,
+                                          const int32_t* time_steps,
+                                          int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta_v, sigma, rho,
+                        option_type, s_steps, v_steps, time_steps, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::fdm::ADIHestonParams params{};
+        params.v0 = v0[i]; params.kappa = kappa[i]; params.theta_v = theta_v[i];
+        params.sigma = sigma[i]; params.rho = rho[i];
+        params.s_steps = s_steps[i]; params.v_steps = v_steps[i]; params.time_steps = time_steps[i];
+        out_prices[i] = qk::fdm::adi_douglas_price(spot[i], strike[i], t[i], r[i], q[i], params, option_type[i]);
+    }
+    return QK_OK;
+}
+
+int32_t qk_fdm_adi_craig_sneyd_price_batch(const double* spot, const double* strike,
+                                              const double* t, const double* r, const double* q,
+                                              const double* v0, const double* kappa,
+                                              const double* theta_v, const double* sigma,
+                                              const double* rho, const int32_t* option_type,
+                                              const int32_t* s_steps, const int32_t* v_steps,
+                                              const int32_t* time_steps,
+                                              int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta_v, sigma, rho,
+                        option_type, s_steps, v_steps, time_steps, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::fdm::ADIHestonParams params{};
+        params.v0 = v0[i]; params.kappa = kappa[i]; params.theta_v = theta_v[i];
+        params.sigma = sigma[i]; params.rho = rho[i];
+        params.s_steps = s_steps[i]; params.v_steps = v_steps[i]; params.time_steps = time_steps[i];
+        out_prices[i] = qk::fdm::adi_craig_sneyd_price(spot[i], strike[i], t[i], r[i], q[i], params, option_type[i]);
+    }
+    return QK_OK;
+}
+
+int32_t qk_fdm_adi_hundsdorfer_verwer_price_batch(const double* spot, const double* strike,
+                                                     const double* t, const double* r, const double* q,
+                                                     const double* v0, const double* kappa,
+                                                     const double* theta_v, const double* sigma,
+                                                     const double* rho, const int32_t* option_type,
+                                                     const int32_t* s_steps, const int32_t* v_steps,
+                                                     const int32_t* time_steps,
+                                                     int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta_v, sigma, rho,
+                        option_type, s_steps, v_steps, time_steps, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::fdm::ADIHestonParams params{};
+        params.v0 = v0[i]; params.kappa = kappa[i]; params.theta_v = theta_v[i];
+        params.sigma = sigma[i]; params.rho = rho[i];
+        params.s_steps = s_steps[i]; params.v_steps = v_steps[i]; params.time_steps = time_steps[i];
+        out_prices[i] = qk::fdm::adi_hundsdorfer_verwer_price(spot[i], strike[i], t[i], r[i], q[i], params, option_type[i]);
+    }
+    return QK_OK;
+}
+
+int32_t qk_fdm_psor_price_batch(const double* spot, const double* strike,
+                                  const double* t, const double* vol,
+                                  const double* r, const double* q,
+                                  const int32_t* option_type,
+                                  const int32_t* time_steps, const int32_t* spot_steps,
+                                  const double* omega, const double* tol,
+                                  const int32_t* max_iter,
+                                  int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, omega, tol, max_iter, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::fdm::psor_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
+            time_steps[i], spot_steps[i], omega[i], tol[i], max_iter[i]
+        );
+    }
+    return QK_OK;
 }
 
 /* --- Monte Carlo methods --- */
@@ -1207,6 +1382,286 @@ double qk_mlm_neural_sde_calibration_price(double spot, double strike, double t,
     params.calibration_steps = calibration_steps;
     params.regularization = regularization;
     return qk::mlm::neural_sde_calibration_price(spot, strike, t, vol, r, q, option_type, params);
+}
+
+/* --- Integral quadrature batch APIs --- */
+
+int32_t qk_iqm_gauss_hermite_price_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type,
+                                            const int32_t* n_points,
+                                            int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, n_points, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::iqm::GaussHermiteParams params{};
+        params.n_points = n_points[i];
+        out_prices[i] = qk::iqm::gauss_hermite_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_iqm_gauss_laguerre_price_batch(const double* spot, const double* strike,
+                                             const double* t, const double* vol,
+                                             const double* r, const double* q,
+                                             const int32_t* option_type,
+                                             const int32_t* n_points,
+                                             int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, n_points, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::iqm::GaussLaguerreParams params{};
+        params.n_points = n_points[i];
+        out_prices[i] = qk::iqm::gauss_laguerre_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_iqm_gauss_legendre_price_batch(const double* spot, const double* strike,
+                                             const double* t, const double* vol,
+                                             const double* r, const double* q,
+                                             const int32_t* option_type,
+                                             const int32_t* n_points,
+                                             const double* integration_limit,
+                                             int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, n_points, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::iqm::GaussLegendreParams params{};
+        params.n_points = n_points[i];
+        params.integration_limit = integration_limit[i];
+        out_prices[i] = qk::iqm::gauss_legendre_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_iqm_adaptive_quadrature_price_batch(const double* spot, const double* strike,
+                                                  const double* t, const double* vol,
+                                                  const double* r, const double* q,
+                                                  const int32_t* option_type,
+                                                  const double* abs_tol, const double* rel_tol,
+                                                  const int32_t* max_depth,
+                                                  const double* integration_limit,
+                                                  int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, abs_tol, rel_tol, max_depth, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::iqm::AdaptiveQuadratureParams params{};
+        params.abs_tol = abs_tol[i]; params.rel_tol = rel_tol[i];
+        params.max_depth = max_depth[i]; params.integration_limit = integration_limit[i];
+        out_prices[i] = qk::iqm::adaptive_quadrature_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+/* --- Regression approximation batch APIs --- */
+
+int32_t qk_ram_polynomial_chaos_expansion_price_batch(const double* spot, const double* strike,
+                                                        const double* t, const double* vol,
+                                                        const double* r, const double* q,
+                                                        const int32_t* option_type,
+                                                        const int32_t* polynomial_order,
+                                                        const int32_t* quadrature_points,
+                                                        int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, polynomial_order, quadrature_points, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ram::PolynomialChaosExpansionParams params{};
+        params.polynomial_order = polynomial_order[i]; params.quadrature_points = quadrature_points[i];
+        out_prices[i] = qk::ram::polynomial_chaos_expansion_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_ram_radial_basis_function_price_batch(const double* spot, const double* strike,
+                                                   const double* t, const double* vol,
+                                                   const double* r, const double* q,
+                                                   const int32_t* option_type,
+                                                   const int32_t* centers, const double* rbf_shape,
+                                                   const double* ridge,
+                                                   int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, centers, rbf_shape, ridge, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ram::RadialBasisFunctionParams params{};
+        params.centers = centers[i]; params.rbf_shape = rbf_shape[i]; params.ridge = ridge[i];
+        out_prices[i] = qk::ram::radial_basis_function_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_ram_sparse_grid_collocation_price_batch(const double* spot, const double* strike,
+                                                      const double* t, const double* vol,
+                                                      const double* r, const double* q,
+                                                      const int32_t* option_type,
+                                                      const int32_t* level, const int32_t* nodes_per_dim,
+                                                      int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, level, nodes_per_dim, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ram::SparseGridCollocationParams params{};
+        params.level = level[i]; params.nodes_per_dim = nodes_per_dim[i];
+        out_prices[i] = qk::ram::sparse_grid_collocation_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_ram_proper_orthogonal_decomposition_price_batch(const double* spot, const double* strike,
+                                                             const double* t, const double* vol,
+                                                             const double* r, const double* q,
+                                                             const int32_t* option_type,
+                                                             const int32_t* modes, const int32_t* snapshots,
+                                                             int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, modes, snapshots, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ram::ProperOrthogonalDecompositionParams params{};
+        params.modes = modes[i]; params.snapshots = snapshots[i];
+        out_prices[i] = qk::ram::proper_orthogonal_decomposition_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+/* --- Adjoint Greeks batch APIs --- */
+
+int32_t qk_agm_pathwise_derivative_delta_batch(const double* spot, const double* strike,
+                                                  const double* t, const double* vol,
+                                                  const double* r, const double* q,
+                                                  const int32_t* option_type,
+                                                  const int32_t* paths, const uint64_t* seed,
+                                                  int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::agm::PathwiseDerivativeParams params{};
+        params.paths = paths[i]; params.seed = seed[i];
+        out_prices[i] = qk::agm::pathwise_derivative_delta(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_agm_likelihood_ratio_delta_batch(const double* spot, const double* strike,
+                                               const double* t, const double* vol,
+                                               const double* r, const double* q,
+                                               const int32_t* option_type,
+                                               const int32_t* paths, const uint64_t* seed,
+                                               const double* weight_clip,
+                                               int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, seed, weight_clip, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::agm::LikelihoodRatioParams params{};
+        params.paths = paths[i]; params.seed = seed[i]; params.weight_clip = weight_clip[i];
+        out_prices[i] = qk::agm::likelihood_ratio_delta(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_agm_aad_delta_batch(const double* spot, const double* strike,
+                                  const double* t, const double* vol,
+                                  const double* r, const double* q,
+                                  const int32_t* option_type,
+                                  const int32_t* tape_steps, const double* regularization,
+                                  int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, tape_steps, regularization, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp simd
+    for (int32_t i = 0; i < n; ++i) {
+        qk::agm::AadParams params{};
+        params.tape_steps = tape_steps[i]; params.regularization = regularization[i];
+        out_prices[i] = qk::agm::aad_delta(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+/* --- Machine learning batch APIs --- */
+
+int32_t qk_mlm_deep_bsde_price_batch(const double* spot, const double* strike,
+                                        const double* t, const double* vol,
+                                        const double* r, const double* q,
+                                        const int32_t* option_type,
+                                        const int32_t* time_steps, const int32_t* hidden_width,
+                                        const int32_t* training_epochs, const double* learning_rate,
+                                        int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, time_steps, hidden_width, training_epochs, learning_rate, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::mlm::DeepBsdeParams params{};
+        params.time_steps = time_steps[i]; params.hidden_width = hidden_width[i];
+        params.training_epochs = training_epochs[i]; params.learning_rate = learning_rate[i];
+        out_prices[i] = qk::mlm::deep_bsde_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_mlm_pinns_price_batch(const double* spot, const double* strike,
+                                    const double* t, const double* vol,
+                                    const double* r, const double* q,
+                                    const int32_t* option_type,
+                                    const int32_t* collocation_points, const int32_t* boundary_points,
+                                    const int32_t* epochs, const double* loss_balance,
+                                    int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, collocation_points, boundary_points, epochs, loss_balance, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::mlm::PinnsParams params{};
+        params.collocation_points = collocation_points[i]; params.boundary_points = boundary_points[i];
+        params.epochs = epochs[i]; params.loss_balance = loss_balance[i];
+        out_prices[i] = qk::mlm::pinns_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_mlm_deep_hedging_price_batch(const double* spot, const double* strike,
+                                           const double* t, const double* vol,
+                                           const double* r, const double* q,
+                                           const int32_t* option_type,
+                                           const int32_t* rehedge_steps, const double* risk_aversion,
+                                           const int32_t* scenarios, const uint64_t* seed,
+                                           int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, rehedge_steps, risk_aversion, scenarios, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::mlm::DeepHedgingParams params{};
+        params.rehedge_steps = rehedge_steps[i]; params.risk_aversion = risk_aversion[i];
+        params.scenarios = scenarios[i]; params.seed = seed[i];
+        out_prices[i] = qk::mlm::deep_hedging_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
+}
+
+int32_t qk_mlm_neural_sde_calibration_price_batch(const double* spot, const double* strike,
+                                                     const double* t, const double* vol,
+                                                     const double* r, const double* q,
+                                                     const int32_t* option_type,
+                                                     const double* target_implied_vol,
+                                                     const int32_t* calibration_steps,
+                                                     const double* regularization,
+                                                     int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, target_implied_vol, calibration_steps, regularization, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::mlm::NeuralSdeCalibrationParams params{};
+        params.target_implied_vol = target_implied_vol[i]; params.calibration_steps = calibration_steps[i];
+        params.regularization = regularization[i];
+        out_prices[i] = qk::mlm::neural_sde_calibration_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], params);
+    }
+    return QK_OK;
 }
 
 } /* extern "C" */

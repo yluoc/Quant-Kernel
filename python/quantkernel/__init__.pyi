@@ -472,6 +472,153 @@ class QuantKernel:
         regularization: float = ...,
     ) -> float: ...
 
+    # --- Finite Difference batch ---
+    def explicit_fd_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, time_steps: ArrayLike,
+        spot_steps: ArrayLike, american_style: ArrayLike,
+    ) -> np.ndarray: ...
+    def implicit_fd_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, time_steps: ArrayLike,
+        spot_steps: ArrayLike, american_style: ArrayLike,
+    ) -> np.ndarray: ...
+    def crank_nicolson_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, time_steps: ArrayLike,
+        spot_steps: ArrayLike, american_style: ArrayLike,
+    ) -> np.ndarray: ...
+    def adi_douglas_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta_v: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, s_steps: ArrayLike,
+        v_steps: ArrayLike, time_steps: ArrayLike,
+    ) -> np.ndarray: ...
+    def adi_craig_sneyd_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta_v: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, s_steps: ArrayLike,
+        v_steps: ArrayLike, time_steps: ArrayLike,
+    ) -> np.ndarray: ...
+    def adi_hundsdorfer_verwer_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta_v: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, s_steps: ArrayLike,
+        v_steps: ArrayLike, time_steps: ArrayLike,
+    ) -> np.ndarray: ...
+    def psor_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, time_steps: ArrayLike,
+        spot_steps: ArrayLike, omega: ArrayLike, tol: ArrayLike,
+        max_iter: ArrayLike,
+    ) -> np.ndarray: ...
+
+    # --- Integral Quadrature batch ---
+    def gauss_hermite_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, n_points: ArrayLike,
+    ) -> np.ndarray: ...
+    def gauss_laguerre_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, n_points: ArrayLike,
+    ) -> np.ndarray: ...
+    def gauss_legendre_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, n_points: ArrayLike,
+        integration_limit: ArrayLike,
+    ) -> np.ndarray: ...
+    def adaptive_quadrature_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, abs_tol: ArrayLike,
+        rel_tol: ArrayLike, max_depth: ArrayLike,
+        integration_limit: ArrayLike,
+    ) -> np.ndarray: ...
+
+    # --- Regression Approximation batch ---
+    def polynomial_chaos_expansion_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, polynomial_order: ArrayLike,
+        quadrature_points: ArrayLike,
+    ) -> np.ndarray: ...
+    def radial_basis_function_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, centers: ArrayLike,
+        rbf_shape: ArrayLike, ridge: ArrayLike,
+    ) -> np.ndarray: ...
+    def sparse_grid_collocation_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, level: ArrayLike,
+        nodes_per_dim: ArrayLike,
+    ) -> np.ndarray: ...
+    def proper_orthogonal_decomposition_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, modes: ArrayLike,
+        snapshots: ArrayLike,
+    ) -> np.ndarray: ...
+
+    # --- Adjoint Greeks batch ---
+    def pathwise_derivative_delta_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, paths: ArrayLike, seed: ArrayLike,
+    ) -> np.ndarray: ...
+    def likelihood_ratio_delta_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, paths: ArrayLike, seed: ArrayLike,
+        weight_clip: ArrayLike,
+    ) -> np.ndarray: ...
+    def aad_delta_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, tape_steps: ArrayLike,
+        regularization: ArrayLike,
+    ) -> np.ndarray: ...
+
+    # --- Machine Learning batch ---
+    def deep_bsde_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, time_steps: ArrayLike,
+        hidden_width: ArrayLike, training_epochs: ArrayLike,
+        learning_rate: ArrayLike,
+    ) -> np.ndarray: ...
+    def pinns_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, collocation_points: ArrayLike,
+        boundary_points: ArrayLike, epochs: ArrayLike,
+        loss_balance: ArrayLike,
+    ) -> np.ndarray: ...
+    def deep_hedging_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, rehedge_steps: ArrayLike,
+        risk_aversion: ArrayLike, scenarios: ArrayLike,
+        seed: ArrayLike,
+    ) -> np.ndarray: ...
+    def neural_sde_calibration_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, target_implied_vol: ArrayLike,
+        calibration_steps: ArrayLike, regularization: ArrayLike,
+    ) -> np.ndarray: ...
+
     # --- Accelerator ---
     def get_accelerator(
         self, backend: str = ..., max_workers: int | None = ...,

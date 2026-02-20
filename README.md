@@ -3,12 +3,15 @@
 QuantKernel is a C++17 quant pricing kernel with a Python wrapper.  
 Linux/macOS is recommended.
 
-**v2.9** highlights:
+**v2.10** highlights:
 - SIMD-vectorized closed-form batch loops (`#pragma omp simd`)
 - OpenMP thread-parallel heavy batch APIs (tree, MC, Fourier, Heston, Merton, VG)
 - Thread-local error messages via `qk_get_last_error()` / `qk_clear_last_error()`
 - Typed Python exceptions (`QKNullPointerError`, `QKBadSizeError`, `QKInvalidInputError`)
-- C++ unit test suite (5 suites, 31 tests) integrated with `ctest`
+- Full API parity: 53 scalar + 53 native batch APIs across all algorithm families
+- C++ unit test suite (6 executables) integrated with `ctest`
+- CI parity guard to prevent scalar/batch/accelerator/test wiring drift
+- Deterministic perf regression guard (fails if batch paths regress past 5% vs scalar baseline)
 - PEP 561 type stubs for IDE autocompletion
 - `pyproject.toml` for modern packaging
 
@@ -85,6 +88,11 @@ PYTHONPATH=python python3 python/examples/run_all_algos.py --profile quick
   - **Fourier-transform**: `carr_madan_fft_price_batch`, `cos_method_fang_oosterlee_price_batch`, `fractional_fft_price_batch`, `lewis_fourier_inversion_price_batch`, `hilbert_transform_price_batch`
   - **Tree/lattice**: `crr_price_batch`, `jarrow_rudd_price_batch`, `tian_price_batch`, `leisen_reimer_price_batch`, `trinomial_tree_price_batch`, `derman_kani_const_local_vol_price_batch`
   - **Monte Carlo**: `standard_monte_carlo_price_batch`, `euler_maruyama_price_batch`, `milstein_price_batch`, `longstaff_schwartz_price_batch`, `quasi_monte_carlo_sobol_price_batch`, `quasi_monte_carlo_halton_price_batch`, `multilevel_monte_carlo_price_batch`, `importance_sampling_price_batch`, `control_variates_price_batch`, `antithetic_variates_price_batch`, `stratified_sampling_price_batch`
+  - **Finite-difference**: `explicit_fd_price_batch`, `implicit_fd_price_batch`, `crank_nicolson_price_batch`, `adi_douglas_price_batch`, `adi_craig_sneyd_price_batch`, `adi_hundsdorfer_verwer_price_batch`, `psor_price_batch`
+  - **Integral quadrature**: `gauss_hermite_price_batch`, `gauss_laguerre_price_batch`, `gauss_legendre_price_batch`, `adaptive_quadrature_price_batch`
+  - **Regression approximation**: `polynomial_chaos_expansion_price_batch`, `radial_basis_function_price_batch`, `sparse_grid_collocation_price_batch`, `proper_orthogonal_decomposition_price_batch`
+  - **Adjoint Greeks**: `pathwise_derivative_delta_batch`, `likelihood_ratio_delta_batch`, `aad_delta_batch`
+  - **Machine-learning**: `deep_bsde_price_batch`, `pinns_price_batch`, `deep_hedging_price_batch`, `neural_sde_calibration_price_batch`
 
 Build optional Cython native module (releases GIL during long batch calls):
 ```bash
@@ -286,10 +294,15 @@ print(f'Wrote {len(merged)} entries to compile_commands.json')
 
 If you're using VS Code, create a local `.vscode/c_cpp_properties.json` and set `compileCommands` to `${workspaceFolder}/compile_commands.json` (the `.vscode/` directory is ignored by default since it contains machine-specific paths).
 
+For tools expecting a singular file name, keep `compile_command.json` in sync:
+```bash
+cp build/compile_commands.json compile_command.json
+```
+
 ## Tests
 
 ### C++ Unit Tests
-Five test suites covering closed-form, tree/lattice, Monte Carlo, Fourier, and error handling:
+Six C++ test executables covering closed-form, tree/lattice, Monte Carlo, Fourier, error handling, and FDM/IQM/RAM/AGM/MLM parity:
 
 ```bash
 make test-cpp
@@ -306,11 +319,12 @@ make test-py     # Python tests only
 Deterministic native batch/perf checks:
 ```bash
 PYTHONPATH=python QK_LIB_PATH=$QK_ROOT/build/cpp \
-pytest -q python/tests/test_batch_api.py python/tests/test_perf_regression.py
+pytest -q python/tests/test_parity_guard.py python/tests/test_batch_api.py python/tests/test_perf_regression.py
 ```
 
 CI runs deterministic fuzz/property checks (`FUZZTEST_PRNG_SEED` fixed), batch
-accuracy checks, and performance regression guards.
+accuracy checks, parity guards, and a deterministic performance guard that fails
+if batch paths regress to less than 5% faster than scalar baseline.
 
 ## Build Optimization
 

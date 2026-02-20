@@ -55,6 +55,33 @@ QK_TEST(get_last_error_after_null) {
     QK_ASSERT_TRUE(std::strlen(msg) > 0);
 }
 
+QK_TEST(null_ptr_identifies_correct_parameter) {
+    double spot[] = {100.0};
+    double strike[] = {100.0};
+    double t[] = {1.0};
+    double vol[] = {0.2};
+    double r[] = {0.05};
+    double q[] = {0.0};
+    int32_t ot[] = {QK_CALL};
+    double out[1];
+
+    // Pass nullptr for vol (4th param) — error message should mention "vol"
+    qk_clear_last_error();
+    int32_t rc = qk_cf_black_scholes_merton_price_batch(spot, strike, t, nullptr, r, q, ot, 1, out);
+    QK_ASSERT_EQ(rc, QK_ERR_NULL_PTR);
+    const char* msg = qk_get_last_error();
+    QK_ASSERT_TRUE(std::strstr(msg, "null") != nullptr);
+    // The message should NOT say "spot" since spot is valid
+    QK_ASSERT_TRUE(std::strstr(msg, "spot") == nullptr);
+
+    // Pass nullptr for out_prices (last param)
+    qk_clear_last_error();
+    rc = qk_cf_black_scholes_merton_price_batch(spot, strike, t, vol, r, q, ot, 1, nullptr);
+    QK_ASSERT_EQ(rc, QK_ERR_NULL_PTR);
+    msg = qk_get_last_error();
+    QK_ASSERT_TRUE(std::strstr(msg, "out_prices") != nullptr);
+}
+
 QK_TEST(get_last_error_after_bad_size) {
     double spot[] = {100.0};
     double strike[] = {100.0};

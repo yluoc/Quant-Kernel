@@ -218,6 +218,60 @@ _FUNCTION_SIGNATURES = [
     ("qk_mlm_pinns_price", D, _mlm_common + [I32, I32, I32, D]),
     ("qk_mlm_deep_hedging_price", D, _mlm_common + [I32, D, I32, U64]),
     ("qk_mlm_neural_sde_calibration_price", D, _mlm_common + [D, I32, D]),
+
+    # --- Finite Difference batch ---
+    ("qk_fdm_explicit_fd_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
+    ("qk_fdm_implicit_fd_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
+    ("qk_fdm_crank_nicolson_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
+    ("qk_fdm_adi_douglas_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
+    ("qk_fdm_adi_craig_sneyd_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
+    ("qk_fdm_adi_hundsdorfer_verwer_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
+    ("qk_fdm_psor_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PD, PD, PI32, I32, PD]),
+
+    # --- Integral Quadrature batch ---
+    ("qk_iqm_gauss_hermite_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, I32, PD]),
+    ("qk_iqm_gauss_laguerre_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, I32, PD]),
+    ("qk_iqm_gauss_legendre_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PD, I32, PD]),
+    ("qk_iqm_adaptive_quadrature_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PD, PD, PI32, PD, I32, PD]),
+
+    # --- Regression Approximation batch ---
+    ("qk_ram_polynomial_chaos_expansion_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, I32, PD]),
+    ("qk_ram_radial_basis_function_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PD, PD, I32, PD]),
+    ("qk_ram_sparse_grid_collocation_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, I32, PD]),
+    ("qk_ram_proper_orthogonal_decomposition_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, I32, PD]),
+
+    # --- Adjoint Greeks batch ---
+    ("qk_agm_pathwise_derivative_delta_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PU64, I32, PD]),
+    ("qk_agm_likelihood_ratio_delta_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PU64, PD, I32, PD]),
+    ("qk_agm_aad_delta_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PD, I32, PD]),
+
+    # --- Machine Learning batch ---
+    ("qk_mlm_deep_bsde_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, PD, I32, PD]),
+    ("qk_mlm_pinns_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, PD, I32, PD]),
+    ("qk_mlm_deep_hedging_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PI32, PD, PI32, PU64, I32, PD]),
+    ("qk_mlm_neural_sde_calibration_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PI32, PD, PI32, PD, I32, PD]),
 ]
 
 

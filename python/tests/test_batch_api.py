@@ -419,3 +419,234 @@ def test_lewis_hilbert_batch(qk):
                            float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
                            int(isteps[i]), float(ilimit[i])) for i in range(n)])
         assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12), f"{method}_price_batch mismatch"
+
+
+def test_fdm_batch_apis(qk):
+    rng = np.random.default_rng(500)
+    n = 16
+    spot = rng.uniform(90.0, 110.0, n)
+    strike = rng.uniform(90.0, 110.0, n)
+    tau = rng.uniform(0.25, 1.0, n)
+    vol = rng.uniform(0.15, 0.4, n)
+    r = rng.uniform(0.01, 0.05, n)
+    q = rng.uniform(0.0, 0.02, n)
+    ot = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+    time_steps = np.full(n, 50, dtype=np.int32)
+    spot_steps = np.full(n, 50, dtype=np.int32)
+    american_style = (np.arange(n) & 1).astype(np.int32)
+
+    for method in ("explicit_fd", "implicit_fd", "crank_nicolson"):
+        batch_fn = getattr(qk, f"{method}_price_batch")
+        scalar_fn = getattr(qk, f"{method}_price")
+        batch = batch_fn(spot, strike, tau, vol, r, q, ot, time_steps, spot_steps, american_style)
+        scalar = np.array([scalar_fn(float(spot[i]), float(strike[i]), float(tau[i]), float(vol[i]),
+                           float(r[i]), float(q[i]), int(ot[i]), int(time_steps[i]), int(spot_steps[i]),
+                           bool(american_style[i])) for i in range(n)])
+        assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12), f"{method}_price_batch mismatch"
+
+    v0 = rng.uniform(0.02, 0.08, n)
+    kappa = rng.uniform(1.0, 3.0, n)
+    theta_v = rng.uniform(0.02, 0.08, n)
+    sigma = rng.uniform(0.2, 0.5, n)
+    rho = rng.uniform(-0.8, -0.3, n)
+    s_steps = np.full(n, 20, dtype=np.int32)
+    v_steps = np.full(n, 10, dtype=np.int32)
+    time_steps_adi = np.full(n, 20, dtype=np.int32)
+
+    for method in ("adi_douglas", "adi_craig_sneyd", "adi_hundsdorfer_verwer"):
+        batch_fn = getattr(qk, f"{method}_price_batch")
+        scalar_fn = getattr(qk, f"{method}_price")
+        batch = batch_fn(spot, strike, tau, r, q, v0, kappa, theta_v, sigma, rho, ot, s_steps, v_steps, time_steps_adi)
+        scalar = np.array([scalar_fn(float(spot[i]), float(strike[i]), float(tau[i]),
+                           float(r[i]), float(q[i]), float(v0[i]), float(kappa[i]), float(theta_v[i]),
+                           float(sigma[i]), float(rho[i]), int(ot[i]), int(s_steps[i]), int(v_steps[i]),
+                           int(time_steps_adi[i])) for i in range(n)])
+        assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12), f"{method}_price_batch mismatch"
+
+    omega = np.full(n, 1.2)
+    tol = np.full(n, 1e-8)
+    max_iter = np.full(n, 10000, dtype=np.int32)
+    batch = qk.psor_price_batch(spot, strike, tau, vol, r, q, ot, time_steps, spot_steps, omega, tol, max_iter)
+    scalar = np.array([qk.psor_price(float(spot[i]), float(strike[i]), float(tau[i]), float(vol[i]),
+                       float(r[i]), float(q[i]), int(ot[i]), int(time_steps[i]), int(spot_steps[i]),
+                       float(omega[i]), float(tol[i]), int(max_iter[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+
+def test_iqm_batch_apis(qk):
+    rng = np.random.default_rng(600)
+    n = 16
+    spot = rng.uniform(90.0, 110.0, n)
+    strike = rng.uniform(90.0, 110.0, n)
+    tau = rng.uniform(0.25, 1.0, n)
+    vol = rng.uniform(0.15, 0.4, n)
+    r = rng.uniform(0.01, 0.05, n)
+    q = rng.uniform(0.0, 0.02, n)
+    ot = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+
+    n_points = np.full(n, 64, dtype=np.int32)
+    batch = qk.gauss_hermite_price_batch(spot, strike, tau, vol, r, q, ot, n_points)
+    scalar = np.array([qk.gauss_hermite_price(float(spot[i]), float(strike[i]), float(tau[i]), float(vol[i]),
+                       float(r[i]), float(q[i]), int(ot[i]), int(n_points[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    n_points = np.full(n, 32, dtype=np.int32)
+    batch = qk.gauss_laguerre_price_batch(spot, strike, tau, vol, r, q, ot, n_points)
+    scalar = np.array([qk.gauss_laguerre_price(float(spot[i]), float(strike[i]), float(tau[i]), float(vol[i]),
+                       float(r[i]), float(q[i]), int(ot[i]), int(n_points[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    n_points = np.full(n, 64, dtype=np.int32)
+    integration_limit = np.full(n, 200.0)
+    batch = qk.gauss_legendre_price_batch(spot, strike, tau, vol, r, q, ot, n_points, integration_limit)
+    scalar = np.array([qk.gauss_legendre_price(float(spot[i]), float(strike[i]), float(tau[i]), float(vol[i]),
+                       float(r[i]), float(q[i]), int(ot[i]), int(n_points[i]),
+                       float(integration_limit[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    abs_tol = np.full(n, 1e-9)
+    rel_tol = np.full(n, 1e-8)
+    max_depth = np.full(n, 14, dtype=np.int32)
+    integration_limit = np.full(n, 200.0)
+    batch = qk.adaptive_quadrature_price_batch(spot, strike, tau, vol, r, q, ot, abs_tol, rel_tol, max_depth, integration_limit)
+    scalar = np.array([qk.adaptive_quadrature_price(float(spot[i]), float(strike[i]), float(tau[i]), float(vol[i]),
+                       float(r[i]), float(q[i]), int(ot[i]), float(abs_tol[i]), float(rel_tol[i]),
+                       int(max_depth[i]), float(integration_limit[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+
+def test_ram_batch_apis(qk):
+    rng = np.random.default_rng(700)
+    n = 16
+    spot = rng.uniform(90.0, 110.0, n)
+    strike = rng.uniform(90.0, 110.0, n)
+    tau = rng.uniform(0.25, 1.0, n)
+    vol = rng.uniform(0.15, 0.4, n)
+    r = rng.uniform(0.01, 0.05, n)
+    q = rng.uniform(0.0, 0.02, n)
+    ot = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+
+    polynomial_order = np.full(n, 4, dtype=np.int32)
+    quadrature_points = np.full(n, 32, dtype=np.int32)
+    batch = qk.polynomial_chaos_expansion_price_batch(spot, strike, tau, vol, r, q, ot, polynomial_order, quadrature_points)
+    scalar = np.array([qk.polynomial_chaos_expansion_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(polynomial_order[i]), int(quadrature_points[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    centers = np.full(n, 24, dtype=np.int32)
+    rbf_shape = np.full(n, 1.0)
+    ridge = np.full(n, 1e-4)
+    batch = qk.radial_basis_function_price_batch(spot, strike, tau, vol, r, q, ot, centers, rbf_shape, ridge)
+    scalar = np.array([qk.radial_basis_function_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(centers[i]), float(rbf_shape[i]), float(ridge[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    level = np.full(n, 3, dtype=np.int32)
+    nodes_per_dim = np.full(n, 9, dtype=np.int32)
+    batch = qk.sparse_grid_collocation_price_batch(spot, strike, tau, vol, r, q, ot, level, nodes_per_dim)
+    scalar = np.array([qk.sparse_grid_collocation_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(level[i]), int(nodes_per_dim[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    modes = np.full(n, 8, dtype=np.int32)
+    snapshots = np.full(n, 64, dtype=np.int32)
+    batch = qk.proper_orthogonal_decomposition_price_batch(spot, strike, tau, vol, r, q, ot, modes, snapshots)
+    scalar = np.array([qk.proper_orthogonal_decomposition_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(modes[i]), int(snapshots[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+
+def test_agm_batch_apis(qk):
+    rng = np.random.default_rng(800)
+    n = 8
+    spot = rng.uniform(90.0, 110.0, n)
+    strike = rng.uniform(90.0, 110.0, n)
+    tau = rng.uniform(0.25, 1.0, n)
+    vol = rng.uniform(0.15, 0.4, n)
+    r = rng.uniform(0.01, 0.05, n)
+    q = rng.uniform(0.0, 0.02, n)
+    ot = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+
+    paths = np.full(n, 2048, dtype=np.int32)
+    seed_arr = (np.arange(n, dtype=np.uint64) + np.uint64(42))
+    batch = qk.pathwise_derivative_delta_batch(spot, strike, tau, vol, r, q, ot, paths, seed_arr)
+    scalar = np.array([qk.pathwise_derivative_delta(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(paths[i]), int(seed_arr[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    paths = np.full(n, 2048, dtype=np.int32)
+    seed_arr = (np.arange(n, dtype=np.uint64) + np.uint64(42))
+    weight_clip = np.full(n, 6.0)
+    batch = qk.likelihood_ratio_delta_batch(spot, strike, tau, vol, r, q, ot, paths, seed_arr, weight_clip)
+    scalar = np.array([qk.likelihood_ratio_delta(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(paths[i]), int(seed_arr[i]), float(weight_clip[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    tape_steps = np.full(n, 64, dtype=np.int32)
+    regularization = np.full(n, 1e-6)
+    batch = qk.aad_delta_batch(spot, strike, tau, vol, r, q, ot, tape_steps, regularization)
+    scalar = np.array([qk.aad_delta(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(tape_steps[i]), float(regularization[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+
+def test_mlm_batch_apis(qk):
+    rng = np.random.default_rng(900)
+    n = 8
+    spot = rng.uniform(90.0, 110.0, n)
+    strike = rng.uniform(90.0, 110.0, n)
+    tau = rng.uniform(0.25, 1.0, n)
+    vol = rng.uniform(0.15, 0.4, n)
+    r = rng.uniform(0.01, 0.05, n)
+    q = rng.uniform(0.0, 0.02, n)
+    ot = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+
+    time_steps = np.full(n, 10, dtype=np.int32)
+    hidden_width = np.full(n, 16, dtype=np.int32)
+    training_epochs = np.full(n, 20, dtype=np.int32)
+    learning_rate = np.full(n, 5e-3)
+    batch = qk.deep_bsde_price_batch(spot, strike, tau, vol, r, q, ot, time_steps, hidden_width, training_epochs, learning_rate)
+    scalar = np.array([qk.deep_bsde_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(time_steps[i]), int(hidden_width[i]), int(training_epochs[i]),
+                       float(learning_rate[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    collocation_points = np.full(n, 500, dtype=np.int32)
+    boundary_points = np.full(n, 50, dtype=np.int32)
+    epochs = np.full(n, 30, dtype=np.int32)
+    loss_balance = np.full(n, 1.0)
+    batch = qk.pinns_price_batch(spot, strike, tau, vol, r, q, ot, collocation_points, boundary_points, epochs, loss_balance)
+    scalar = np.array([qk.pinns_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(collocation_points[i]), int(boundary_points[i]), int(epochs[i]),
+                       float(loss_balance[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    rehedge_steps = np.full(n, 10, dtype=np.int32)
+    risk_aversion = np.full(n, 0.5)
+    scenarios = np.full(n, 1000, dtype=np.int32)
+    seed_arr = (np.arange(n, dtype=np.uint64) + np.uint64(42))
+    batch = qk.deep_hedging_price_batch(spot, strike, tau, vol, r, q, ot, rehedge_steps, risk_aversion, scenarios, seed_arr)
+    scalar = np.array([qk.deep_hedging_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       int(rehedge_steps[i]), float(risk_aversion[i]), int(scenarios[i]),
+                       int(seed_arr[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)
+
+    target_implied_vol = np.full(n, 0.2)
+    calibration_steps = np.full(n, 50, dtype=np.int32)
+    regularization = np.full(n, 1e-3)
+    batch = qk.neural_sde_calibration_price_batch(spot, strike, tau, vol, r, q, ot, target_implied_vol, calibration_steps, regularization)
+    scalar = np.array([qk.neural_sde_calibration_price(float(spot[i]), float(strike[i]), float(tau[i]),
+                       float(vol[i]), float(r[i]), float(q[i]), int(ot[i]),
+                       float(target_implied_vol[i]), int(calibration_steps[i]),
+                       float(regularization[i])) for i in range(n)])
+    assert np.allclose(batch, scalar, atol=1e-12, rtol=1e-12)

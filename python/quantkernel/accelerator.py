@@ -219,6 +219,71 @@ class QuantAccelerator:
         "default": 256,
     }
 
+    _NATIVE_BATCH_METHODS = {
+        # Closed-form
+        "black_scholes_merton_price": "black_scholes_merton_price_batch",
+        "black76_price": "black76_price_batch",
+        "bachelier_price": "bachelier_price_batch",
+        "heston_price_cf": "heston_price_cf_batch",
+        "merton_jump_diffusion_price": "merton_jump_diffusion_price_batch",
+        "variance_gamma_price_cf": "variance_gamma_price_cf_batch",
+        "sabr_hagan_lognormal_iv": "sabr_hagan_lognormal_iv_batch",
+        "sabr_hagan_black76_price": "sabr_hagan_black76_price_batch",
+        "dupire_local_vol": "dupire_local_vol_batch",
+        # Tree/Lattice
+        "crr_price": "crr_price_batch",
+        "jarrow_rudd_price": "jarrow_rudd_price_batch",
+        "tian_price": "tian_price_batch",
+        "leisen_reimer_price": "leisen_reimer_price_batch",
+        "trinomial_tree_price": "trinomial_tree_price_batch",
+        "derman_kani_const_local_vol_price": "derman_kani_const_local_vol_price_batch",
+        # Finite Difference
+        "explicit_fd_price": "explicit_fd_price_batch",
+        "implicit_fd_price": "implicit_fd_price_batch",
+        "crank_nicolson_price": "crank_nicolson_price_batch",
+        "adi_douglas_price": "adi_douglas_price_batch",
+        "adi_craig_sneyd_price": "adi_craig_sneyd_price_batch",
+        "adi_hundsdorfer_verwer_price": "adi_hundsdorfer_verwer_price_batch",
+        "psor_price": "psor_price_batch",
+        # Monte Carlo
+        "standard_monte_carlo_price": "standard_monte_carlo_price_batch",
+        "euler_maruyama_price": "euler_maruyama_price_batch",
+        "milstein_price": "milstein_price_batch",
+        "longstaff_schwartz_price": "longstaff_schwartz_price_batch",
+        "quasi_monte_carlo_sobol_price": "quasi_monte_carlo_sobol_price_batch",
+        "quasi_monte_carlo_halton_price": "quasi_monte_carlo_halton_price_batch",
+        "multilevel_monte_carlo_price": "multilevel_monte_carlo_price_batch",
+        "importance_sampling_price": "importance_sampling_price_batch",
+        "control_variates_price": "control_variates_price_batch",
+        "antithetic_variates_price": "antithetic_variates_price_batch",
+        "stratified_sampling_price": "stratified_sampling_price_batch",
+        # Fourier Transform
+        "carr_madan_fft_price": "carr_madan_fft_price_batch",
+        "cos_method_fang_oosterlee_price": "cos_method_fang_oosterlee_price_batch",
+        "fractional_fft_price": "fractional_fft_price_batch",
+        "lewis_fourier_inversion_price": "lewis_fourier_inversion_price_batch",
+        "hilbert_transform_price": "hilbert_transform_price_batch",
+        # Integral Quadrature
+        "gauss_hermite_price": "gauss_hermite_price_batch",
+        "gauss_laguerre_price": "gauss_laguerre_price_batch",
+        "gauss_legendre_price": "gauss_legendre_price_batch",
+        "adaptive_quadrature_price": "adaptive_quadrature_price_batch",
+        # Regression Approximation
+        "polynomial_chaos_expansion_price": "polynomial_chaos_expansion_price_batch",
+        "radial_basis_function_price": "radial_basis_function_price_batch",
+        "sparse_grid_collocation_price": "sparse_grid_collocation_price_batch",
+        "proper_orthogonal_decomposition_price": "proper_orthogonal_decomposition_price_batch",
+        # Adjoint Greeks
+        "pathwise_derivative_delta": "pathwise_derivative_delta_batch",
+        "likelihood_ratio_delta": "likelihood_ratio_delta_batch",
+        "aad_delta": "aad_delta_batch",
+        # Machine Learning
+        "deep_bsde_price": "deep_bsde_price_batch",
+        "pinns_price": "pinns_price_batch",
+        "deep_hedging_price": "deep_hedging_price_batch",
+        "neural_sde_calibration_price": "neural_sde_calibration_price_batch",
+    }
+
     def __init__(self, qk: QuantKernel | None = None, backend: str = "auto", max_workers: int | None = None):
         if backend not in {"auto", "cpu", "gpu"}:
             raise ValueError("backend must be one of: auto, cpu, gpu")
@@ -263,17 +328,24 @@ class QuantAccelerator:
         """
         if not hasattr(self.qk, method):
             raise AttributeError(f"Unknown method: {method}")
-        if self.backend == "gpu" and method in self._VECTORIZED_METHODS and not self.gpu_available:
+        if self.backend == "gpu" and not self.gpu_available:
             raise RuntimeError("backend='gpu' requested, but CuPy is not available")
         n = len(jobs)
         if n == 0:
             return np.empty((0,), dtype=np.float64)
 
+        # Prefer native C++ batch when available (CPU path — exact scalar parity)
+        if self.backend != "gpu":
+            batch_method_name = self._NATIVE_BATCH_METHODS.get(method)
+            if batch_method_name is not None and hasattr(self.qk, batch_method_name):
+                batch_fn = getattr(self.qk, batch_method_name)
+                keys = list(jobs[0].keys())
+                arrays = {k: [job[k] for job in jobs] for k in keys}
+                return batch_fn(**arrays)
+
         strategy = self.suggest_strategy(method, n)
 
         if strategy == "gpu_vectorized":
-            if self.backend == "gpu" and not self.gpu_available:
-                raise RuntimeError("backend='gpu' requested, but CuPy is not available")
             out = self._vectorized_price(method, jobs, use_gpu=True)
             return np.asarray(out, dtype=np.float64)
 

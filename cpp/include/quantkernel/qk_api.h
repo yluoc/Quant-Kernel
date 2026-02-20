@@ -194,6 +194,60 @@ QK_EXPORT double qk_fdm_psor_price(double spot, double strike, double t, double 
                                    double r, double q, int32_t option_type,
                                    int32_t time_steps, int32_t spot_steps,
                                    double omega, double tol, int32_t max_iter);
+/* --- Finite Difference batch APIs --- */
+QK_EXPORT int32_t qk_fdm_explicit_fd_price_batch(const double* spot, const double* strike,
+                                                   const double* t, const double* vol,
+                                                   const double* r, const double* q,
+                                                   const int32_t* option_type,
+                                                   const int32_t* time_steps, const int32_t* spot_steps,
+                                                   const int32_t* american_style,
+                                                   int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_fdm_implicit_fd_price_batch(const double* spot, const double* strike,
+                                                   const double* t, const double* vol,
+                                                   const double* r, const double* q,
+                                                   const int32_t* option_type,
+                                                   const int32_t* time_steps, const int32_t* spot_steps,
+                                                   const int32_t* american_style,
+                                                   int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_fdm_crank_nicolson_price_batch(const double* spot, const double* strike,
+                                                      const double* t, const double* vol,
+                                                      const double* r, const double* q,
+                                                      const int32_t* option_type,
+                                                      const int32_t* time_steps, const int32_t* spot_steps,
+                                                      const int32_t* american_style,
+                                                      int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_fdm_adi_douglas_price_batch(const double* spot, const double* strike,
+                                                    const double* t, const double* r, const double* q,
+                                                    const double* v0, const double* kappa,
+                                                    const double* theta_v, const double* sigma,
+                                                    const double* rho, const int32_t* option_type,
+                                                    const int32_t* s_steps, const int32_t* v_steps,
+                                                    const int32_t* time_steps,
+                                                    int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_fdm_adi_craig_sneyd_price_batch(const double* spot, const double* strike,
+                                                        const double* t, const double* r, const double* q,
+                                                        const double* v0, const double* kappa,
+                                                        const double* theta_v, const double* sigma,
+                                                        const double* rho, const int32_t* option_type,
+                                                        const int32_t* s_steps, const int32_t* v_steps,
+                                                        const int32_t* time_steps,
+                                                        int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_fdm_adi_hundsdorfer_verwer_price_batch(const double* spot, const double* strike,
+                                                               const double* t, const double* r, const double* q,
+                                                               const double* v0, const double* kappa,
+                                                               const double* theta_v, const double* sigma,
+                                                               const double* rho, const int32_t* option_type,
+                                                               const int32_t* s_steps, const int32_t* v_steps,
+                                                               const int32_t* time_steps,
+                                                               int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_fdm_psor_price_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type,
+                                            const int32_t* time_steps, const int32_t* spot_steps,
+                                            const double* omega, const double* tol,
+                                            const int32_t* max_iter,
+                                            int32_t n, double* out_prices);
 /* --- Monte Carlo methods --- */
 QK_EXPORT double qk_mcm_standard_monte_carlo_price(double spot, double strike, double t, double vol,
                                                    double r, double q, int32_t option_type,
@@ -365,6 +419,34 @@ QK_EXPORT double qk_iqm_adaptive_quadrature_price(double spot, double strike, do
                                                   double r, double q, int32_t option_type,
                                                   double abs_tol, double rel_tol,
                                                   int32_t max_depth, double integration_limit);
+/* --- Integral quadrature batch APIs --- */
+QK_EXPORT int32_t qk_iqm_gauss_hermite_price_batch(const double* spot, const double* strike,
+                                                      const double* t, const double* vol,
+                                                      const double* r, const double* q,
+                                                      const int32_t* option_type,
+                                                      const int32_t* n_points,
+                                                      int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_iqm_gauss_laguerre_price_batch(const double* spot, const double* strike,
+                                                       const double* t, const double* vol,
+                                                       const double* r, const double* q,
+                                                       const int32_t* option_type,
+                                                       const int32_t* n_points,
+                                                       int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_iqm_gauss_legendre_price_batch(const double* spot, const double* strike,
+                                                       const double* t, const double* vol,
+                                                       const double* r, const double* q,
+                                                       const int32_t* option_type,
+                                                       const int32_t* n_points,
+                                                       const double* integration_limit,
+                                                       int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_iqm_adaptive_quadrature_price_batch(const double* spot, const double* strike,
+                                                            const double* t, const double* vol,
+                                                            const double* r, const double* q,
+                                                            const int32_t* option_type,
+                                                            const double* abs_tol, const double* rel_tol,
+                                                            const int32_t* max_depth,
+                                                            const double* integration_limit,
+                                                            int32_t n, double* out_prices);
 /* --- Regression approximation methods --- */
 QK_EXPORT double qk_ram_polynomial_chaos_expansion_price(double spot, double strike, double t, double vol,
                                                          double r, double q, int32_t option_type,
@@ -379,6 +461,33 @@ QK_EXPORT double qk_ram_sparse_grid_collocation_price(double spot, double strike
 QK_EXPORT double qk_ram_proper_orthogonal_decomposition_price(double spot, double strike, double t, double vol,
                                                               double r, double q, int32_t option_type,
                                                               int32_t modes, int32_t snapshots);
+/* --- Regression approximation batch APIs --- */
+QK_EXPORT int32_t qk_ram_polynomial_chaos_expansion_price_batch(const double* spot, const double* strike,
+                                                                  const double* t, const double* vol,
+                                                                  const double* r, const double* q,
+                                                                  const int32_t* option_type,
+                                                                  const int32_t* polynomial_order,
+                                                                  const int32_t* quadrature_points,
+                                                                  int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_ram_radial_basis_function_price_batch(const double* spot, const double* strike,
+                                                             const double* t, const double* vol,
+                                                             const double* r, const double* q,
+                                                             const int32_t* option_type,
+                                                             const int32_t* centers, const double* rbf_shape,
+                                                             const double* ridge,
+                                                             int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_ram_sparse_grid_collocation_price_batch(const double* spot, const double* strike,
+                                                                const double* t, const double* vol,
+                                                                const double* r, const double* q,
+                                                                const int32_t* option_type,
+                                                                const int32_t* level, const int32_t* nodes_per_dim,
+                                                                int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_ram_proper_orthogonal_decomposition_price_batch(const double* spot, const double* strike,
+                                                                       const double* t, const double* vol,
+                                                                       const double* r, const double* q,
+                                                                       const int32_t* option_type,
+                                                                       const int32_t* modes, const int32_t* snapshots,
+                                                                       int32_t n, double* out_prices);
 /* --- Adjoint Greeks methods --- */
 QK_EXPORT double qk_agm_pathwise_derivative_delta(double spot, double strike, double t, double vol,
                                                   double r, double q, int32_t option_type,
@@ -389,6 +498,26 @@ QK_EXPORT double qk_agm_likelihood_ratio_delta(double spot, double strike, doubl
 QK_EXPORT double qk_agm_aad_delta(double spot, double strike, double t, double vol,
                                   double r, double q, int32_t option_type,
                                   int32_t tape_steps, double regularization);
+/* --- Adjoint Greeks batch APIs --- */
+QK_EXPORT int32_t qk_agm_pathwise_derivative_delta_batch(const double* spot, const double* strike,
+                                                            const double* t, const double* vol,
+                                                            const double* r, const double* q,
+                                                            const int32_t* option_type,
+                                                            const int32_t* paths, const uint64_t* seed,
+                                                            int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_agm_likelihood_ratio_delta_batch(const double* spot, const double* strike,
+                                                         const double* t, const double* vol,
+                                                         const double* r, const double* q,
+                                                         const int32_t* option_type,
+                                                         const int32_t* paths, const uint64_t* seed,
+                                                         const double* weight_clip,
+                                                         int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_agm_aad_delta_batch(const double* spot, const double* strike,
+                                            const double* t, const double* vol,
+                                            const double* r, const double* q,
+                                            const int32_t* option_type,
+                                            const int32_t* tape_steps, const double* regularization,
+                                            int32_t n, double* out_prices);
 /* --- Machine learning methods --- */
 QK_EXPORT double qk_mlm_deep_bsde_price(double spot, double strike, double t, double vol,
                                         double r, double q, int32_t option_type,
@@ -407,6 +536,36 @@ QK_EXPORT double qk_mlm_neural_sde_calibration_price(double spot, double strike,
                                                      double target_implied_vol,
                                                      int32_t calibration_steps,
                                                      double regularization);
+/* --- Machine learning batch APIs --- */
+QK_EXPORT int32_t qk_mlm_deep_bsde_price_batch(const double* spot, const double* strike,
+                                                  const double* t, const double* vol,
+                                                  const double* r, const double* q,
+                                                  const int32_t* option_type,
+                                                  const int32_t* time_steps, const int32_t* hidden_width,
+                                                  const int32_t* training_epochs, const double* learning_rate,
+                                                  int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_mlm_pinns_price_batch(const double* spot, const double* strike,
+                                              const double* t, const double* vol,
+                                              const double* r, const double* q,
+                                              const int32_t* option_type,
+                                              const int32_t* collocation_points, const int32_t* boundary_points,
+                                              const int32_t* epochs, const double* loss_balance,
+                                              int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_mlm_deep_hedging_price_batch(const double* spot, const double* strike,
+                                                     const double* t, const double* vol,
+                                                     const double* r, const double* q,
+                                                     const int32_t* option_type,
+                                                     const int32_t* rehedge_steps, const double* risk_aversion,
+                                                     const int32_t* scenarios, const uint64_t* seed,
+                                                     int32_t n, double* out_prices);
+QK_EXPORT int32_t qk_mlm_neural_sde_calibration_price_batch(const double* spot, const double* strike,
+                                                               const double* t, const double* vol,
+                                                               const double* r, const double* q,
+                                                               const int32_t* option_type,
+                                                               const double* target_implied_vol,
+                                                               const int32_t* calibration_steps,
+                                                               const double* regularization,
+                                                               int32_t n, double* out_prices);
 
 #ifdef __cplusplus
 }

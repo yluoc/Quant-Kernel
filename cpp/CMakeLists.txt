@@ -102,6 +102,7 @@ set(QK_TEST_SOURCES
     tests/test_monte_carlo.cpp
     tests/test_fourier.cpp
     tests/test_error_handling.cpp
+    tests/test_fdm_iqm_ram_agm_mlm.cpp
 )
 
 foreach(test_src ${QK_TEST_SOURCES})

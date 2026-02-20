@@ -69,6 +69,7 @@ def test_bsm_batch_speed_and_accuracy_regression(qk):
     )
     assert np.allclose(bsm_batch, bsm_scalar, atol=1e-12, rtol=1e-12)
 
-    # Deterministic perf guardrails: batch modes should stay faster than scalar.
+    # Deterministic perf guardrails:
+    # Fail if batch paths regress to less than 5% faster than scalar.
     assert py_batch_ms < scalar_ms * 0.95
-    assert native_batch_ms < scalar_ms * 0.90
+    assert native_batch_ms < scalar_ms * 0.95

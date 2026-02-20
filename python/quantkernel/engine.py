@@ -1302,3 +1302,395 @@ class QuantKernel:
         if self._native_batch is not None and hasattr(self._native_batch, "stratified_sampling_price_batch"):
             return self._native_batch.stratified_sampling_price_batch(s, k, tau, sigma, rr, qq, ot, pp, sd)
         return self._call_batch_ctypes("qk_mcm_stratified_sampling_price_batch", s, k, tau, sigma, rr, qq, ot, pp, sd)
+
+    # --- Finite Difference batch ---
+
+    def explicit_fd_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ts = self._as_i32_array(time_steps, "time_steps")
+        ss = self._as_i32_array(spot_steps, "spot_steps")
+        am = self._as_i32_array(american_style, "american_style")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, time_steps=ts, spot_steps=ss, american_style=am)
+        if self._native_batch is not None and hasattr(self._native_batch, "explicit_fd_price_batch"):
+            return self._native_batch.explicit_fd_price_batch(s, k, tau, sigma, rr, qq, ot, ts, ss, am)
+        return self._call_batch_ctypes("qk_fdm_explicit_fd_price_batch", s, k, tau, sigma, rr, qq, ot, ts, ss, am)
+
+    def implicit_fd_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ts = self._as_i32_array(time_steps, "time_steps")
+        ss = self._as_i32_array(spot_steps, "spot_steps")
+        am = self._as_i32_array(american_style, "american_style")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, time_steps=ts, spot_steps=ss, american_style=am)
+        if self._native_batch is not None and hasattr(self._native_batch, "implicit_fd_price_batch"):
+            return self._native_batch.implicit_fd_price_batch(s, k, tau, sigma, rr, qq, ot, ts, ss, am)
+        return self._call_batch_ctypes("qk_fdm_implicit_fd_price_batch", s, k, tau, sigma, rr, qq, ot, ts, ss, am)
+
+    def crank_nicolson_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ts = self._as_i32_array(time_steps, "time_steps")
+        ss = self._as_i32_array(spot_steps, "spot_steps")
+        am = self._as_i32_array(american_style, "american_style")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, time_steps=ts, spot_steps=ss, american_style=am)
+        if self._native_batch is not None and hasattr(self._native_batch, "crank_nicolson_price_batch"):
+            return self._native_batch.crank_nicolson_price_batch(s, k, tau, sigma, rr, qq, ot, ts, ss, am)
+        return self._call_batch_ctypes("qk_fdm_crank_nicolson_price_batch", s, k, tau, sigma, rr, qq, ot, ts, ss, am)
+
+    def adi_douglas_price_batch(self, spot, strike, t, r, q, v0, kappa, theta_v, sigma, rho, option_type, s_steps, v_steps, time_steps) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta_v, "theta_v")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        _ss = self._as_i32_array(s_steps, "s_steps")
+        _vs = self._as_i32_array(v_steps, "v_steps")
+        _ts = self._as_i32_array(time_steps, "time_steps")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq, v0=_v0, kappa=_kappa, theta_v=_theta, sigma=_sigma, rho=_rho, option_type=ot, s_steps=_ss, v_steps=_vs, time_steps=_ts)
+        if self._native_batch is not None and hasattr(self._native_batch, "adi_douglas_price_batch"):
+            return self._native_batch.adi_douglas_price_batch(s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _ss, _vs, _ts)
+        return self._call_batch_ctypes("qk_fdm_adi_douglas_price_batch", s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _ss, _vs, _ts)
+
+    def adi_craig_sneyd_price_batch(self, spot, strike, t, r, q, v0, kappa, theta_v, sigma, rho, option_type, s_steps, v_steps, time_steps) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta_v, "theta_v")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        _ss = self._as_i32_array(s_steps, "s_steps")
+        _vs = self._as_i32_array(v_steps, "v_steps")
+        _ts = self._as_i32_array(time_steps, "time_steps")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq, v0=_v0, kappa=_kappa, theta_v=_theta, sigma=_sigma, rho=_rho, option_type=ot, s_steps=_ss, v_steps=_vs, time_steps=_ts)
+        if self._native_batch is not None and hasattr(self._native_batch, "adi_craig_sneyd_price_batch"):
+            return self._native_batch.adi_craig_sneyd_price_batch(s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _ss, _vs, _ts)
+        return self._call_batch_ctypes("qk_fdm_adi_craig_sneyd_price_batch", s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _ss, _vs, _ts)
+
+    def adi_hundsdorfer_verwer_price_batch(self, spot, strike, t, r, q, v0, kappa, theta_v, sigma, rho, option_type, s_steps, v_steps, time_steps) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta_v, "theta_v")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        _ss = self._as_i32_array(s_steps, "s_steps")
+        _vs = self._as_i32_array(v_steps, "v_steps")
+        _ts = self._as_i32_array(time_steps, "time_steps")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq, v0=_v0, kappa=_kappa, theta_v=_theta, sigma=_sigma, rho=_rho, option_type=ot, s_steps=_ss, v_steps=_vs, time_steps=_ts)
+        if self._native_batch is not None and hasattr(self._native_batch, "adi_hundsdorfer_verwer_price_batch"):
+            return self._native_batch.adi_hundsdorfer_verwer_price_batch(s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _ss, _vs, _ts)
+        return self._call_batch_ctypes("qk_fdm_adi_hundsdorfer_verwer_price_batch", s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _ss, _vs, _ts)
+
+    def psor_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, omega, tol, max_iter) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ts = self._as_i32_array(time_steps, "time_steps")
+        ss = self._as_i32_array(spot_steps, "spot_steps")
+        om = self._as_f64_array(omega, "omega")
+        tl = self._as_f64_array(tol, "tol")
+        mi = self._as_i32_array(max_iter, "max_iter")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, time_steps=ts, spot_steps=ss, omega=om, tol=tl, max_iter=mi)
+        if self._native_batch is not None and hasattr(self._native_batch, "psor_price_batch"):
+            return self._native_batch.psor_price_batch(s, k, tau, sigma, rr, qq, ot, ts, ss, om, tl, mi)
+        return self._call_batch_ctypes("qk_fdm_psor_price_batch", s, k, tau, sigma, rr, qq, ot, ts, ss, om, tl, mi)
+
+    # --- Integral Quadrature batch ---
+
+    def gauss_hermite_price_batch(self, spot, strike, t, vol, r, q, option_type, n_points) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        np_ = self._as_i32_array(n_points, "n_points")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, n_points=np_)
+        if self._native_batch is not None and hasattr(self._native_batch, "gauss_hermite_price_batch"):
+            return self._native_batch.gauss_hermite_price_batch(s, k, tau, sigma, rr, qq, ot, np_)
+        return self._call_batch_ctypes("qk_iqm_gauss_hermite_price_batch", s, k, tau, sigma, rr, qq, ot, np_)
+
+    def gauss_laguerre_price_batch(self, spot, strike, t, vol, r, q, option_type, n_points) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        np_ = self._as_i32_array(n_points, "n_points")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, n_points=np_)
+        if self._native_batch is not None and hasattr(self._native_batch, "gauss_laguerre_price_batch"):
+            return self._native_batch.gauss_laguerre_price_batch(s, k, tau, sigma, rr, qq, ot, np_)
+        return self._call_batch_ctypes("qk_iqm_gauss_laguerre_price_batch", s, k, tau, sigma, rr, qq, ot, np_)
+
+    def gauss_legendre_price_batch(self, spot, strike, t, vol, r, q, option_type, n_points, integration_limit) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        np_ = self._as_i32_array(n_points, "n_points")
+        il = self._as_f64_array(integration_limit, "integration_limit")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, n_points=np_, integration_limit=il)
+        if self._native_batch is not None and hasattr(self._native_batch, "gauss_legendre_price_batch"):
+            return self._native_batch.gauss_legendre_price_batch(s, k, tau, sigma, rr, qq, ot, np_, il)
+        return self._call_batch_ctypes("qk_iqm_gauss_legendre_price_batch", s, k, tau, sigma, rr, qq, ot, np_, il)
+
+    def adaptive_quadrature_price_batch(self, spot, strike, t, vol, r, q, option_type, abs_tol, rel_tol, max_depth, integration_limit) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        at = self._as_f64_array(abs_tol, "abs_tol")
+        rt = self._as_f64_array(rel_tol, "rel_tol")
+        md = self._as_i32_array(max_depth, "max_depth")
+        il = self._as_f64_array(integration_limit, "integration_limit")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, abs_tol=at, rel_tol=rt, max_depth=md, integration_limit=il)
+        if self._native_batch is not None and hasattr(self._native_batch, "adaptive_quadrature_price_batch"):
+            return self._native_batch.adaptive_quadrature_price_batch(s, k, tau, sigma, rr, qq, ot, at, rt, md, il)
+        return self._call_batch_ctypes("qk_iqm_adaptive_quadrature_price_batch", s, k, tau, sigma, rr, qq, ot, at, rt, md, il)
+
+    # --- Regression Approximation batch ---
+
+    def polynomial_chaos_expansion_price_batch(self, spot, strike, t, vol, r, q, option_type, polynomial_order, quadrature_points) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        po = self._as_i32_array(polynomial_order, "polynomial_order")
+        qp = self._as_i32_array(quadrature_points, "quadrature_points")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, polynomial_order=po, quadrature_points=qp)
+        if self._native_batch is not None and hasattr(self._native_batch, "polynomial_chaos_expansion_price_batch"):
+            return self._native_batch.polynomial_chaos_expansion_price_batch(s, k, tau, sigma, rr, qq, ot, po, qp)
+        return self._call_batch_ctypes("qk_ram_polynomial_chaos_expansion_price_batch", s, k, tau, sigma, rr, qq, ot, po, qp)
+
+    def radial_basis_function_price_batch(self, spot, strike, t, vol, r, q, option_type, centers, rbf_shape, ridge) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ct_ = self._as_i32_array(centers, "centers")
+        rs = self._as_f64_array(rbf_shape, "rbf_shape")
+        rg = self._as_f64_array(ridge, "ridge")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, centers=ct_, rbf_shape=rs, ridge=rg)
+        if self._native_batch is not None and hasattr(self._native_batch, "radial_basis_function_price_batch"):
+            return self._native_batch.radial_basis_function_price_batch(s, k, tau, sigma, rr, qq, ot, ct_, rs, rg)
+        return self._call_batch_ctypes("qk_ram_radial_basis_function_price_batch", s, k, tau, sigma, rr, qq, ot, ct_, rs, rg)
+
+    def sparse_grid_collocation_price_batch(self, spot, strike, t, vol, r, q, option_type, level, nodes_per_dim) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        lv = self._as_i32_array(level, "level")
+        nd = self._as_i32_array(nodes_per_dim, "nodes_per_dim")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, level=lv, nodes_per_dim=nd)
+        if self._native_batch is not None and hasattr(self._native_batch, "sparse_grid_collocation_price_batch"):
+            return self._native_batch.sparse_grid_collocation_price_batch(s, k, tau, sigma, rr, qq, ot, lv, nd)
+        return self._call_batch_ctypes("qk_ram_sparse_grid_collocation_price_batch", s, k, tau, sigma, rr, qq, ot, lv, nd)
+
+    def proper_orthogonal_decomposition_price_batch(self, spot, strike, t, vol, r, q, option_type, modes, snapshots) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        md = self._as_i32_array(modes, "modes")
+        sn = self._as_i32_array(snapshots, "snapshots")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, modes=md, snapshots=sn)
+        if self._native_batch is not None and hasattr(self._native_batch, "proper_orthogonal_decomposition_price_batch"):
+            return self._native_batch.proper_orthogonal_decomposition_price_batch(s, k, tau, sigma, rr, qq, ot, md, sn)
+        return self._call_batch_ctypes("qk_ram_proper_orthogonal_decomposition_price_batch", s, k, tau, sigma, rr, qq, ot, md, sn)
+
+    # --- Adjoint Greeks batch ---
+
+    def pathwise_derivative_delta_batch(self, spot, strike, t, vol, r, q, option_type, paths, seed) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        pp = self._as_i32_array(paths, "paths")
+        sd = self._as_u64_array(seed, "seed")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, paths=pp, seed=sd)
+        if self._native_batch is not None and hasattr(self._native_batch, "pathwise_derivative_delta_batch"):
+            return self._native_batch.pathwise_derivative_delta_batch(s, k, tau, sigma, rr, qq, ot, pp, sd)
+        return self._call_batch_ctypes("qk_agm_pathwise_derivative_delta_batch", s, k, tau, sigma, rr, qq, ot, pp, sd)
+
+    def likelihood_ratio_delta_batch(self, spot, strike, t, vol, r, q, option_type, paths, seed, weight_clip) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        pp = self._as_i32_array(paths, "paths")
+        sd = self._as_u64_array(seed, "seed")
+        wc = self._as_f64_array(weight_clip, "weight_clip")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, paths=pp, seed=sd, weight_clip=wc)
+        if self._native_batch is not None and hasattr(self._native_batch, "likelihood_ratio_delta_batch"):
+            return self._native_batch.likelihood_ratio_delta_batch(s, k, tau, sigma, rr, qq, ot, pp, sd, wc)
+        return self._call_batch_ctypes("qk_agm_likelihood_ratio_delta_batch", s, k, tau, sigma, rr, qq, ot, pp, sd, wc)
+
+    def aad_delta_batch(self, spot, strike, t, vol, r, q, option_type, tape_steps, regularization) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ts = self._as_i32_array(tape_steps, "tape_steps")
+        rg = self._as_f64_array(regularization, "regularization")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, tape_steps=ts, regularization=rg)
+        if self._native_batch is not None and hasattr(self._native_batch, "aad_delta_batch"):
+            return self._native_batch.aad_delta_batch(s, k, tau, sigma, rr, qq, ot, ts, rg)
+        return self._call_batch_ctypes("qk_agm_aad_delta_batch", s, k, tau, sigma, rr, qq, ot, ts, rg)
+
+    # --- Machine Learning batch ---
+
+    def deep_bsde_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, hidden_width, training_epochs, learning_rate) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ts = self._as_i32_array(time_steps, "time_steps")
+        hw = self._as_i32_array(hidden_width, "hidden_width")
+        te = self._as_i32_array(training_epochs, "training_epochs")
+        lr = self._as_f64_array(learning_rate, "learning_rate")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, time_steps=ts, hidden_width=hw, training_epochs=te, learning_rate=lr)
+        if self._native_batch is not None and hasattr(self._native_batch, "deep_bsde_price_batch"):
+            return self._native_batch.deep_bsde_price_batch(s, k, tau, sigma, rr, qq, ot, ts, hw, te, lr)
+        return self._call_batch_ctypes("qk_mlm_deep_bsde_price_batch", s, k, tau, sigma, rr, qq, ot, ts, hw, te, lr)
+
+    def pinns_price_batch(self, spot, strike, t, vol, r, q, option_type, collocation_points, boundary_points, epochs, loss_balance) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        cp = self._as_i32_array(collocation_points, "collocation_points")
+        bp = self._as_i32_array(boundary_points, "boundary_points")
+        ep = self._as_i32_array(epochs, "epochs")
+        lb = self._as_f64_array(loss_balance, "loss_balance")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, collocation_points=cp, boundary_points=bp, epochs=ep, loss_balance=lb)
+        if self._native_batch is not None and hasattr(self._native_batch, "pinns_price_batch"):
+            return self._native_batch.pinns_price_batch(s, k, tau, sigma, rr, qq, ot, cp, bp, ep, lb)
+        return self._call_batch_ctypes("qk_mlm_pinns_price_batch", s, k, tau, sigma, rr, qq, ot, cp, bp, ep, lb)
+
+    def deep_hedging_price_batch(self, spot, strike, t, vol, r, q, option_type, rehedge_steps, risk_aversion, scenarios, seed) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        rs = self._as_i32_array(rehedge_steps, "rehedge_steps")
+        ra = self._as_f64_array(risk_aversion, "risk_aversion")
+        sc = self._as_i32_array(scenarios, "scenarios")
+        sd = self._as_u64_array(seed, "seed")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, rehedge_steps=rs, risk_aversion=ra, scenarios=sc, seed=sd)
+        if self._native_batch is not None and hasattr(self._native_batch, "deep_hedging_price_batch"):
+            return self._native_batch.deep_hedging_price_batch(s, k, tau, sigma, rr, qq, ot, rs, ra, sc, sd)
+        return self._call_batch_ctypes("qk_mlm_deep_hedging_price_batch", s, k, tau, sigma, rr, qq, ot, rs, ra, sc, sd)
+
+    def neural_sde_calibration_price_batch(self, spot, strike, t, vol, r, q, option_type, target_implied_vol, calibration_steps, regularization) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        ti = self._as_f64_array(target_implied_vol, "target_implied_vol")
+        cs = self._as_i32_array(calibration_steps, "calibration_steps")
+        rg = self._as_f64_array(regularization, "regularization")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq, option_type=ot, target_implied_vol=ti, calibration_steps=cs, regularization=rg)
+        if self._native_batch is not None and hasattr(self._native_batch, "neural_sde_calibration_price_batch"):
+            return self._native_batch.neural_sde_calibration_price_batch(s, k, tau, sigma, rr, qq, ot, ti, cs, rg)
+        return self._call_batch_ctypes("qk_mlm_neural_sde_calibration_price_batch", s, k, tau, sigma, rr, qq, ot, ti, cs, rg)

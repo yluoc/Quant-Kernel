@@ -28,6 +28,12 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
+      - name: Run API parity guard checks
+        env:
+          PYTHONPATH: python
+        run: |
+          python -m pytest -q python/tests/test_parity_guard.py
+
       - name: Build C++ library
         run: make build
 
