@@ -35,7 +35,6 @@ int main(int argc, char** argv) {
         option_type[i] = (i & 1) == 0 ? QK_CALL : QK_PUT;
     }
 
-    // Warmup
     volatile double sink = 0.0;
     for (int32_t i = 0; i < std::min<int32_t>(n, 1024); ++i) {
         sink += qk_cf_black_scholes_merton_price(

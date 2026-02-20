@@ -86,14 +86,12 @@ add_executable(qk_bench_bsm_batch
 target_link_libraries(qk_bench_bsm_batch PRIVATE quantkernel)
 target_include_directories(qk_bench_bsm_batch PRIVATE include)
 
-# --- Expanded benchmarks ---
 add_executable(qk_bench_all
     bench/benchmark_all.cpp
 )
 target_link_libraries(qk_bench_all PRIVATE quantkernel)
 target_include_directories(qk_bench_all PRIVATE include)
 
-# --- C++ unit tests ---
 enable_testing()
 
 set(QK_TEST_SOURCES

@@ -169,7 +169,6 @@ cdef extern from "quantkernel/qk_api.h":
         const int32_t* integration_steps, const double* integration_limit,
         int32_t n, double* out_prices
     ) nogil
-    # --- FDM batch ---
     int32_t qk_fdm_explicit_fd_price_batch(
         const double* spot, const double* strike, const double* t, const double* vol,
         const double* r, const double* q, const int32_t* option_type,
@@ -216,7 +215,6 @@ cdef extern from "quantkernel/qk_api.h":
         const double* omega, const double* tol, const int32_t* max_iter,
         int32_t n, double* out_prices
     ) nogil
-    # --- IQM batch ---
     int32_t qk_iqm_gauss_hermite_price_batch(
         const double* spot, const double* strike, const double* t, const double* vol,
         const double* r, const double* q, const int32_t* option_type,
@@ -242,7 +240,6 @@ cdef extern from "quantkernel/qk_api.h":
         const double* integration_limit,
         int32_t n, double* out_prices
     ) nogil
-    # --- RAM batch ---
     int32_t qk_ram_polynomial_chaos_expansion_price_batch(
         const double* spot, const double* strike, const double* t, const double* vol,
         const double* r, const double* q, const int32_t* option_type,
@@ -267,7 +264,6 @@ cdef extern from "quantkernel/qk_api.h":
         const int32_t* modes, const int32_t* snapshots,
         int32_t n, double* out_prices
     ) nogil
-    # --- AGM batch ---
     int32_t qk_agm_pathwise_derivative_delta_batch(
         const double* spot, const double* strike, const double* t, const double* vol,
         const double* r, const double* q, const int32_t* option_type,
@@ -286,7 +282,6 @@ cdef extern from "quantkernel/qk_api.h":
         const int32_t* tape_steps, const double* regularization,
         int32_t n, double* out_prices
     ) nogil
-    # --- MLM batch ---
     int32_t qk_mlm_deep_bsde_price_batch(
         const double* spot, const double* strike, const double* t, const double* vol,
         const double* r, const double* q, const int32_t* option_type,

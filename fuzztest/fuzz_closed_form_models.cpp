@@ -6,9 +6,7 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-// ---------------------------------------------------------------------------
 // BSM put-call parity: |C - P - (S*e^{-qT} - K*e^{-rT})| < tol
-// ---------------------------------------------------------------------------
 void BsmPutCallParity(double S, double K, double T, double vol, double r, double q) {
     double call = qk::cfa::black_scholes_merton_price(S, K, T, vol, r, q, QK_CALL);
     double put  = qk::cfa::black_scholes_merton_price(S, K, T, vol, r, q, QK_PUT);
@@ -24,9 +22,7 @@ FUZZ_TEST(ClosedForm, BsmPutCallParity)
                  fuzztest::InRange(0.0, 0.15),     // r
                  fuzztest::InRange(0.0, 0.15));     // q
 
-// ---------------------------------------------------------------------------
 // BSM call & put are non-negative
-// ---------------------------------------------------------------------------
 void BsmNonNegative(double S, double K, double T, double vol, double r, double q,
                     int option_type) {
     double price = qk::cfa::black_scholes_merton_price(S, K, T, vol, r, q, option_type);
@@ -41,9 +37,7 @@ FUZZ_TEST(ClosedForm, BsmNonNegative)
                  fuzztest::InRange(0.0, 0.15),
                  fuzztest::ElementOf({QK_CALL, QK_PUT}));
 
-// ---------------------------------------------------------------------------
 // Black76 matches BSM when F = S*e^{(r-q)T}
-// ---------------------------------------------------------------------------
 void Black76MatchesBsm(double S, double K, double T, double vol, double r, double q) {
     double F       = S * std::exp((r - q) * T);
     double bsm     = qk::cfa::black_scholes_merton_price(S, K, T, vol, r, q, QK_CALL);
@@ -58,9 +52,7 @@ FUZZ_TEST(ClosedForm, Black76MatchesBsm)
                  fuzztest::InRange(0.0, 0.15),
                  fuzztest::InRange(0.0, 0.15));
 
-// ---------------------------------------------------------------------------
 // Heston put-call parity
-// ---------------------------------------------------------------------------
 void HestonPutCallParity(double S, double K, double T, double r, double q,
                          double v0, double kappa, double theta, double sigma, double rho) {
     qk::cfa::HestonParams p{};
@@ -84,9 +76,7 @@ FUZZ_TEST(ClosedForm, HestonPutCallParity)
                  fuzztest::InRange(0.1, 1.0),       // sigma
                  fuzztest::InRange(-0.9, -0.1));     // rho
 
-// ---------------------------------------------------------------------------
 // Merton reduces to BSM when lambda = 0
-// ---------------------------------------------------------------------------
 void MertonReducesToBsm(double S, double K, double T, double vol, double r, double q,
                         int option_type) {
     qk::cfa::MertonJumpDiffusionParams p{};
@@ -108,9 +98,7 @@ FUZZ_TEST(ClosedForm, MertonReducesToBsm)
                  fuzztest::InRange(0.0, 0.15),
                  fuzztest::ElementOf({QK_CALL, QK_PUT}));
 
-// ---------------------------------------------------------------------------
 // Variance Gamma put-call parity
-// ---------------------------------------------------------------------------
 void VgPutCallParity(double S, double K, double T, double r, double q) {
     qk::cfa::VarianceGammaParams p{};
     p.sigma = 0.20;
@@ -130,9 +118,7 @@ FUZZ_TEST(ClosedForm, VgPutCallParity)
                  fuzztest::InRange(0.0, 0.15),
                  fuzztest::InRange(0.0, 0.15));
 
-// ---------------------------------------------------------------------------
 // SABR implied vol is positive
-// ---------------------------------------------------------------------------
 void SabrIvPositive(double F, double K, double T) {
     qk::cfa::SABRParams p{};
     p.alpha = 0.20;
@@ -148,9 +134,7 @@ FUZZ_TEST(ClosedForm, SabrIvPositive)
                  fuzztest::InRange(50.0, 200.0),    // K
                  fuzztest::InRange(0.1, 3.0));       // T
 
-// ---------------------------------------------------------------------------
 // Dupire recovers constant BS vol (fixed-param regression, not fuzzed)
-// ---------------------------------------------------------------------------
 TEST(ClosedForm, DupireRecoversConstantVol) {
     const double S = 100.0;
     const double sigma = 0.25;

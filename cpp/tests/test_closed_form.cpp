@@ -48,7 +48,6 @@ QK_TEST(bachelier_call_known) {
     QK_ASSERT_TRUE(price > 0.0 && price < 100.0);
 }
 
-// Batch consistency: batch output matches scalar output
 QK_TEST(bsm_batch_matches_scalar) {
     const int32_t n = 8;
     double spot[] = {100, 105, 95, 110, 90, 100, 100, 100};

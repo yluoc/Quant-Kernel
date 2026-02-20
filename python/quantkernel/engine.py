@@ -508,7 +508,6 @@ class QuantKernel:
             "qk_cf_dupire_local_vol_batch", k, tau, _cp, _dt, _dk, _d2k, rr, qq
         )
 
-    # --- Fourier transform methods ---
 
     def carr_madan_fft_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
@@ -655,7 +654,6 @@ class QuantKernel:
             return self._native_batch.hilbert_transform_price_batch(s, k, tau, sigma, rr, qq, ot, _is, _il)
         return self._call_batch_ctypes("qk_ftm_hilbert_transform_price_batch", s, k, tau, sigma, rr, qq, ot, _is, _il)
 
-    # --- Integral quadrature methods ---
 
     def gauss_hermite_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
@@ -695,7 +693,6 @@ class QuantKernel:
             abs_tol, rel_tol, max_depth, integration_limit
         )
 
-    # --- Regression approximation methods ---
 
     def polynomial_chaos_expansion_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
@@ -733,7 +730,6 @@ class QuantKernel:
             spot, strike, t, vol, r, q, option_type, modes, snapshots
         )
 
-    # --- Adjoint Greeks methods ---
 
     def pathwise_derivative_delta(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
@@ -762,7 +758,6 @@ class QuantKernel:
             spot, strike, t, vol, r, q, option_type, tape_steps, regularization
         )
 
-    # --- Machine learning methods ---
 
     def deep_bsde_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
@@ -914,7 +909,6 @@ class QuantKernel:
         return self._tree_price_batch("qk_tlm_derman_kani_const_local_vol_price_batch", "derman_kani_const_local_vol_price_batch",
                                       spot, strike, t, local_vol, r, q, option_type, steps, american_style)
 
-    # --- Finite Difference methods ---
 
     def _fdm_price(
         self, fn_name: str, spot: float, strike: float, t: float, vol: float,
@@ -999,7 +993,6 @@ class QuantKernel:
             time_steps, spot_steps, omega, tol, max_iter
         )
 
-    # --- Monte Carlo methods ---
 
     def _mc_price(
         self, fn_name: str, spot: float, strike: float, t: float, vol: float,
@@ -1303,7 +1296,6 @@ class QuantKernel:
             return self._native_batch.stratified_sampling_price_batch(s, k, tau, sigma, rr, qq, ot, pp, sd)
         return self._call_batch_ctypes("qk_mcm_stratified_sampling_price_batch", s, k, tau, sigma, rr, qq, ot, pp, sd)
 
-    # --- Finite Difference batch ---
 
     def explicit_fd_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")
@@ -1438,7 +1430,6 @@ class QuantKernel:
             return self._native_batch.psor_price_batch(s, k, tau, sigma, rr, qq, ot, ts, ss, om, tl, mi)
         return self._call_batch_ctypes("qk_fdm_psor_price_batch", s, k, tau, sigma, rr, qq, ot, ts, ss, om, tl, mi)
 
-    # --- Integral Quadrature batch ---
 
     def gauss_hermite_price_batch(self, spot, strike, t, vol, r, q, option_type, n_points) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")
@@ -1504,7 +1495,6 @@ class QuantKernel:
             return self._native_batch.adaptive_quadrature_price_batch(s, k, tau, sigma, rr, qq, ot, at, rt, md, il)
         return self._call_batch_ctypes("qk_iqm_adaptive_quadrature_price_batch", s, k, tau, sigma, rr, qq, ot, at, rt, md, il)
 
-    # --- Regression Approximation batch ---
 
     def polynomial_chaos_expansion_price_batch(self, spot, strike, t, vol, r, q, option_type, polynomial_order, quadrature_points) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")
@@ -1571,7 +1561,6 @@ class QuantKernel:
             return self._native_batch.proper_orthogonal_decomposition_price_batch(s, k, tau, sigma, rr, qq, ot, md, sn)
         return self._call_batch_ctypes("qk_ram_proper_orthogonal_decomposition_price_batch", s, k, tau, sigma, rr, qq, ot, md, sn)
 
-    # --- Adjoint Greeks batch ---
 
     def pathwise_derivative_delta_batch(self, spot, strike, t, vol, r, q, option_type, paths, seed) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")
@@ -1622,7 +1611,6 @@ class QuantKernel:
             return self._native_batch.aad_delta_batch(s, k, tau, sigma, rr, qq, ot, ts, rg)
         return self._call_batch_ctypes("qk_agm_aad_delta_batch", s, k, tau, sigma, rr, qq, ot, ts, rg)
 
-    # --- Machine Learning batch ---
 
     def deep_bsde_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, hidden_width, training_epochs, learning_rate) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")

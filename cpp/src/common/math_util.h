@@ -7,7 +7,6 @@
 
 namespace qk {
 
-/* --- NaN-safe helpers (safe under -ffast-math) --- */
 
 /* Write a NaN into *dst using memcpy to avoid -ffast-math optimizing it away */
 inline void write_nan(double* dst) {
@@ -15,7 +14,6 @@ inline void write_nan(double* dst) {
     std::memcpy(dst, &nan_bits, sizeof(double));
 }
 
-/* Check finiteness in integer domain (works under -ffast-math) */
 inline bool is_finite_safe(double x) {
     uint64_t bits;
     std::memcpy(&bits, &x, sizeof(double));
@@ -23,7 +21,6 @@ inline bool is_finite_safe(double x) {
     return (bits & exp_mask) != exp_mask;
 }
 
-/* --- Standard normal distribution --- */
 
 // Fast norm_cdf using Abramowitz & Stegun rational approximation (7.1.26)
 // Max error ~1.5e-7, much faster than std::erfc

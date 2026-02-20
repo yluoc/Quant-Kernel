@@ -9,7 +9,6 @@
 
 void MlmMethodsAreFiniteAndNonNegative(double S, double K, double T, double vol, double r,
                                         double q, int option_type) {
-    // Use small network params for speed
     qk::mlm::PinnsParams pinns{200, 40, 20, 1.0};
     qk::mlm::DeepHedgingParams dh{4, 0.5, 512, 42};
     qk::mlm::NeuralSdeCalibrationParams nsde{vol, 50, 1e-3};

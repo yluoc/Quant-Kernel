@@ -79,12 +79,10 @@ _agm_common = [D, D, D, D, D, D, I32]
 _mlm_common = [D, D, D, D, D, D, I32]
 
 _FUNCTION_SIGNATURES = [
-    # --- ABI & plugin ---
     ("qk_abi_version", None, [ct.POINTER(I32), ct.POINTER(I32)]),
     ("qk_get_last_error", ct.c_char_p, []),
     ("qk_clear_last_error", None, []),
 
-    # --- Closed-form scalar ---
     ("qk_cf_black_scholes_merton_price", D, _cf_common),
     ("qk_cf_black76_price", D, [D, D, D, D, D, I32]),
     ("qk_cf_bachelier_price", D, [D, D, D, D, D, I32]),
@@ -95,7 +93,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_cf_sabr_hagan_black76_price", D, [D, D, D, D, D, D, D, D, I32]),
     ("qk_cf_dupire_local_vol", D, [D, D, D, D, D, D, D, D]),
 
-    # --- Closed-form batch ---
     ("qk_cf_black_scholes_merton_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, I32, PD]),
     ("qk_cf_black76_price_batch", I32,
@@ -115,7 +112,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_cf_dupire_local_vol_batch", I32,
      [PD, PD, PD, PD, PD, PD, PD, PD, I32, PD]),
 
-    # --- Tree/Lattice scalar ---
     ("qk_tlm_crr_price", D, _tlm_argtypes),
     ("qk_tlm_jarrow_rudd_price", D, _tlm_argtypes),
     ("qk_tlm_tian_price", D, _tlm_argtypes),
@@ -123,7 +119,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_tlm_trinomial_tree_price", D, _tlm_argtypes),
     ("qk_tlm_derman_kani_const_local_vol_price", D, _tlm_argtypes),
 
-    # --- Tree/Lattice batch ---
     ("qk_tlm_crr_price_batch", I32, _tlm_batch_argtypes),
     ("qk_tlm_jarrow_rudd_price_batch", I32, _tlm_batch_argtypes),
     ("qk_tlm_tian_price_batch", I32, _tlm_batch_argtypes),
@@ -131,7 +126,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_tlm_trinomial_tree_price_batch", I32, _tlm_batch_argtypes),
     ("qk_tlm_derman_kani_const_local_vol_price_batch", I32, _tlm_batch_argtypes),
 
-    # --- Finite Difference scalar ---
     ("qk_fdm_explicit_fd_price", D, [D, D, D, D, D, D, I32, I32, I32, I32]),
     ("qk_fdm_implicit_fd_price", D, [D, D, D, D, D, D, I32, I32, I32, I32]),
     ("qk_fdm_crank_nicolson_price", D, [D, D, D, D, D, D, I32, I32, I32, I32]),
@@ -140,7 +134,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_fdm_adi_hundsdorfer_verwer_price", D, [D, D, D, D, D, D, D, D, D, D, I32, I32, I32, I32]),
     ("qk_fdm_psor_price", D, [D, D, D, D, D, D, I32, I32, I32, D, D, I32]),
 
-    # --- Monte Carlo scalar ---
     ("qk_mcm_standard_monte_carlo_price", D, _mc_common + [I32, U64]),
     ("qk_mcm_euler_maruyama_price", D, _mc_common + [I32, I32, U64]),
     ("qk_mcm_milstein_price", D, _mc_common + [I32, I32, U64]),
@@ -153,7 +146,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_mcm_antithetic_variates_price", D, _mc_common + [I32, U64]),
     ("qk_mcm_stratified_sampling_price", D, _mc_common + [I32, U64]),
 
-    # --- Monte Carlo batch ---
     ("qk_mcm_standard_monte_carlo_price_batch", I32,
      _mc_batch_base + [PI32, PU64, I32, PD]),
     ("qk_mcm_euler_maruyama_price_batch", I32,
@@ -177,14 +169,12 @@ _FUNCTION_SIGNATURES = [
     ("qk_mcm_stratified_sampling_price_batch", I32,
      _mc_batch_base + [PI32, PU64, I32, PD]),
 
-    # --- Fourier Transform scalar ---
     ("qk_ftm_carr_madan_fft_price", D, _ftm_common + [I32, D, D]),
     ("qk_ftm_cos_fang_oosterlee_price", D, _ftm_common + [I32, D]),
     ("qk_ftm_fractional_fft_price", D, _ftm_common + [I32, D, D, D]),
     ("qk_ftm_lewis_fourier_inversion_price", D, _ftm_common + [I32, D]),
     ("qk_ftm_hilbert_transform_price", D, _ftm_common + [I32, D]),
 
-    # --- Fourier Transform batch ---
     ("qk_ftm_carr_madan_fft_price_batch", I32,
      _ftm_batch_base + [PI32, PD, PD, I32, PD]),
     ("qk_ftm_cos_fang_oosterlee_price_batch", I32,
@@ -196,30 +186,25 @@ _FUNCTION_SIGNATURES = [
     ("qk_ftm_hilbert_transform_price_batch", I32,
      _ftm_batch_base + [PI32, PD, I32, PD]),
 
-    # --- Integral Quadrature scalar ---
     ("qk_iqm_gauss_hermite_price", D, _cf_common + [I32]),
     ("qk_iqm_gauss_laguerre_price", D, _cf_common + [I32]),
     ("qk_iqm_gauss_legendre_price", D, _cf_common + [I32, D]),
     ("qk_iqm_adaptive_quadrature_price", D, _cf_common + [D, D, I32, D]),
 
-    # --- Regression Approximation scalar ---
     ("qk_ram_polynomial_chaos_expansion_price", D, _ram_common + [I32, I32]),
     ("qk_ram_radial_basis_function_price", D, _ram_common + [I32, D, D]),
     ("qk_ram_sparse_grid_collocation_price", D, _ram_common + [I32, I32]),
     ("qk_ram_proper_orthogonal_decomposition_price", D, _ram_common + [I32, I32]),
 
-    # --- Adjoint Greeks scalar ---
     ("qk_agm_pathwise_derivative_delta", D, _agm_common + [I32, U64]),
     ("qk_agm_likelihood_ratio_delta", D, _agm_common + [I32, U64, D]),
     ("qk_agm_aad_delta", D, _agm_common + [I32, D]),
 
-    # --- Machine Learning scalar ---
     ("qk_mlm_deep_bsde_price", D, _mlm_common + [I32, I32, I32, D]),
     ("qk_mlm_pinns_price", D, _mlm_common + [I32, I32, I32, D]),
     ("qk_mlm_deep_hedging_price", D, _mlm_common + [I32, D, I32, U64]),
     ("qk_mlm_neural_sde_calibration_price", D, _mlm_common + [D, I32, D]),
 
-    # --- Finite Difference batch ---
     ("qk_fdm_explicit_fd_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, I32, PD]),
     ("qk_fdm_implicit_fd_price_batch", I32,
@@ -235,7 +220,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_fdm_psor_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PD, PD, PI32, I32, PD]),
 
-    # --- Integral Quadrature batch ---
     ("qk_iqm_gauss_hermite_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, I32, PD]),
     ("qk_iqm_gauss_laguerre_price_batch", I32,
@@ -245,7 +229,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_iqm_adaptive_quadrature_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PD, PD, PI32, PD, I32, PD]),
 
-    # --- Regression Approximation batch ---
     ("qk_ram_polynomial_chaos_expansion_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, I32, PD]),
     ("qk_ram_radial_basis_function_price_batch", I32,
@@ -255,7 +238,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_ram_proper_orthogonal_decomposition_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, I32, PD]),
 
-    # --- Adjoint Greeks batch ---
     ("qk_agm_pathwise_derivative_delta_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PU64, I32, PD]),
     ("qk_agm_likelihood_ratio_delta_batch", I32,
@@ -263,7 +245,6 @@ _FUNCTION_SIGNATURES = [
     ("qk_agm_aad_delta_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PD, I32, PD]),
 
-    # --- Machine Learning batch ---
     ("qk_mlm_deep_bsde_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PI32, PD, I32, PD]),
     ("qk_mlm_pinns_price_batch", I32,

@@ -122,7 +122,6 @@ def test_c_api_header_and_cpp_implementation_stay_in_sync() -> None:
     h_funcs, cpp_funcs = _c_api_funcs()
 
     missing_cpp_impl = sorted([f for f in h_funcs if f not in cpp_funcs])
-    # Ignore helper/internal non-export symbols in cpp scan.
     extra_cpp_impl = sorted([
         f for f in cpp_funcs
         if f not in h_funcs and f not in {"qk_plugin_get_api", "qk_get_last_error", "qk_clear_last_error"}
@@ -148,7 +147,6 @@ def test_c_api_scalar_batch_pairs_are_complete() -> None:
 def test_accelerator_vectorized_methods_all_implemented() -> None:
     """Every method in _VECTORIZED_METHODS must be handled in _vectorized_price source."""
     accel_text = _read(ACCEL_PATH)
-    # Extract _VECTORIZED_METHODS entries
     tree = ast.parse(accel_text)
     vec_methods: set[str] = set()
     for node in tree.body:
@@ -166,7 +164,6 @@ def test_accelerator_vectorized_methods_all_implemented() -> None:
                             vec_methods.add(elt.value)
     assert vec_methods, "Could not locate _VECTORIZED_METHODS"
 
-    # Check each method appears as `if method == "<name>"` in _vectorized_price
     missing = sorted(m for m in vec_methods if f'method == "{m}"' not in accel_text)
     assert not missing, f"_VECTORIZED_METHODS without _vectorized_price branch: {missing}"
 
@@ -183,7 +180,7 @@ def test_every_engine_api_has_explicit_python_test_wiring() -> None:
     missing_scalars = sorted([m for m in scalars if m not in corpus])
 
     def _batch_root_name(batch_method: str) -> str:
-        base = batch_method[:-6]  # strip "_batch"
+        base = batch_method[:-6]
         return base[:-6] if base.endswith("_price") else base
 
     missing_batches = sorted([

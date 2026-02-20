@@ -88,7 +88,6 @@ struct SimpleMLP {
             h_pre[i] = sum;
             h_post[i] = std::tanh(sum);
         }
-        // Output layer: W2 * h + b2
         for (int i = 0; i < output_dim; ++i) {
             double sum = b2[i];
             for (int j = 0; j < hidden_dim; ++j) {

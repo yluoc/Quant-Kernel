@@ -28,7 +28,6 @@ class QuantKernel:
     @property
     def native_batch_available(self) -> bool: ...
 
-    # --- Closed-form scalar ---
     def black_scholes_merton_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int,
@@ -69,7 +68,6 @@ class QuantKernel:
         dC_dT: float, dC_dK: float, d2C_dK2: float, r: float, q: float,
     ) -> float: ...
 
-    # --- Closed-form batch ---
     def black_scholes_merton_price_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         vol: ArrayLike, r: ArrayLike, q: ArrayLike, option_type: ArrayLike,
@@ -116,7 +114,6 @@ class QuantKernel:
         r: ArrayLike, q: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Tree/Lattice ---
     def crr_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, steps: int,
@@ -178,7 +175,6 @@ class QuantKernel:
         option_type: ArrayLike, steps: ArrayLike, american_style: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Finite Difference ---
     def explicit_fd_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, time_steps: int,
@@ -219,7 +215,6 @@ class QuantKernel:
         max_iter: int = ...,
     ) -> float: ...
 
-    # --- Monte Carlo ---
     def standard_monte_carlo_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, paths: int, seed: int = ...,
@@ -330,7 +325,6 @@ class QuantKernel:
         option_type: ArrayLike, paths: ArrayLike, seed: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Fourier Transform ---
     def carr_madan_fft_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, grid_size: int = ...,
@@ -387,7 +381,6 @@ class QuantKernel:
         integration_limit: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Integral Quadrature ---
     def gauss_hermite_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, n_points: int = ...,
@@ -408,7 +401,6 @@ class QuantKernel:
         integration_limit: float = ...,
     ) -> float: ...
 
-    # --- Regression Approximation ---
     def polynomial_chaos_expansion_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int,
@@ -430,7 +422,6 @@ class QuantKernel:
         snapshots: int = ...,
     ) -> float: ...
 
-    # --- Adjoint Greeks ---
     def pathwise_derivative_delta(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, paths: int = ...,
@@ -447,7 +438,6 @@ class QuantKernel:
         regularization: float = ...,
     ) -> float: ...
 
-    # --- Machine Learning ---
     def deep_bsde_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, time_steps: int = ...,
@@ -472,7 +462,6 @@ class QuantKernel:
         regularization: float = ...,
     ) -> float: ...
 
-    # --- Finite Difference batch ---
     def explicit_fd_price_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         vol: ArrayLike, r: ArrayLike, q: ArrayLike,
@@ -520,7 +509,6 @@ class QuantKernel:
         max_iter: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Integral Quadrature batch ---
     def gauss_hermite_price_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         vol: ArrayLike, r: ArrayLike, q: ArrayLike,
@@ -545,7 +533,6 @@ class QuantKernel:
         integration_limit: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Regression Approximation batch ---
     def polynomial_chaos_expansion_price_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         vol: ArrayLike, r: ArrayLike, q: ArrayLike,
@@ -571,7 +558,6 @@ class QuantKernel:
         snapshots: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Adjoint Greeks batch ---
     def pathwise_derivative_delta_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         vol: ArrayLike, r: ArrayLike, q: ArrayLike,
@@ -590,7 +576,6 @@ class QuantKernel:
         regularization: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Machine Learning batch ---
     def deep_bsde_price_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         vol: ArrayLike, r: ArrayLike, q: ArrayLike,
@@ -619,7 +604,6 @@ class QuantKernel:
         calibration_steps: ArrayLike, regularization: ArrayLike,
     ) -> np.ndarray: ...
 
-    # --- Accelerator ---
     def get_accelerator(
         self, backend: str = ..., max_workers: int | None = ...,
     ) -> "QuantAccelerator": ...

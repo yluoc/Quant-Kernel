@@ -9,9 +9,7 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-// ---------------------------------------------------------------------------
 // Explicit FD matches BSM for European options
-// ---------------------------------------------------------------------------
 void ExplicitFdMatchesBsm(double S, double K, double T, double vol, double r, double q,
                           int option_type, int time_steps, int spot_steps) {
     // Explicit FD needs a fine time grid for stability; scale up time_steps
@@ -33,9 +31,7 @@ FUZZ_TEST(FiniteDifference, ExplicitFdMatchesBsm)
                  fuzztest::InRange(50, 300),
                  fuzztest::InRange(150, 300));
 
-// ---------------------------------------------------------------------------
 // Implicit FD matches BSM for European options
-// ---------------------------------------------------------------------------
 void ImplicitFdMatchesBsm(double S, double K, double T, double vol, double r, double q,
                           int option_type, int time_steps, int spot_steps) {
     double fdm = qk::fdm::implicit_fd_price(S, K, T, vol, r, q, option_type,
@@ -55,9 +51,7 @@ FUZZ_TEST(FiniteDifference, ImplicitFdMatchesBsm)
                  fuzztest::InRange(50, 300),
                  fuzztest::InRange(150, 300));
 
-// ---------------------------------------------------------------------------
 // Crank-Nicolson matches BSM for European options
-// ---------------------------------------------------------------------------
 void CrankNicolsonMatchesBsm(double S, double K, double T, double vol, double r, double q,
                              int option_type, int time_steps, int spot_steps) {
     double fdm = qk::fdm::crank_nicolson_price(S, K, T, vol, r, q, option_type,
@@ -77,9 +71,7 @@ FUZZ_TEST(FiniteDifference, CrankNicolsonMatchesBsm)
                  fuzztest::InRange(50, 300),
                  fuzztest::InRange(150, 300));
 
-// ---------------------------------------------------------------------------
 // American put >= European put (Implicit FD)
-// ---------------------------------------------------------------------------
 void ImplicitFdAmericanPutGeqEuropean(double S, double K, double T, double vol, double r,
                                       double q, int time_steps, int spot_steps) {
     double eur = qk::fdm::implicit_fd_price(S, K, T, vol, r, q, QK_PUT,
@@ -98,9 +90,7 @@ FUZZ_TEST(FiniteDifference, ImplicitFdAmericanPutGeqEuropean)
                  fuzztest::InRange(50, 300),
                  fuzztest::InRange(50, 300));
 
-// ---------------------------------------------------------------------------
 // American put >= European put (Crank-Nicolson)
-// ---------------------------------------------------------------------------
 void CnAmericanPutGeqEuropean(double S, double K, double T, double vol, double r, double q,
                               int time_steps, int spot_steps) {
     double eur = qk::fdm::crank_nicolson_price(S, K, T, vol, r, q, QK_PUT,
@@ -119,9 +109,7 @@ FUZZ_TEST(FiniteDifference, CnAmericanPutGeqEuropean)
                  fuzztest::InRange(50, 300),
                  fuzztest::InRange(50, 300));
 
-// ---------------------------------------------------------------------------
 // American put >= European put (PSOR)
-// ---------------------------------------------------------------------------
 void PsorAmericanPutGeqEuropean(double S, double K, double T, double vol, double r, double q,
                                 int time_steps, int spot_steps) {
     double eur_bsm = qk::cfa::black_scholes_merton_price(S, K, T, vol, r, q, QK_PUT);
@@ -139,9 +127,7 @@ FUZZ_TEST(FiniteDifference, PsorAmericanPutGeqEuropean)
                  fuzztest::InRange(50, 300),
                  fuzztest::InRange(50, 300));
 
-// ---------------------------------------------------------------------------
 // ADI Douglas produces prices close to Heston CF
-// ---------------------------------------------------------------------------
 TEST(FiniteDifference, AdiDouglasConvergesToHestonCf) {
     double S = 100.0, K = 100.0, T = 1.0, r = 0.03, q_ = 0.01;
     double v0 = 0.04, kappa = 2.0, theta_v = 0.04, sigma = 0.3, rho = -0.7;
@@ -160,9 +146,7 @@ TEST(FiniteDifference, AdiDouglasConvergesToHestonCf) {
     EXPECT_NEAR(adi, heston, 5e-1);
 }
 
-// ---------------------------------------------------------------------------
 // ADI Craig-Sneyd produces prices close to Heston CF
-// ---------------------------------------------------------------------------
 TEST(FiniteDifference, AdiCraigSneydConvergesToHestonCf) {
     double S = 100.0, K = 100.0, T = 1.0, r = 0.03, q_ = 0.01;
     double v0 = 0.04, kappa = 2.0, theta_v = 0.04, sigma = 0.3, rho = -0.7;
@@ -181,9 +165,7 @@ TEST(FiniteDifference, AdiCraigSneydConvergesToHestonCf) {
     EXPECT_NEAR(adi, heston, 5e-1);
 }
 
-// ---------------------------------------------------------------------------
 // ADI Hundsdorfer-Verwer produces prices close to Heston CF
-// ---------------------------------------------------------------------------
 TEST(FiniteDifference, AdiHundsdorferVerwerConvergesToHestonCf) {
     double S = 100.0, K = 100.0, T = 1.0, r = 0.03, q_ = 0.01;
     double v0 = 0.04, kappa = 2.0, theta_v = 0.04, sigma = 0.3, rho = -0.7;

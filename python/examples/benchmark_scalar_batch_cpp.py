@@ -72,7 +72,6 @@ def main() -> int:
         for i in range(n)
     ]
 
-    # Warmup
     _ = qk.black_scholes_merton_price_batch(spot, strike, tau, vol, r, q, option_type)
     _ = qk.price_batch("black_scholes_merton_price", jobs[:2048], backend="cpu")
 

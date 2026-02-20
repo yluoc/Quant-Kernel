@@ -26,7 +26,6 @@ endif()
 enable_testing()
 include(GoogleTest)
 
-# --- Fuzz test executables ---
 
 add_executable(fuzz_closed_form_models fuzz_closed_form_models.cpp)
 target_link_libraries(fuzz_closed_form_models PRIVATE quantkernel gtest gmock)

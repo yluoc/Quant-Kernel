@@ -23,7 +23,6 @@
 #define QK_CALL 0
 #define QK_PUT  1
 
-/* --- Plugin ABI surface --- */
 
 typedef struct QKPluginAPI {
     int32_t     abi_major;

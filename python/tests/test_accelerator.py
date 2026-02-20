@@ -85,7 +85,6 @@ def test_heston_cpu_vectorized_matches_scalar(qk):
             "option_type": QK_PUT, "integration_steps": 2048, "integration_limit": 120.0,
         },
     ]
-    # Force cpu_vectorized by using the vectorized path directly
     out = accel._vectorized_price("heston_price_cf", jobs, use_gpu=False)
     scalar = np.array([qk.heston_price_cf(**j) for j in jobs], dtype=np.float64)
     assert np.allclose(out, scalar, atol=0.01, rtol=0.01)
@@ -182,7 +181,6 @@ def test_fourier_batch_matches_scalar_qk(qk):
     assert np.allclose(batch, scalar, atol=1e-6, rtol=1e-6)
 
 
-# --- GPU backend consistency tests ---
 
 def test_gpu_backend_raises_without_cupy_for_vectorized_method(qk):
     """backend='gpu' must raise for vectorized methods when CuPy is unavailable."""
@@ -232,7 +230,6 @@ def test_gpu_backend_raises_without_cupy_for_mlm_method(qk):
 def test_gpu_backend_raises_for_non_vectorizable_method(qk):
     """backend='gpu' must raise for non-vectorizable methods even with CuPy available."""
     accel = QuantAccelerator(qk=qk, backend="gpu")
-    # Simulate CuPy available
     accel._cp = np
     with pytest.raises(RuntimeError, match="not supported"):
         accel.suggest_strategy("explicit_fd_price", 100)
@@ -240,7 +237,6 @@ def test_gpu_backend_raises_for_non_vectorizable_method(qk):
         accel.suggest_strategy("deep_bsde_price", 100)
 
 
-# --- Native batch routing completeness tests ---
 
 def test_native_batch_routing_covers_all_families(qk):
     """Every method with a *_batch counterpart on QuantKernel should be in _NATIVE_BATCH_METHODS."""
@@ -249,8 +245,7 @@ def test_native_batch_routing_covers_all_families(qk):
     for method_name in dir(qk):
         if method_name.startswith("_") or not method_name.endswith("_batch"):
             continue
-        # Derive scalar name: remove _batch suffix
-        scalar_name = method_name[:-6]  # strip "_batch"
+        scalar_name = method_name[:-6]
         if not hasattr(qk, scalar_name):
             continue
         if scalar_name not in accel._NATIVE_BATCH_METHODS:
@@ -328,13 +323,10 @@ def test_empty_batch_returns_empty(qk):
     assert result.dtype == np.float64
 
 
-# --- Strategy table completeness ---
 
 def test_all_vectorized_methods_have_implementation(qk):
     """Every method in _VECTORIZED_METHODS must be handled in _vectorized_price."""
     accel = QuantAccelerator(qk=qk, backend="cpu")
-    # Use a single trivial job per vectorized method — should not raise RuntimeError
-    # about missing implementation.
     common = {
         "spot": 100.0, "strike": 100.0, "t": 1.0, "vol": 0.2,
         "r": 0.03, "q": 0.01, "option_type": QK_CALL,
@@ -375,7 +367,6 @@ def test_all_vectorized_methods_have_implementation(qk):
     missing = []
     for method in accel._VECTORIZED_METHODS:
         params = dict(common)
-        # Remove params that forward-based methods don't use
         if method in ("black76_price",):
             params.pop("q", None)
         if method in ("bachelier_price", "sabr_hagan_lognormal_iv",

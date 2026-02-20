@@ -3,8 +3,6 @@
 #include <cmath>
 #include <cstdint>
 
-// ── 1. FDM Explicit FD: batch vs scalar parity (n=8) ──────────────────────
-
 QK_TEST(fdm_explicit_batch_matches_scalar) {
     double spot[]           = {100,105,95,110,90,100,100,100};
     double strike[]         = {100,100,100,100,100,95,105,110};
@@ -30,8 +28,6 @@ QK_TEST(fdm_explicit_batch_matches_scalar) {
         QK_ASSERT_NEAR(out[i], scalar, 1e-12);
     }
 }
-
-// ── 2. FDM ADI Douglas: batch vs scalar parity (n=4) ──────────────────────
 
 QK_TEST(fdm_adi_douglas_batch_matches_scalar) {
     double spot[]    = {100,105,95,110};
@@ -64,8 +60,6 @@ QK_TEST(fdm_adi_douglas_batch_matches_scalar) {
     }
 }
 
-// ── 3. IQM Gauss-Hermite: batch vs scalar parity (n=8) ────────────────────
-
 QK_TEST(iqm_gauss_hermite_batch_matches_scalar) {
     double spot[]    = {100,105,95,110,90,100,100,100};
     double strike[]  = {100,100,100,100,100,95,105,110};
@@ -88,8 +82,6 @@ QK_TEST(iqm_gauss_hermite_batch_matches_scalar) {
         QK_ASSERT_NEAR(out[i], scalar, 1e-12);
     }
 }
-
-// ── 4. RAM Polynomial Chaos Expansion: batch vs scalar parity (n=8) ───────
 
 QK_TEST(ram_pce_batch_matches_scalar) {
     double spot[]    = {100,105,95,110,90,100,100,100};
@@ -116,8 +108,6 @@ QK_TEST(ram_pce_batch_matches_scalar) {
     }
 }
 
-// ── 5. AGM AAD Delta: batch vs scalar parity (n=8) ────────────────────────
-
 QK_TEST(agm_aad_batch_matches_scalar) {
     double spot[]    = {100,105,95,110,90,100,100,100};
     double strike[]  = {100,100,100,100,100,95,105,110};
@@ -142,8 +132,6 @@ QK_TEST(agm_aad_batch_matches_scalar) {
         QK_ASSERT_NEAR(out[i], scalar, 1e-12);
     }
 }
-
-// ── 6. MLM Deep BSDE: batch vs scalar parity (n=4) ────────────────────────
 
 QK_TEST(mlm_deep_bsde_batch_matches_scalar) {
     double spot[]    = {100,105,95,110};
@@ -173,8 +161,6 @@ QK_TEST(mlm_deep_bsde_batch_matches_scalar) {
     }
 }
 
-// ── 7. FDM PSOR: batch vs scalar parity (n=4) ─────────────────────────────
-
 QK_TEST(fdm_psor_batch_matches_scalar) {
     double spot[]    = {100,105,95,110};
     double strike[]  = {100,100,100,100};
@@ -203,8 +189,6 @@ QK_TEST(fdm_psor_batch_matches_scalar) {
         QK_ASSERT_NEAR(out[i], scalar, 1e-12);
     }
 }
-
-// ── 8. Null-pointer guard returns QK_ERR_NULL_PTR ──────────────────────────
 
 QK_TEST(batch_null_ptr_returns_error) {
     int32_t rc = qk_fdm_explicit_fd_price_batch(

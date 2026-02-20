@@ -13,7 +13,6 @@
 #include "algorithms/adjoint_greeks/adjoint_greeks_models.h"
 #include "algorithms/machine_learning/machine_learning_models.h"
 
-/* --- Thread-local error message buffer --- */
 
 static thread_local char tl_error_msg[256] = "";
 
@@ -34,7 +33,6 @@ static void set_error_bad_size(int32_t n) {
     set_error_msg(buf);
 }
 
-/* --- Batch validation macros --- */
 
 #define QK_BATCH_VALIDATE_N(n) \
     do { if ((n) <= 0) { set_error_bad_size(n); return QK_ERR_BAD_SIZE; } } while(0)
@@ -540,7 +538,6 @@ int32_t qk_tlm_derman_kani_const_local_vol_price_batch(const double* spot, const
     return QK_OK;
 }
 
-/* --- Finite Difference methods --- */
 
 double qk_fdm_explicit_fd_price(double spot, double strike, double t, double vol,
                                 double r, double q, int32_t option_type,
@@ -622,7 +619,6 @@ double qk_fdm_psor_price(double spot, double strike, double t, double vol,
                                time_steps, spot_steps, omega, tol, max_iter);
 }
 
-/* --- Finite Difference batch APIs --- */
 
 int32_t qk_fdm_explicit_fd_price_batch(const double* spot, const double* strike,
                                          const double* t, const double* vol,
@@ -767,7 +763,6 @@ int32_t qk_fdm_psor_price_batch(const double* spot, const double* strike,
     return QK_OK;
 }
 
-/* --- Monte Carlo methods --- */
 
 double qk_mcm_standard_monte_carlo_price(double spot, double strike, double t, double vol,
                                          double r, double q, int32_t option_type,
@@ -1059,7 +1054,6 @@ int32_t qk_mcm_stratified_sampling_price_batch(const double* spot, const double*
     return QK_OK;
 }
 
-/* --- Fourier transform methods --- */
 
 double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
                                    double r, double q, int32_t option_type,
@@ -1225,7 +1219,6 @@ int32_t qk_ftm_hilbert_transform_price_batch(const double* spot, const double* s
     return QK_OK;
 }
 
-/* --- Integral quadrature methods --- */
 
 double qk_iqm_gauss_hermite_price(double spot, double strike, double t, double vol,
                                   double r, double q, int32_t option_type,
@@ -1264,7 +1257,6 @@ double qk_iqm_adaptive_quadrature_price(double spot, double strike, double t, do
     return qk::iqm::adaptive_quadrature_price(spot, strike, t, vol, r, q, option_type, params);
 }
 
-/* --- Regression approximation methods --- */
 
 double qk_ram_polynomial_chaos_expansion_price(double spot, double strike, double t, double vol,
                                                double r, double q, int32_t option_type,
@@ -1304,7 +1296,6 @@ double qk_ram_proper_orthogonal_decomposition_price(double spot, double strike, 
     return qk::ram::proper_orthogonal_decomposition_price(spot, strike, t, vol, r, q, option_type, params);
 }
 
-/* --- Adjoint Greeks methods --- */
 
 double qk_agm_pathwise_derivative_delta(double spot, double strike, double t, double vol,
                                         double r, double q, int32_t option_type,
@@ -1334,7 +1325,6 @@ double qk_agm_aad_delta(double spot, double strike, double t, double vol,
     return qk::agm::aad_delta(spot, strike, t, vol, r, q, option_type, params);
 }
 
-/* --- Machine learning methods --- */
 
 double qk_mlm_deep_bsde_price(double spot, double strike, double t, double vol,
                               double r, double q, int32_t option_type,
@@ -1384,7 +1374,6 @@ double qk_mlm_neural_sde_calibration_price(double spot, double strike, double t,
     return qk::mlm::neural_sde_calibration_price(spot, strike, t, vol, r, q, option_type, params);
 }
 
-/* --- Integral quadrature batch APIs --- */
 
 int32_t qk_iqm_gauss_hermite_price_batch(const double* spot, const double* strike,
                                             const double* t, const double* vol,
@@ -1459,7 +1448,6 @@ int32_t qk_iqm_adaptive_quadrature_price_batch(const double* spot, const double*
     return QK_OK;
 }
 
-/* --- Regression approximation batch APIs --- */
 
 int32_t qk_ram_polynomial_chaos_expansion_price_batch(const double* spot, const double* strike,
                                                         const double* t, const double* vol,
@@ -1531,7 +1519,6 @@ int32_t qk_ram_proper_orthogonal_decomposition_price_batch(const double* spot, c
     return QK_OK;
 }
 
-/* --- Adjoint Greeks batch APIs --- */
 
 int32_t qk_agm_pathwise_derivative_delta_batch(const double* spot, const double* strike,
                                                   const double* t, const double* vol,
@@ -1585,7 +1572,6 @@ int32_t qk_agm_aad_delta_batch(const double* spot, const double* strike,
     return QK_OK;
 }
 
-/* --- Machine learning batch APIs --- */
 
 int32_t qk_mlm_deep_bsde_price_batch(const double* spot, const double* strike,
                                         const double* t, const double* vol,

@@ -19,14 +19,12 @@ QK_EXPORT int32_t qk_plugin_get_api(int32_t host_abi_major,
                                     const QKPluginAPI** out_api);
 QK_EXPORT const char* qk_get_last_error(void);
 QK_EXPORT void        qk_clear_last_error(void);
-/* --- Closed-form formulas --- */
 QK_EXPORT double qk_cf_black_scholes_merton_price(double spot, double strike, double t, double vol,
                                                    double r, double q, int32_t option_type);
 QK_EXPORT double qk_cf_black76_price(double forward, double strike, double t, double vol,
                                      double r, int32_t option_type);
 QK_EXPORT double qk_cf_bachelier_price(double forward, double strike, double t, double normal_vol,
                                        double r, int32_t option_type);
-/* --- Closed-form batch APIs (array-in/array-out) --- */
 QK_EXPORT int32_t qk_cf_black_scholes_merton_price_batch(const double* spot,
                                                          const double* strike,
                                                          const double* t,
@@ -70,7 +68,6 @@ QK_EXPORT double qk_cf_sabr_hagan_black76_price(double forward, double strike, d
 QK_EXPORT double qk_cf_dupire_local_vol(double strike, double t, double call_price,
                                         double dC_dT, double dC_dK, double d2C_dK2,
                                         double r, double q);
-/* --- Closed-form batch APIs (extended) --- */
 QK_EXPORT int32_t qk_cf_heston_price_cf_batch(const double* spot, const double* strike,
                                                const double* t, const double* r, const double* q,
                                                const double* v0, const double* kappa, const double* theta,
@@ -107,7 +104,6 @@ QK_EXPORT int32_t qk_cf_dupire_local_vol_batch(const double* strike, const doubl
                                                 const double* dC_dK, const double* d2C_dK2,
                                                 const double* r, const double* q,
                                                 int32_t n, double* out_prices);
-/* --- Tree/Lattice methods --- */
 QK_EXPORT double qk_tlm_crr_price(double spot, double strike, double t, double vol,
                                   double r, double q, int32_t option_type,
                                   int32_t steps, int32_t american_style);
@@ -134,7 +130,6 @@ QK_EXPORT double qk_tlm_derman_kani_const_local_vol_price(double spot, double st
                                                           double local_vol, double r, double q,
                                                           int32_t option_type, int32_t steps,
                                                           int32_t american_style);
-/* --- Tree/Lattice batch APIs (extended) --- */
 QK_EXPORT int32_t qk_tlm_jarrow_rudd_price_batch(const double* spot, const double* strike,
                                                    const double* t, const double* vol,
                                                    const double* r, const double* q,
@@ -165,7 +160,6 @@ QK_EXPORT int32_t qk_tlm_derman_kani_const_local_vol_price_batch(const double* s
                                                                    const int32_t* option_type, const int32_t* steps,
                                                                    const int32_t* american_style,
                                                                    int32_t n, double* out_prices);
-/* --- Finite Difference methods --- */
 QK_EXPORT double qk_fdm_explicit_fd_price(double spot, double strike, double t, double vol,
                                           double r, double q, int32_t option_type,
                                           int32_t time_steps, int32_t spot_steps,
@@ -194,7 +188,6 @@ QK_EXPORT double qk_fdm_psor_price(double spot, double strike, double t, double 
                                    double r, double q, int32_t option_type,
                                    int32_t time_steps, int32_t spot_steps,
                                    double omega, double tol, int32_t max_iter);
-/* --- Finite Difference batch APIs --- */
 QK_EXPORT int32_t qk_fdm_explicit_fd_price_batch(const double* spot, const double* strike,
                                                    const double* t, const double* vol,
                                                    const double* r, const double* q,
@@ -248,7 +241,6 @@ QK_EXPORT int32_t qk_fdm_psor_price_batch(const double* spot, const double* stri
                                             const double* omega, const double* tol,
                                             const int32_t* max_iter,
                                             int32_t n, double* out_prices);
-/* --- Monte Carlo methods --- */
 QK_EXPORT double qk_mcm_standard_monte_carlo_price(double spot, double strike, double t, double vol,
                                                    double r, double q, int32_t option_type,
                                                    int32_t paths, uint64_t seed);
@@ -290,7 +282,6 @@ QK_EXPORT double qk_mcm_antithetic_variates_price(double spot, double strike, do
 QK_EXPORT double qk_mcm_stratified_sampling_price(double spot, double strike, double t, double vol,
                                                   double r, double q, int32_t option_type,
                                                   int32_t paths, uint64_t seed);
-/* --- Monte Carlo batch APIs (extended) --- */
 QK_EXPORT int32_t qk_mcm_euler_maruyama_price_batch(const double* spot, const double* strike,
                                                       const double* t, const double* vol,
                                                       const double* r, const double* q,
@@ -350,7 +341,6 @@ QK_EXPORT int32_t qk_mcm_stratified_sampling_price_batch(const double* spot, con
                                                            const int32_t* option_type, const int32_t* paths,
                                                            const uint64_t* seed,
                                                            int32_t n, double* out_prices);
-/* --- Fourier transform methods --- */
 QK_EXPORT double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
                                              double r, double q, int32_t option_type,
                                              int32_t grid_size, double eta, double alpha);
@@ -377,7 +367,6 @@ QK_EXPORT double qk_ftm_hilbert_transform_price(double spot, double strike, doub
                                                 double r, double q, int32_t option_type,
                                                 int32_t integration_steps,
                                                 double integration_limit);
-/* --- Fourier transform batch APIs (extended) --- */
 QK_EXPORT int32_t qk_ftm_cos_fang_oosterlee_price_batch(const double* spot, const double* strike,
                                                           const double* t, const double* vol,
                                                           const double* r, const double* q,
@@ -405,7 +394,6 @@ QK_EXPORT int32_t qk_ftm_hilbert_transform_price_batch(const double* spot, const
                                                          const int32_t* integration_steps,
                                                          const double* integration_limit,
                                                          int32_t n, double* out_prices);
-/* --- Integral quadrature methods --- */
 QK_EXPORT double qk_iqm_gauss_hermite_price(double spot, double strike, double t, double vol,
                                             double r, double q, int32_t option_type,
                                             int32_t n_points);
@@ -419,7 +407,6 @@ QK_EXPORT double qk_iqm_adaptive_quadrature_price(double spot, double strike, do
                                                   double r, double q, int32_t option_type,
                                                   double abs_tol, double rel_tol,
                                                   int32_t max_depth, double integration_limit);
-/* --- Integral quadrature batch APIs --- */
 QK_EXPORT int32_t qk_iqm_gauss_hermite_price_batch(const double* spot, const double* strike,
                                                       const double* t, const double* vol,
                                                       const double* r, const double* q,
@@ -447,7 +434,6 @@ QK_EXPORT int32_t qk_iqm_adaptive_quadrature_price_batch(const double* spot, con
                                                             const int32_t* max_depth,
                                                             const double* integration_limit,
                                                             int32_t n, double* out_prices);
-/* --- Regression approximation methods --- */
 QK_EXPORT double qk_ram_polynomial_chaos_expansion_price(double spot, double strike, double t, double vol,
                                                          double r, double q, int32_t option_type,
                                                          int32_t polynomial_order,
@@ -461,7 +447,6 @@ QK_EXPORT double qk_ram_sparse_grid_collocation_price(double spot, double strike
 QK_EXPORT double qk_ram_proper_orthogonal_decomposition_price(double spot, double strike, double t, double vol,
                                                               double r, double q, int32_t option_type,
                                                               int32_t modes, int32_t snapshots);
-/* --- Regression approximation batch APIs --- */
 QK_EXPORT int32_t qk_ram_polynomial_chaos_expansion_price_batch(const double* spot, const double* strike,
                                                                   const double* t, const double* vol,
                                                                   const double* r, const double* q,
@@ -488,7 +473,6 @@ QK_EXPORT int32_t qk_ram_proper_orthogonal_decomposition_price_batch(const doubl
                                                                        const int32_t* option_type,
                                                                        const int32_t* modes, const int32_t* snapshots,
                                                                        int32_t n, double* out_prices);
-/* --- Adjoint Greeks methods --- */
 QK_EXPORT double qk_agm_pathwise_derivative_delta(double spot, double strike, double t, double vol,
                                                   double r, double q, int32_t option_type,
                                                   int32_t paths, uint64_t seed);
@@ -498,7 +482,6 @@ QK_EXPORT double qk_agm_likelihood_ratio_delta(double spot, double strike, doubl
 QK_EXPORT double qk_agm_aad_delta(double spot, double strike, double t, double vol,
                                   double r, double q, int32_t option_type,
                                   int32_t tape_steps, double regularization);
-/* --- Adjoint Greeks batch APIs --- */
 QK_EXPORT int32_t qk_agm_pathwise_derivative_delta_batch(const double* spot, const double* strike,
                                                             const double* t, const double* vol,
                                                             const double* r, const double* q,
@@ -518,7 +501,6 @@ QK_EXPORT int32_t qk_agm_aad_delta_batch(const double* spot, const double* strik
                                             const int32_t* option_type,
                                             const int32_t* tape_steps, const double* regularization,
                                             int32_t n, double* out_prices);
-/* --- Machine learning methods --- */
 QK_EXPORT double qk_mlm_deep_bsde_price(double spot, double strike, double t, double vol,
                                         double r, double q, int32_t option_type,
                                         int32_t time_steps, int32_t hidden_width,
@@ -536,7 +518,6 @@ QK_EXPORT double qk_mlm_neural_sde_calibration_price(double spot, double strike,
                                                      double target_implied_vol,
                                                      int32_t calibration_steps,
                                                      double regularization);
-/* --- Machine learning batch APIs --- */
 QK_EXPORT int32_t qk_mlm_deep_bsde_price_batch(const double* spot, const double* strike,
                                                   const double* t, const double* vol,
                                                   const double* r, const double* q,

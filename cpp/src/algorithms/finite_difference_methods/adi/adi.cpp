@@ -299,7 +299,6 @@ double adi_douglas_price(double spot, double strike, double t, double r, double 
             Y0[k] = U[k] + dt * FU[k];
         }
 
-        // Step 1: RHS = Y0 - θ*dt*A1*U, then solve (I - θ*dt*A1) Y1 = RHS
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y0[k] - theta * dt * A1U[k];
         }
@@ -309,7 +308,6 @@ double adi_douglas_price(double spot, double strike, double t, double r, double 
             solve_x_implicit(Y1, RHS, g, r, q, theta * dt, j);
         }
 
-        // Step 2: RHS = Y1 - θ*dt*A2*U, then solve (I - θ*dt*A2) U_new = RHS
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y1[k] - theta * dt * A2U[k];
         }
@@ -360,7 +358,6 @@ double adi_craig_sneyd_price(double spot, double strike, double t, double r, dou
             Y0[k] = U[k] + dt * FU[k];
         }
 
-        // Predictor step 1: solve in x
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y0[k] - theta * dt * A1U[k];
         }
@@ -370,7 +367,6 @@ double adi_craig_sneyd_price(double spot, double strike, double t, double r, dou
             solve_x_implicit(Y1, RHS, g, r, q, theta * dt, j);
         }
 
-        // Predictor step 2: solve in v => Ytilde
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y1[k] - theta * dt * A2U[k];
         }
@@ -386,7 +382,6 @@ double adi_craig_sneyd_price(double spot, double strike, double t, double r, dou
             Yhat[k] = Y0[k] + 0.5 * dt * (FYtilde[k] - FU[k]);
         }
 
-        // Corrector step 1: solve in x
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Yhat[k] - theta * dt * A1U[k];
         }
@@ -396,7 +391,6 @@ double adi_craig_sneyd_price(double spot, double strike, double t, double r, dou
             solve_x_implicit(Y1, RHS, g, r, q, theta * dt, j);
         }
 
-        // Corrector step 2: solve in v
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y1[k] - theta * dt * A2U[k];
         }
@@ -441,12 +435,10 @@ double adi_hundsdorfer_verwer_price(double spot, double strike, double t, double
 
         compute_operators(U, FU, A1U, A2U, g, r, q, params);
 
-        // Predictor: Y0 = U + dt*F(U)
         for (int32_t k = 0; k < total; ++k) {
             Y0[k] = U[k] + dt * FU[k];
         }
 
-        // Step 1: solve in x
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y0[k] - theta * dt * A1U[k];
         }
@@ -456,7 +448,6 @@ double adi_hundsdorfer_verwer_price(double spot, double strike, double t, double
             solve_x_implicit(Y1, RHS, g, r, q, theta * dt, j);
         }
 
-        // Step 2: solve in v => Ytilde
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y1[k] - theta * dt * A2U[k];
         }
@@ -466,13 +457,11 @@ double adi_hundsdorfer_verwer_price(double spot, double strike, double t, double
             solve_v_implicit(Ytilde, RHS, g, params, theta * dt, i);
         }
 
-        // Corrector: Yhat0 = Ytilde + 0.5*dt*(F(Ytilde) - F(U))
         compute_operators(Ytilde, FYt, A1Yt, A2Yt, g, r, q, params);
         for (int32_t k = 0; k < total; ++k) {
             Y0[k] = Ytilde[k] + 0.5 * dt * (FYt[k] - FU[k]);
         }
 
-        // Step 3: solve in x with corrected operators
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y0[k] - theta * dt * A1Yt[k];
         }
@@ -482,7 +471,6 @@ double adi_hundsdorfer_verwer_price(double spot, double strike, double t, double
             solve_x_implicit(Y1, RHS, g, r, q, theta * dt, j);
         }
 
-        // Step 4: solve in v
         for (int32_t k = 0; k < total; ++k) {
             RHS[k] = Y1[k] - theta * dt * A2Yt[k];
         }

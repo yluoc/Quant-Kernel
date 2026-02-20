@@ -87,7 +87,6 @@ def bench_backend(
     acc = qk.get_accelerator(backend=backend)
     strategy = acc.suggest_strategy(method, len(jobs))
 
-    # warmup
     out0 = qk.price_batch(method, jobs, backend=backend)
     if np.any(~np.isfinite(out0)):
         raise RuntimeError(f"{method} on backend={backend} returned non-finite values")
@@ -193,7 +192,6 @@ def main() -> int:
                     if gpu_ms > 0.0:
                         speedup = f"{(cpu_ms / gpu_ms):.2f}x"
 
-                    # Compare output consistency when both paths ran.
                     if not np.allclose(cpu_out, gpu_out, rtol=1e-6, atol=1e-6):
                         gpu_strategy = f"{gpu_strategy}*"
                 except Exception:

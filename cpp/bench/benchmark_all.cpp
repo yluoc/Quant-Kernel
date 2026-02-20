@@ -51,7 +51,6 @@ int main(int argc, char** argv) {
     volatile double sink = 0.0;
     std::vector<BenchResult> results;
 
-    // --- BSM ---
     {
         for (int32_t i = 0; i < std::min(n, (int32_t)128); ++i)
             sink += qk_cf_black_scholes_merton_price(spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i]);
@@ -71,7 +70,6 @@ int main(int argc, char** argv) {
         results.push_back({"BSM", s_ms, b_ms, s_ms / std::max(1e-12, b_ms)});
     }
 
-    // --- Black76 ---
     {
         auto t0 = now();
         for (int32_t rep = 0; rep < repeats; ++rep)
@@ -88,7 +86,6 @@ int main(int argc, char** argv) {
         results.push_back({"Black76", s_ms, b_ms, s_ms / std::max(1e-12, b_ms)});
     }
 
-    // --- Bachelier ---
     {
         auto t0 = now();
         for (int32_t rep = 0; rep < repeats; ++rep)
@@ -105,7 +102,6 @@ int main(int argc, char** argv) {
         results.push_back({"Bachelier", s_ms, b_ms, s_ms / std::max(1e-12, b_ms)});
     }
 
-    // --- CRR Tree (steps=100) ---
     {
         int32_t tree_n = std::min(n, (int32_t)2000);
         std::vector<int32_t> am(tree_n, 0);
@@ -125,7 +121,6 @@ int main(int argc, char** argv) {
         results.push_back({"CRR(100)", s_ms, b_ms, s_ms / std::max(1e-12, b_ms)});
     }
 
-    // --- Standard MC (paths=1000) ---
     {
         int32_t mc_n = std::min(n, (int32_t)500);
         std::vector<int32_t> paths(mc_n, 1000);
@@ -147,7 +142,6 @@ int main(int argc, char** argv) {
         results.push_back({"MC(1000)", s_ms, b_ms, s_ms / std::max(1e-12, b_ms)});
     }
 
-    // --- Output ---
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "| Algorithm | Scalar (ms) | Batch (ms) | Speedup |\n";
     std::cout << "|-----------|-------------|------------|--------|\n";

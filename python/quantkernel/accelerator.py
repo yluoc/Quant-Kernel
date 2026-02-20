@@ -222,7 +222,6 @@ class QuantAccelerator:
     }
 
     _NATIVE_BATCH_METHODS = {
-        # Closed-form
         "black_scholes_merton_price": "black_scholes_merton_price_batch",
         "black76_price": "black76_price_batch",
         "bachelier_price": "bachelier_price_batch",
@@ -232,14 +231,12 @@ class QuantAccelerator:
         "sabr_hagan_lognormal_iv": "sabr_hagan_lognormal_iv_batch",
         "sabr_hagan_black76_price": "sabr_hagan_black76_price_batch",
         "dupire_local_vol": "dupire_local_vol_batch",
-        # Tree/Lattice
         "crr_price": "crr_price_batch",
         "jarrow_rudd_price": "jarrow_rudd_price_batch",
         "tian_price": "tian_price_batch",
         "leisen_reimer_price": "leisen_reimer_price_batch",
         "trinomial_tree_price": "trinomial_tree_price_batch",
         "derman_kani_const_local_vol_price": "derman_kani_const_local_vol_price_batch",
-        # Finite Difference
         "explicit_fd_price": "explicit_fd_price_batch",
         "implicit_fd_price": "implicit_fd_price_batch",
         "crank_nicolson_price": "crank_nicolson_price_batch",
@@ -247,7 +244,6 @@ class QuantAccelerator:
         "adi_craig_sneyd_price": "adi_craig_sneyd_price_batch",
         "adi_hundsdorfer_verwer_price": "adi_hundsdorfer_verwer_price_batch",
         "psor_price": "psor_price_batch",
-        # Monte Carlo
         "standard_monte_carlo_price": "standard_monte_carlo_price_batch",
         "euler_maruyama_price": "euler_maruyama_price_batch",
         "milstein_price": "milstein_price_batch",
@@ -259,27 +255,22 @@ class QuantAccelerator:
         "control_variates_price": "control_variates_price_batch",
         "antithetic_variates_price": "antithetic_variates_price_batch",
         "stratified_sampling_price": "stratified_sampling_price_batch",
-        # Fourier Transform
         "carr_madan_fft_price": "carr_madan_fft_price_batch",
         "cos_method_fang_oosterlee_price": "cos_method_fang_oosterlee_price_batch",
         "fractional_fft_price": "fractional_fft_price_batch",
         "lewis_fourier_inversion_price": "lewis_fourier_inversion_price_batch",
         "hilbert_transform_price": "hilbert_transform_price_batch",
-        # Integral Quadrature
         "gauss_hermite_price": "gauss_hermite_price_batch",
         "gauss_laguerre_price": "gauss_laguerre_price_batch",
         "gauss_legendre_price": "gauss_legendre_price_batch",
         "adaptive_quadrature_price": "adaptive_quadrature_price_batch",
-        # Regression Approximation
         "polynomial_chaos_expansion_price": "polynomial_chaos_expansion_price_batch",
         "radial_basis_function_price": "radial_basis_function_price_batch",
         "sparse_grid_collocation_price": "sparse_grid_collocation_price_batch",
         "proper_orthogonal_decomposition_price": "proper_orthogonal_decomposition_price_batch",
-        # Adjoint Greeks
         "pathwise_derivative_delta": "pathwise_derivative_delta_batch",
         "likelihood_ratio_delta": "likelihood_ratio_delta_batch",
         "aad_delta": "aad_delta_batch",
-        # Machine Learning
         "deep_bsde_price": "deep_bsde_price_batch",
         "pinns_price": "pinns_price_batch",
         "deep_hedging_price": "deep_hedging_price_batch",
@@ -977,7 +968,6 @@ class QuantAccelerator:
             det = xp.exp(-r * t) * xp.where(option_type == QK_CALL, xp.maximum(fwd - strike, 0.0), xp.maximum(strike - fwd, 0.0))
             return xp.where(t <= eps, intrinsic, xp.where(vol <= eps, det, regular))
 
-        # --- Monte Carlo helpers ---
         def _mc_common_params(jobs, xp):
             spot = self._column(xp, jobs, "spot")
             strike = self._column(xp, jobs, "strike")
@@ -1177,7 +1167,6 @@ class QuantAccelerator:
             df = xp.exp(-r * t)
             return df * xp.mean(payoffs, axis=1)
 
-        # --- Regression Approximation Methods (BSM + scalar correction) ---
         def _ram_bsm_call(xp, spot, strike, t, vol, r, q):
             sqrt_t = xp.sqrt(xp.maximum(t, 0.0))
             vol_sqrt_t = vol * sqrt_t
@@ -1257,7 +1246,6 @@ class QuantAccelerator:
             correction = min(0.2, 0.05 * mode_term + 0.04 * snapshot_term)
             return _ram_apply(xp, spot, strike, t, vol, r, q, option_type, correction)
 
-        # --- Adjoint Greeks Methods ---
         if method == "pathwise_derivative_delta":
             spot = self._column(xp, jobs, "spot")
             strike = self._column(xp, jobs, "strike")
@@ -1342,7 +1330,6 @@ class QuantAccelerator:
             delta = delta * (1.0 - reg_strength) + atm_prior * reg_strength
             return xp.clip(delta, -qf, qf)
 
-        # --- Neural SDE Calibration (BSM at corrected vol) ---
         if method == "neural_sde_calibration_price":
             spot = self._column(xp, jobs, "spot")
             strike = self._column(xp, jobs, "strike")

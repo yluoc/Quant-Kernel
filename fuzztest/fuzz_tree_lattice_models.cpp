@@ -13,9 +13,7 @@ static double rel_tol(double ref) {
     return std::max(std::fabs(ref) * 0.05, 1.0);
 }
 
-// ---------------------------------------------------------------------------
 // CRR matches BSM for European options
-// ---------------------------------------------------------------------------
 void CrrMatchesBsm(double S, double K, double T, double vol, double r, double q,
                    int option_type, int steps) {
     double crr = qk::tlm::crr_price(S, K, T, vol, r, q, option_type, steps, false);
@@ -33,9 +31,7 @@ FUZZ_TEST(TreeLattice, CrrMatchesBsm)
                  fuzztest::ElementOf({QK_CALL, QK_PUT}),
                  fuzztest::InRange(50, 500));
 
-// ---------------------------------------------------------------------------
 // Jarrow-Rudd matches BSM for European options
-// ---------------------------------------------------------------------------
 void JrMatchesBsm(double S, double K, double T, double vol, double r, double q,
                   int option_type, int steps) {
     double jr  = qk::tlm::jarrow_rudd_price(S, K, T, vol, r, q, option_type, steps, false);
@@ -53,9 +49,7 @@ FUZZ_TEST(TreeLattice, JrMatchesBsm)
                  fuzztest::ElementOf({QK_CALL, QK_PUT}),
                  fuzztest::InRange(50, 500));
 
-// ---------------------------------------------------------------------------
 // Tian matches BSM for European options
-// ---------------------------------------------------------------------------
 void TianMatchesBsm(double S, double K, double T, double vol, double r, double q,
                     int option_type, int steps) {
     double tian = qk::tlm::tian_price(S, K, T, vol, r, q, option_type, steps, false);
@@ -73,9 +67,7 @@ FUZZ_TEST(TreeLattice, TianMatchesBsm)
                  fuzztest::ElementOf({QK_CALL, QK_PUT}),
                  fuzztest::InRange(50, 500));
 
-// ---------------------------------------------------------------------------
 // Leisen-Reimer matches BSM for European options (steps must be odd)
-// ---------------------------------------------------------------------------
 void LrMatchesBsm(double S, double K, double T, double vol, double r, double q,
                   int option_type, int steps) {
     // LR requires odd steps
@@ -95,9 +87,7 @@ FUZZ_TEST(TreeLattice, LrMatchesBsm)
                  fuzztest::ElementOf({QK_CALL, QK_PUT}),
                  fuzztest::InRange(50, 500));
 
-// ---------------------------------------------------------------------------
 // Trinomial tree matches BSM for European options
-// ---------------------------------------------------------------------------
 void TrinomialMatchesBsm(double S, double K, double T, double vol, double r, double q,
                          int option_type, int steps) {
     double tri = qk::tlm::trinomial_tree_price(S, K, T, vol, r, q, option_type, steps, false);
@@ -115,9 +105,7 @@ FUZZ_TEST(TreeLattice, TrinomialMatchesBsm)
                  fuzztest::ElementOf({QK_CALL, QK_PUT}),
                  fuzztest::InRange(50, 500));
 
-// ---------------------------------------------------------------------------
 // American put >= European put (CRR)
-// ---------------------------------------------------------------------------
 void AmericanPutGeqEuropeanPut(double S, double K, double T, double vol, double r, double q,
                                int steps) {
     double eur = qk::tlm::crr_price(S, K, T, vol, r, q, QK_PUT, steps, false);
@@ -133,10 +121,8 @@ FUZZ_TEST(TreeLattice, AmericanPutGeqEuropeanPut)
                  fuzztest::InRange(0.0, 0.15),
                  fuzztest::InRange(50, 500));
 
-// ---------------------------------------------------------------------------
 // Derman-Kani implied tree matches BSM with constant local vol
 // (fixed params, not fuzzed — uses lambda)
-// ---------------------------------------------------------------------------
 TEST(TreeLattice, DermanKaniConstLocalVolMatchesBsm) {
     double S = 100.0, K = 100.0, T = 1.0, vol = 0.2, r = 0.03, q = 0.01;
     auto local_vol = [vol](double /*spot*/, double /*time*/) { return vol; };

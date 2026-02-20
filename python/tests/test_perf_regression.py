@@ -44,7 +44,6 @@ def test_bsm_batch_speed_and_accuracy_regression(qk):
         for i in range(n)
     ]
 
-    # Warmup JIT/caches
     qk.black_scholes_merton_price_batch(spot, strike, tau, vol, r, q, option_type)
     qk.price_batch("black_scholes_merton_price", jobs[:2000], backend="cpu")
 
@@ -69,7 +68,6 @@ def test_bsm_batch_speed_and_accuracy_regression(qk):
     )
     assert np.allclose(bsm_batch, bsm_scalar, atol=1e-12, rtol=1e-12)
 
-    # Deterministic perf guardrails:
     # Fail if batch paths regress to less than 5% faster than scalar.
     assert py_batch_ms < scalar_ms * 0.95
     assert native_batch_ms < scalar_ms * 0.95
@@ -89,7 +87,6 @@ def test_fourier_batch_speed_regression(qk):
     n_terms = np.full(n, 128, dtype=np.int32)
     tw = np.full(n, 8.0)
 
-    # Warmup
     qk.cos_method_fang_oosterlee_price_batch(spot[:100], strike[:100], tau[:100],
                                               vol[:100], r[:100], q[:100], ot[:100],
                                               n_terms[:100], tw[:100])
@@ -121,7 +118,6 @@ def test_tree_batch_speed_regression(qk):
     steps = np.full(n, 64, dtype=np.int32)
     am = (np.arange(n) & 1).astype(np.int32)
 
-    # Warmup
     qk.crr_price_batch(spot[:100], strike[:100], tau[:100], vol[:100],
                         r[:100], q[:100], ot[:100], steps[:100], am[:100])
 
@@ -155,7 +151,6 @@ def test_heston_batch_speed_regression(qk):
     isteps = np.full(n, 512, dtype=np.int32)
     ilimit = np.full(n, 80.0)
 
-    # Warmup
     qk.heston_price_cf_batch(spot[:10], strike[:10], tau[:10], r[:10], q[:10],
                               v0[:10], kappa[:10], theta[:10], sigma[:10], rho[:10],
                               ot[:10], isteps[:10], ilimit[:10])
