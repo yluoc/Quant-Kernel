@@ -5,12 +5,59 @@ import math
 
 import numpy as np
 
-from ._abi import QK_CALL, QK_PUT
+from ._abi import QK_CALL, QK_PUT, QK_ERR_NULL_PTR, QK_ERR_BAD_SIZE, QK_ERR_INVALID_INPUT
 from ._loader import load_library
 
 
+class QKError(RuntimeError):
+    """Base exception for QuantKernel errors."""
+
+
+class QKNullPointerError(QKError):
+    """Raised when a null pointer is passed to a batch API."""
+
+
+class QKBadSizeError(QKError):
+    """Raised when an invalid batch size is passed."""
+
+
+class QKInvalidInputError(QKError):
+    """Raised when invalid input parameters are detected."""
+
+
+_ERROR_CODE_MAP = {
+    QK_ERR_NULL_PTR: QKNullPointerError,
+    QK_ERR_BAD_SIZE: QKBadSizeError,
+    QK_ERR_INVALID_INPUT: QKInvalidInputError,
+}
+
+
 class QuantKernel:
-    """Thin wrapper for the QuantKernel shared library."""
+    """High-performance derivative pricing engine.
+
+    Wraps the QuantKernel C++ shared library via ctypes, providing
+    40+ pricing algorithms including closed-form, tree/lattice,
+    finite difference, Monte Carlo, Fourier, and machine learning methods.
+
+    Each method is available in scalar (single-option) and batch
+    (array-in/array-out) variants. Batch methods leverage SIMD and
+    OpenMP parallelism in the C++ core for maximum throughput.
+
+    Example::
+
+        qk = QuantKernel()
+        price = qk.black_scholes_merton_price(
+            spot=100.0, strike=100.0, t=1.0, vol=0.2,
+            r=0.05, q=0.0, option_type=qk.CALL
+        )
+
+        # Batch pricing
+        prices = qk.black_scholes_merton_price_batch(
+            spot=[100]*1000, strike=[100]*1000, t=[1.0]*1000,
+            vol=[0.2]*1000, r=[0.05]*1000, q=[0.0]*1000,
+            option_type=[qk.CALL]*1000
+        )
+    """
 
     __slots__ = ('_lib', '_fn_cache', '_accel_cache', '_native_batch')
 
@@ -90,7 +137,18 @@ class QuantKernel:
                 raise TypeError(f"Unsupported dtype for batch call: {arr.dtype}")
         rc = fn(*args, int(n), out.ctypes.data_as(c_double_p))
         if rc != 0:
-            raise ValueError(f"{fn_name} failed with error code {rc}")
+            detail = ""
+            try:
+                raw = self._lib.qk_get_last_error()
+                if raw:
+                    detail = raw.decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            exc_cls = _ERROR_CODE_MAP.get(rc, QKError)
+            msg = f"{fn_name} failed (rc={rc})"
+            if detail:
+                msg += f": {detail}"
+            raise exc_cls(msg)
         return out
 
     def get_accelerator(self, backend: str = "auto", max_workers: int | None = None):
@@ -139,6 +197,30 @@ class QuantKernel:
     def black_scholes_merton_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float, option_type: int
     ) -> float:
+        """Price a European option using the Black-Scholes-Merton formula.
+
+        Parameters
+        ----------
+        spot : float
+            Current underlying asset price.
+        strike : float
+            Option strike price.
+        t : float
+            Time to expiration in years.
+        vol : float
+            Annualized volatility (e.g. 0.2 for 20%).
+        r : float
+            Risk-free interest rate (continuously compounded).
+        q : float
+            Continuous dividend yield.
+        option_type : int
+            ``QK_CALL`` (0) or ``QK_PUT`` (1).
+
+        Returns
+        -------
+        float
+            The BSM option price.
+        """
         return self._get_fn("qk_cf_black_scholes_merton_price")(
             spot, strike, t, vol, r, q, option_type
         )
@@ -146,17 +228,48 @@ class QuantKernel:
     def black76_price(
         self, forward: float, strike: float, t: float, vol: float, r: float, option_type: int
     ) -> float:
+        """Price a European option on a forward using the Black-76 model.
+
+        Parameters
+        ----------
+        forward : float
+            Forward price of the underlying.
+        strike, t, vol, r : float
+            Strike, time to expiry, volatility, risk-free rate.
+        option_type : int
+            ``QK_CALL`` or ``QK_PUT``.
+        """
         return self._get_fn("qk_cf_black76_price")(forward, strike, t, vol, r, option_type)
 
     def bachelier_price(
         self, forward: float, strike: float, t: float, normal_vol: float, r: float, option_type: int
     ) -> float:
+        """Price a European option using the Bachelier (normal) model.
+
+        Parameters
+        ----------
+        forward : float
+            Forward price.
+        strike, t : float
+            Strike price and time to expiry.
+        normal_vol : float
+            Normal (absolute) volatility.
+        r : float
+            Risk-free rate.
+        option_type : int
+            ``QK_CALL`` or ``QK_PUT``.
+        """
         return self._get_fn("qk_cf_bachelier_price")(forward, strike, t, normal_vol, r, option_type)
 
     def black_scholes_merton_price_batch(
         self, spot, strike, t, vol, r, q, option_type
     ) -> np.ndarray:
-        """Vectorized native batch call (C++ core) for Black-Scholes-Merton."""
+        """Vectorized batch Black-Scholes-Merton pricing (SIMD-accelerated).
+
+        All parameters are 1-D array-like of equal length. Returns an
+        ndarray of option prices. Raises ``QKNullPointerError`` or
+        ``QKBadSizeError`` on invalid inputs.
+        """
         s = self._as_f64_array(spot, "spot")
         k = self._as_f64_array(strike, "strike")
         tau = self._as_f64_array(t, "t")
@@ -699,6 +812,15 @@ class QuantKernel:
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
         option_type: int, steps: int, american_style: bool = False
     ) -> float:
+        """Price using Cox-Ross-Rubinstein binomial tree.
+
+        Parameters
+        ----------
+        steps : int
+            Number of time steps in the tree.
+        american_style : bool
+            If True, price an American-exercise option.
+        """
         return self._tree_price(
             "qk_tlm_crr_price", spot, strike, t, vol, r, q, option_type, steps, american_style
         )
@@ -889,6 +1011,15 @@ class QuantKernel:
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
         option_type: int, paths: int, seed: int = 42
     ) -> float:
+        """Price using standard Monte Carlo simulation.
+
+        Parameters
+        ----------
+        paths : int
+            Number of simulated price paths.
+        seed : int
+            Random number generator seed for reproducibility.
+        """
         return self._mc_price(
             "qk_mcm_standard_monte_carlo_price",
             spot, strike, t, vol, r, q, option_type, paths, seed

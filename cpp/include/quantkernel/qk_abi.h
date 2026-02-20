@@ -9,7 +9,7 @@
 
 /* ABI version — bump major on breaking changes, minor on additions */
 #define QK_ABI_MAJOR 2
-#define QK_ABI_MINOR 8
+#define QK_ABI_MINOR 9
 
 /* Return codes */
 #define QK_OK             0
@@ -17,6 +17,7 @@
 #define QK_ERR_BAD_SIZE  -2
 #define QK_ERR_ABI_MISMATCH -3
 #define QK_ERR_RUNTIME_INIT -4
+#define QK_ERR_INVALID_INPUT -5
 
 /* Option type constants */
 #define QK_CALL 0

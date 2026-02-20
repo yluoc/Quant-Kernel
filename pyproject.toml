@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel", "cython>=3.0", "numpy>=1.24"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantkernel"
+version = "2.9.0"
+description = "High-performance derivative pricing engine with 40+ algorithms"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+dev = ["pytest", "cython>=3.0"]
+gpu = ["cupy>=12.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]

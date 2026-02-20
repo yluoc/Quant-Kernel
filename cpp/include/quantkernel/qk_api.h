@@ -17,6 +17,8 @@ QK_EXPORT void    qk_abi_version(int32_t* major, int32_t* minor);
 QK_EXPORT int32_t qk_plugin_get_api(int32_t host_abi_major,
                                     int32_t host_abi_minor,
                                     const QKPluginAPI** out_api);
+QK_EXPORT const char* qk_get_last_error(void);
+QK_EXPORT void        qk_clear_last_error(void);
 /* --- Closed-form formulas --- */
 QK_EXPORT double qk_cf_black_scholes_merton_price(double spot, double strike, double t, double vol,
                                                    double r, double q, int32_t option_type);

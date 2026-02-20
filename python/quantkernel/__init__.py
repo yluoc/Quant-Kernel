@@ -1,6 +1,6 @@
 """QuantKernel — high-performance derivative pricing engine."""
 
-from .engine import QuantKernel
+from .engine import QuantKernel, QKError, QKNullPointerError, QKBadSizeError, QKInvalidInputError
 from .accelerator import QuantAccelerator
 from ._abi import (
     QK_CALL,
@@ -10,6 +10,7 @@ from ._abi import (
     QK_ERR_BAD_SIZE,
     QK_ERR_ABI_MISMATCH,
     QK_ERR_RUNTIME_INIT,
+    QK_ERR_INVALID_INPUT,
     ABI_MAJOR,
     ABI_MINOR,
 )
@@ -17,6 +18,10 @@ from ._abi import (
 __all__ = [
     "QuantKernel",
     "QuantAccelerator",
+    "QKError",
+    "QKNullPointerError",
+    "QKBadSizeError",
+    "QKInvalidInputError",
     "QK_CALL",
     "QK_PUT",
     "QK_OK",
@@ -24,6 +29,7 @@ __all__ = [
     "QK_ERR_BAD_SIZE",
     "QK_ERR_ABI_MISMATCH",
     "QK_ERR_RUNTIME_INIT",
+    "QK_ERR_INVALID_INPUT",
     "ABI_MAJOR",
     "ABI_MINOR",
 ]

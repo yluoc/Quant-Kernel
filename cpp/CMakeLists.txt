@@ -1,3 +1,5 @@
+find_package(OpenMP)
+
 add_library(quantkernel SHARED
     src/qk_api.cpp
     src/algorithms/closed_form_semi_analytical/black_scholes_merton/black_scholes_merton.cpp
@@ -60,6 +62,15 @@ target_compile_options(quantkernel PRIVATE
     -Wall -Wextra -Wpedantic
     -O3 -ffast-math -march=native -mtune=native
     -funroll-loops -ftree-vectorize
+    -fopenmp-simd
+)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(quantkernel PRIVATE OpenMP::OpenMP_CXX)
+endif()
+
+target_precompile_headers(quantkernel PRIVATE
+    <cstdint> <cmath> <cstring> <algorithm> <memory> <vector>
 )
 
 set_target_properties(quantkernel PROPERTIES
@@ -74,3 +85,29 @@ add_executable(qk_bench_bsm_batch
 )
 target_link_libraries(qk_bench_bsm_batch PRIVATE quantkernel)
 target_include_directories(qk_bench_bsm_batch PRIVATE include)
+
+# --- Expanded benchmarks ---
+add_executable(qk_bench_all
+    bench/benchmark_all.cpp
+)
+target_link_libraries(qk_bench_all PRIVATE quantkernel)
+target_include_directories(qk_bench_all PRIVATE include)
+
+# --- C++ unit tests ---
+enable_testing()
+
+set(QK_TEST_SOURCES
+    tests/test_closed_form.cpp
+    tests/test_tree_lattice.cpp
+    tests/test_monte_carlo.cpp
+    tests/test_fourier.cpp
+    tests/test_error_handling.cpp
+)
+
+foreach(test_src ${QK_TEST_SOURCES})
+    get_filename_component(test_name ${test_src} NAME_WE)
+    add_executable(${test_name} ${test_src})
+    target_link_libraries(${test_name} PRIVATE quantkernel)
+    target_include_directories(${test_name} PRIVATE include ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()

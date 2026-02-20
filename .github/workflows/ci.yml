@@ -28,8 +28,14 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
-      - name: Build and run core tests
-        run: make quick
+      - name: Build C++ library
+        run: make build
+
+      - name: Run C++ unit tests
+        run: make test-cpp
+
+      - name: Run Python tests
+        run: make test-py
 
       - name: Build native batch Python extension (Cython)
         env:

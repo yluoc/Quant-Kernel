@@ -1,5 +1,8 @@
 #include <quantkernel/qk_api.h>
 
+#include <cstdio>
+#include <cstring>
+
 #include "algorithms/closed_form_semi_analytical/closed_form_models.h"
 #include "algorithms/tree_lattice_methods/tree_lattice_models.h"
 #include "algorithms/finite_difference_methods/finite_difference_models.h"
@@ -10,6 +13,42 @@
 #include "algorithms/adjoint_greeks/adjoint_greeks_models.h"
 #include "algorithms/machine_learning/machine_learning_models.h"
 
+/* --- Thread-local error message buffer --- */
+
+static thread_local char tl_error_msg[256] = "";
+
+static void set_error_msg(const char* msg) {
+    std::strncpy(tl_error_msg, msg, sizeof(tl_error_msg) - 1);
+    tl_error_msg[sizeof(tl_error_msg) - 1] = '\0';
+}
+
+static void set_error_null_ptr(const char* param_name) {
+    char buf[256];
+    std::snprintf(buf, sizeof(buf), "null pointer: %s", param_name);
+    set_error_msg(buf);
+}
+
+static void set_error_bad_size(int32_t n) {
+    char buf[256];
+    std::snprintf(buf, sizeof(buf), "bad batch size: %d", n);
+    set_error_msg(buf);
+}
+
+/* --- Batch validation macros --- */
+
+#define QK_BATCH_VALIDATE_N(n) \
+    do { if ((n) <= 0) { set_error_bad_size(n); return QK_ERR_BAD_SIZE; } } while(0)
+
+#define QK_BATCH_NULL_CHECK_1(a) \
+    do { if (!(a)) { set_error_null_ptr(#a); return QK_ERR_NULL_PTR; } } while(0)
+
+#define QK_BATCH_NULL_CHECK(...) \
+    do { const void* _ptrs[] = {__VA_ARGS__}; \
+         const char* _names[] = {#__VA_ARGS__}; \
+         for (size_t _i = 0; _i < sizeof(_ptrs)/sizeof(_ptrs[0]); ++_i) \
+             if (!_ptrs[_i]) { set_error_null_ptr(_names[0]); return QK_ERR_NULL_PTR; } \
+    } while(0)
+
 namespace {
 
 const QKPluginAPI k_plugin_api = {
@@ -17,10 +56,6 @@ const QKPluginAPI k_plugin_api = {
     QK_ABI_MINOR,
     "quantkernel.cpp.closed_form_trees_fdm_mcm_ftm_iqm_ram_agm_mlm.v10"
 };
-
-inline int32_t validate_batch_size(int32_t n) {
-    return (n > 0) ? QK_OK : QK_ERR_BAD_SIZE;
-}
 
 } /* namespace */
 
@@ -41,6 +76,14 @@ int32_t qk_plugin_get_api(int32_t host_abi_major,
     }
     *out_api = &k_plugin_api;
     return QK_OK;
+}
+
+const char* qk_get_last_error(void) {
+    return tl_error_msg;
+}
+
+void qk_clear_last_error(void) {
+    tl_error_msg[0] = '\0';
 }
 
 double qk_cf_black_scholes_merton_price(double spot, double strike, double t, double vol,
@@ -67,12 +110,10 @@ int32_t qk_cf_black_scholes_merton_price_batch(const double* spot,
                                                const int32_t* option_type,
                                                int32_t n,
                                                double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, out_prices);
+    QK_BATCH_VALIDATE_N(n);
 
+    #pragma omp simd
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::cfa::black_scholes_merton_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i]
@@ -89,12 +130,10 @@ int32_t qk_cf_black76_price_batch(const double* forward,
                                   const int32_t* option_type,
                                   int32_t n,
                                   double* out_prices) {
-    if (!forward || !strike || !t || !vol || !r || !option_type || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(forward, strike, t, vol, r, option_type, out_prices);
+    QK_BATCH_VALIDATE_N(n);
 
+    #pragma omp simd
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::cfa::black76_price(
             forward[i], strike[i], t[i], vol[i], r[i], option_type[i]
@@ -111,12 +150,10 @@ int32_t qk_cf_bachelier_price_batch(const double* forward,
                                     const int32_t* option_type,
                                     int32_t n,
                                     double* out_prices) {
-    if (!forward || !strike || !t || !normal_vol || !r || !option_type || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(forward, strike, t, normal_vol, r, option_type, out_prices);
+    QK_BATCH_VALIDATE_N(n);
 
+    #pragma omp simd
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::cfa::bachelier_price(
             forward[i], strike[i], t[i], normal_vol[i], r[i], option_type[i]
@@ -197,12 +234,10 @@ int32_t qk_cf_heston_price_cf_batch(const double* spot, const double* strike,
                                      const int32_t* option_type, const int32_t* integration_steps,
                                      const double* integration_limit,
                                      int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !r || !q || !v0 || !kappa || !theta
-        || !sigma || !rho || !option_type || !integration_steps || !integration_limit || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+                        option_type, integration_steps, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::cfa::HestonParams params{};
         params.v0 = v0[i]; params.kappa = kappa[i]; params.theta = theta[i];
@@ -222,12 +257,10 @@ int32_t qk_cf_merton_jump_diffusion_price_batch(const double* spot, const double
                                                   const double* jump_vol, const int32_t* max_terms,
                                                   const int32_t* option_type,
                                                   int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !jump_intensity || !jump_mean
-        || !jump_vol || !max_terms || !option_type || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, jump_intensity, jump_mean,
+                        jump_vol, max_terms, option_type, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::cfa::MertonJumpDiffusionParams params{};
         params.jump_intensity = jump_intensity[i]; params.jump_mean = jump_mean[i];
@@ -245,12 +278,10 @@ int32_t qk_cf_variance_gamma_price_cf_batch(const double* spot, const double* st
                                               const int32_t* option_type, const int32_t* integration_steps,
                                               const double* integration_limit,
                                               int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !r || !q || !sigma || !theta || !nu
-        || !option_type || !integration_steps || !integration_limit || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, sigma, theta, nu,
+                        option_type, integration_steps, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::cfa::VarianceGammaParams params{};
         params.sigma = sigma[i]; params.theta = theta[i]; params.nu = nu[i];
@@ -267,11 +298,9 @@ int32_t qk_cf_sabr_hagan_lognormal_iv_batch(const double* forward, const double*
                                               const double* beta, const double* rho,
                                               const double* nu,
                                               int32_t n, double* out_prices) {
-    if (!forward || !strike || !t || !alpha || !beta || !rho || !nu || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(forward, strike, t, alpha, beta, rho, nu, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp simd
     for (int32_t i = 0; i < n; ++i) {
         qk::cfa::SABRParams params{};
         params.alpha = alpha[i]; params.beta = beta[i];
@@ -287,12 +316,9 @@ int32_t qk_cf_sabr_hagan_black76_price_batch(const double* forward, const double
                                                const double* rho, const double* nu,
                                                const int32_t* option_type,
                                                int32_t n, double* out_prices) {
-    if (!forward || !strike || !t || !r || !alpha || !beta || !rho || !nu
-        || !option_type || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(forward, strike, t, r, alpha, beta, rho, nu, option_type, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp simd
     for (int32_t i = 0; i < n; ++i) {
         qk::cfa::SABRParams params{};
         params.alpha = alpha[i]; params.beta = beta[i];
@@ -309,12 +335,9 @@ int32_t qk_cf_dupire_local_vol_batch(const double* strike, const double* t,
                                       const double* dC_dK, const double* d2C_dK2,
                                       const double* r, const double* q,
                                       int32_t n, double* out_prices) {
-    if (!strike || !t || !call_price || !dC_dT || !dC_dK || !d2C_dK2
-        || !r || !q || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(strike, t, call_price, dC_dT, dC_dK, d2C_dK2, r, q, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp simd
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::cfa::dupire_local_vol(
             strike[i], t[i], call_price[i], dC_dT[i], dC_dK[i], d2C_dK2[i], r[i], q[i]
@@ -340,13 +363,10 @@ int32_t qk_tlm_crr_price_batch(const double* spot,
                                const int32_t* american_style,
                                int32_t n,
                                double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !steps || !american_style || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
 
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::tlm::crr_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -403,12 +423,9 @@ int32_t qk_tlm_jarrow_rudd_price_batch(const double* spot, const double* strike,
                                          const int32_t* option_type, const int32_t* steps,
                                          const int32_t* american_style,
                                          int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !steps || !american_style || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::tlm::jarrow_rudd_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -424,12 +441,9 @@ int32_t qk_tlm_tian_price_batch(const double* spot, const double* strike,
                                   const int32_t* option_type, const int32_t* steps,
                                   const int32_t* american_style,
                                   int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !steps || !american_style || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::tlm::tian_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -445,12 +459,9 @@ int32_t qk_tlm_leisen_reimer_price_batch(const double* spot, const double* strik
                                            const int32_t* option_type, const int32_t* steps,
                                            const int32_t* american_style,
                                            int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !steps || !american_style || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::tlm::leisen_reimer_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -466,12 +477,9 @@ int32_t qk_tlm_trinomial_tree_price_batch(const double* spot, const double* stri
                                             const int32_t* option_type, const int32_t* steps,
                                             const int32_t* american_style,
                                             int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !steps || !american_style || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::tlm::trinomial_tree_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -487,12 +495,9 @@ int32_t qk_tlm_derman_kani_const_local_vol_price_batch(const double* spot, const
                                                          const int32_t* option_type, const int32_t* steps,
                                                          const int32_t* american_style,
                                                          int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !local_vol || !r || !q || !option_type
-        || !steps || !american_style || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, local_vol, r, q, option_type, steps, american_style, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         auto surface = [lv = local_vol[i]](double, double) { return lv; };
         qk::tlm::ImpliedTreeConfig cfg{};
@@ -608,13 +613,10 @@ int32_t qk_mcm_standard_monte_carlo_price_batch(const double* spot,
                                                 const uint64_t* seed,
                                                 int32_t n,
                                                 double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
 
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::standard_monte_carlo_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -711,12 +713,9 @@ int32_t qk_mcm_euler_maruyama_price_batch(const double* spot, const double* stri
                                             const int32_t* option_type, const int32_t* paths,
                                             const int32_t* steps, const uint64_t* seed,
                                             int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !steps || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, steps, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::euler_maruyama_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -732,12 +731,9 @@ int32_t qk_mcm_milstein_price_batch(const double* spot, const double* strike,
                                       const int32_t* option_type, const int32_t* paths,
                                       const int32_t* steps, const uint64_t* seed,
                                       int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !steps || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, steps, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::milstein_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -753,12 +749,9 @@ int32_t qk_mcm_longstaff_schwartz_price_batch(const double* spot, const double* 
                                                 const int32_t* option_type, const int32_t* paths,
                                                 const int32_t* steps, const uint64_t* seed,
                                                 int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !steps || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, steps, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::longstaff_schwartz_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -773,12 +766,9 @@ int32_t qk_mcm_quasi_monte_carlo_sobol_price_batch(const double* spot, const dou
                                                      const double* r, const double* q,
                                                      const int32_t* option_type, const int32_t* paths,
                                                      int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::quasi_monte_carlo_sobol_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], paths[i]
@@ -792,12 +782,9 @@ int32_t qk_mcm_quasi_monte_carlo_halton_price_batch(const double* spot, const do
                                                       const double* r, const double* q,
                                                       const int32_t* option_type, const int32_t* paths,
                                                       int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::quasi_monte_carlo_halton_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i], paths[i]
@@ -813,12 +800,9 @@ int32_t qk_mcm_multilevel_monte_carlo_price_batch(const double* spot, const doub
                                                     const int32_t* levels, const int32_t* base_steps,
                                                     const uint64_t* seed,
                                                     int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !base_paths || !levels || !base_steps || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, base_paths, levels, base_steps, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::multilevel_monte_carlo_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -834,12 +818,9 @@ int32_t qk_mcm_importance_sampling_price_batch(const double* spot, const double*
                                                 const int32_t* option_type, const int32_t* paths,
                                                 const double* shift, const uint64_t* seed,
                                                 int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !shift || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, shift, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::importance_sampling_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -855,12 +836,9 @@ int32_t qk_mcm_control_variates_price_batch(const double* spot, const double* st
                                               const int32_t* option_type, const int32_t* paths,
                                               const uint64_t* seed,
                                               int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::control_variates_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -876,12 +854,9 @@ int32_t qk_mcm_antithetic_variates_price_batch(const double* spot, const double*
                                                  const int32_t* option_type, const int32_t* paths,
                                                  const uint64_t* seed,
                                                  int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::antithetic_variates_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -897,12 +872,9 @@ int32_t qk_mcm_stratified_sampling_price_batch(const double* spot, const double*
                                                  const int32_t* option_type, const int32_t* paths,
                                                  const uint64_t* seed,
                                                  int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !paths || !seed || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         out_prices[i] = qk::mcm::stratified_sampling_price(
             spot[i], strike[i], t[i], vol[i], r[i], q[i], option_type[i],
@@ -936,13 +908,10 @@ int32_t qk_ftm_carr_madan_fft_price_batch(const double* spot,
                                           const double* alpha,
                                           int32_t n,
                                           double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !grid_size || !eta || !alpha || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, grid_size, eta, alpha, out_prices);
+    QK_BATCH_VALIDATE_N(n);
 
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::ftm::CarrMadanFFTParams params{};
         params.grid_size = grid_size[i];
@@ -1002,12 +971,9 @@ int32_t qk_ftm_cos_fang_oosterlee_price_batch(const double* spot, const double* 
                                                 const int32_t* option_type, const int32_t* n_terms,
                                                 const double* truncation_width,
                                                 int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !n_terms || !truncation_width || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, n_terms, truncation_width, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::ftm::COSMethodParams params{};
         params.n_terms = n_terms[i];
@@ -1026,12 +992,9 @@ int32_t qk_ftm_fractional_fft_price_batch(const double* spot, const double* stri
                                             const double* eta, const double* lambda_,
                                             const double* alpha,
                                             int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !grid_size || !eta || !lambda_ || !alpha || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, grid_size, eta, lambda_, alpha, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::ftm::FractionalFFTParams params{};
         params.grid_size = grid_size[i];
@@ -1052,12 +1015,9 @@ int32_t qk_ftm_lewis_fourier_inversion_price_batch(const double* spot, const dou
                                                      const int32_t* integration_steps,
                                                      const double* integration_limit,
                                                      int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !integration_steps || !integration_limit || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, integration_steps, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::ftm::LewisFourierInversionParams params{};
         params.integration_steps = integration_steps[i];
@@ -1076,12 +1036,9 @@ int32_t qk_ftm_hilbert_transform_price_batch(const double* spot, const double* s
                                                const int32_t* integration_steps,
                                                const double* integration_limit,
                                                int32_t n, double* out_prices) {
-    if (!spot || !strike || !t || !vol || !r || !q || !option_type
-        || !integration_steps || !integration_limit || !out_prices) {
-        return QK_ERR_NULL_PTR;
-    }
-    const int32_t size_status = validate_batch_size(n);
-    if (size_status != QK_OK) return size_status;
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, integration_steps, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
     for (int32_t i = 0; i < n; ++i) {
         qk::ftm::HilbertTransformParams params{};
         params.integration_steps = integration_steps[i];

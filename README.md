@@ -3,6 +3,15 @@
 QuantKernel is a C++17 quant pricing kernel with a Python wrapper.  
 Linux/macOS is recommended.
 
+**v2.9** highlights:
+- SIMD-vectorized closed-form batch loops (`#pragma omp simd`)
+- OpenMP thread-parallel heavy batch APIs (tree, MC, Fourier, Heston, Merton, VG)
+- Thread-local error messages via `qk_get_last_error()` / `qk_clear_last_error()`
+- Typed Python exceptions (`QKNullPointerError`, `QKBadSizeError`, `QKInvalidInputError`)
+- C++ unit test suite (5 suites, 31 tests) integrated with `ctest`
+- PEP 561 type stubs for IDE autocompletion
+- `pyproject.toml` for modern packaging
+
 
 ## Models
 - **Closed-form / semi-analytical**: Black-Scholes-Merton, Black-76, Bachelier, Heston CF, Merton jump-diffusion, Variance Gamma CF, SABR (Hagan), Dupire local vol.
@@ -122,6 +131,45 @@ Representative sample output (Ubuntu, `n=50000`, `repeats=3`; hardware-dependent
 | C++ direct executable (scalar) | 2.810 | 17,793,746 | 33.31x |
 | C++ direct executable (batch) | 2.565 | 19,495,594 | 36.50x |
 
+## Error Handling
+
+### C++ API
+Batch functions return error codes defined in `qk_abi.h`:
+
+| Code | Constant | Meaning |
+|---:|---|---|
+| 0 | `QK_OK` | Success |
+| -1 | `QK_ERR_NULL_PTR` | A required pointer argument was `NULL` |
+| -2 | `QK_ERR_BAD_SIZE` | Batch size `n` was zero or negative |
+| -5 | `QK_ERR_INVALID_INPUT` | Invalid parameter value |
+
+After any error, call `qk_get_last_error()` for a human-readable message:
+
+```c
+int32_t rc = qk_cf_black_scholes_merton_price_batch(NULL, ...);
+if (rc != QK_OK) {
+    printf("Error %d: %s\n", rc, qk_get_last_error());
+    // prints: "Error -1: null pointer: spot"
+}
+```
+
+### Python API
+Batch methods raise typed exceptions on failure:
+
+```python
+from quantkernel import QuantKernel, QKNullPointerError, QKBadSizeError
+
+qk = QuantKernel()
+try:
+    qk.black_scholes_merton_price_batch(None, ...)
+except QKNullPointerError as e:
+    print(e)  # "null pointer: spot"
+except QKBadSizeError as e:
+    print(e)  # "bad batch size: -3"
+```
+
+All exception classes inherit from `QKError` (which inherits from `RuntimeError`).
+
 ## Developer Commands
 Useful local commands from the repo root:
 
@@ -130,6 +178,8 @@ make build         # build shared library and C++ targets
 make build-native  # build optional Cython native batch extension
 make bench         # run scalar/batch benchmark table script
 make quick         # C++ + Python test suite
+make test-cpp      # run C++ unit tests only (via ctest)
+make test-py       # run Python tests only (via pytest)
 ```
 
 ## Batch + GPU Acceleration (Python layer)
@@ -237,9 +287,20 @@ print(f'Wrote {len(merged)} entries to compile_commands.json')
 If you're using VS Code, create a local `.vscode/c_cpp_properties.json` and set `compileCommands` to `${workspaceFolder}/compile_commands.json` (the `.vscode/` directory is ignored by default since it contains machine-specific paths).
 
 ## Tests
+
+### C++ Unit Tests
+Five test suites covering closed-form, tree/lattice, Monte Carlo, Fourier, and error handling:
+
 ```bash
-make quick
-make test-py
+make test-cpp
+# or directly via ctest:
+cd build && ctest --output-on-failure
+```
+
+### Python Tests
+```bash
+make quick       # C++ + Python tests
+make test-py     # Python tests only
 ```
 
 Deterministic native batch/perf checks:
@@ -250,3 +311,18 @@ pytest -q python/tests/test_batch_api.py python/tests/test_perf_regression.py
 
 CI runs deterministic fuzz/property checks (`FUZZTEST_PRNG_SEED` fixed), batch
 accuracy checks, and performance regression guards.
+
+## Build Optimization
+
+The CMake build includes several performance features:
+- **Precompiled headers** for `<cmath>`, `<vector>`, `<algorithm>`, etc. — reduces rebuild times
+- **`-O3 -ffast-math -march=native`** — aggressive optimization for the host CPU
+- **`-fopenmp-simd`** — enables SIMD pragmas without requiring the OpenMP threading runtime
+- **OpenMP threading** (when available) — parallelizes heavy batch loops across cores
+- **Link-time optimization** (`INTERPROCEDURAL_OPTIMIZATION TRUE`) — whole-program optimization
+
+## Type Stubs
+
+QuantKernel ships PEP 561 type stubs (`python/quantkernel/__init__.pyi` + `py.typed`).
+IDEs like VS Code, PyCharm, and mypy will automatically pick up type information for
+all public methods, constants, and exception classes.
