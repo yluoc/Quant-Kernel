@@ -5,7 +5,7 @@ It focuses on fast scalar and batch option analytics across closed-form, lattice
 finite-difference, Monte Carlo, Fourier, quadrature, regression-approximation,
 Greek-estimation, and ML-inspired methods.
 
-Linux, macOS, and Windows are supported.
+Linux and macOS are supported.
 
 ## Scope
 
@@ -14,7 +14,7 @@ QuantKernel provides:
 - Python package (`quantkernel`) with scalar and batch methods.
 - Optional Python-level accelerator (`QuantAccelerator`) for backend selection (`auto`, `cpu`, `gpu`).
 
-## Install (Not available yet, more test needed)
+## Install
 
 End users (recommended):
 
