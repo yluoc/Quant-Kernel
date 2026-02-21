@@ -179,6 +179,13 @@ class QuantKernel:
         local_vol: ArrayLike, r: ArrayLike, q: ArrayLike,
         option_type: ArrayLike, steps: ArrayLike, american_style: ArrayLike,
     ) -> np.ndarray: ...
+    def derman_kani_call_surface_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, option_type: ArrayLike,
+        surface_strikes: ArrayLike, surface_maturities: ArrayLike,
+        surface_call_prices: ArrayLike,
+        steps: ArrayLike, american_style: ArrayLike,
+    ) -> np.ndarray: ...
 
     def explicit_fd_price(
         self, spot: float, strike: float, t: float, vol: float,

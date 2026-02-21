@@ -959,6 +959,68 @@ class QuantKernel:
         return self._tree_price_batch("qk_tlm_derman_kani_const_local_vol_price_batch", "derman_kani_const_local_vol_price_batch",
                                       spot, strike, t, local_vol, r, q, option_type, steps, american_style)
 
+    def derman_kani_call_surface_price_batch(
+        self,
+        spot, strike, t, r, q, option_type,
+        surface_strikes, surface_maturities, surface_call_prices,
+        steps, american_style,
+    ) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        st = self._as_i32_array(steps, "steps")
+        am = self._as_i32_array(american_style, "american_style")
+        n = s.shape[0]
+        self._check_same_length(
+            n, strike=k, t=tau, r=rr, q=qq,
+            option_type=ot, steps=st, american_style=am
+        )
+
+        ks = self._as_f64_array(surface_strikes, "surface_strikes")
+        ts = self._as_f64_array(surface_maturities, "surface_maturities")
+        cp = np.asarray(surface_call_prices, dtype=np.float64)
+        if cp.ndim == 2:
+            cp = np.ascontiguousarray(cp.reshape(-1))
+        elif cp.ndim == 1:
+            cp = np.ascontiguousarray(cp)
+        else:
+            raise ValueError("surface_call_prices must be 1D or 2D array-like")
+
+        c_double_p = ct.POINTER(ct.c_double)
+        out = np.empty(n, dtype=np.float64)
+        rc = self._get_fn("qk_tlm_derman_kani_call_surface_price_batch")(
+            s.ctypes.data_as(c_double_p),
+            k.ctypes.data_as(c_double_p),
+            tau.ctypes.data_as(c_double_p),
+            rr.ctypes.data_as(c_double_p),
+            qq.ctypes.data_as(c_double_p),
+            ot.ctypes.data_as(ct.POINTER(ct.c_int32)),
+            ks.ctypes.data_as(c_double_p), int(ks.size),
+            ts.ctypes.data_as(c_double_p), int(ts.size),
+            cp.ctypes.data_as(c_double_p),
+            st.ctypes.data_as(ct.POINTER(ct.c_int32)),
+            am.ctypes.data_as(ct.POINTER(ct.c_int32)),
+            n,
+            out.ctypes.data_as(c_double_p),
+        )
+        if rc != 0:
+            detail = ""
+            try:
+                raw = self._lib.qk_get_last_error()
+                if raw:
+                    detail = raw.decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            exc_cls = _ERROR_CODE_MAP.get(rc, QKError)
+            msg = f"qk_tlm_derman_kani_call_surface_price_batch failed (rc={rc})"
+            if detail:
+                msg += f": {detail}"
+            raise exc_cls(msg)
+        return out
+
 
     def _fdm_price(
         self, fn_name: str, spot: float, strike: float, t: float, vol: float,

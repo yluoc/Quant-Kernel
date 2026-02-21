@@ -128,6 +128,8 @@ _FUNCTION_SIGNATURES = [
     ("qk_tlm_leisen_reimer_price_batch", I32, _tlm_batch_argtypes),
     ("qk_tlm_trinomial_tree_price_batch", I32, _tlm_batch_argtypes),
     ("qk_tlm_derman_kani_const_local_vol_price_batch", I32, _tlm_batch_argtypes),
+    ("qk_tlm_derman_kani_call_surface_price_batch", I32,
+     [PD, PD, PD, PD, PD, PI32, PD, I32, PD, I32, PD, PI32, PI32, I32, PD]),
 
     ("qk_fdm_explicit_fd_price", D, [D, D, D, D, D, D, I32, I32, I32, I32]),
     ("qk_fdm_implicit_fd_price", D, [D, D, D, D, D, D, I32, I32, I32, I32]),

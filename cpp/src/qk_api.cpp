@@ -476,6 +476,45 @@ double qk_tlm_derman_kani_call_surface_price(double spot, double strike, double 
     );
 }
 
+int32_t qk_tlm_derman_kani_call_surface_price_batch(
+                                             const double* spot, const double* strike,
+                                             const double* t, const double* r,
+                                             const double* q, const int32_t* option_type,
+                                             const double* surface_strikes, int32_t n_strikes,
+                                             const double* surface_maturities, int32_t n_maturities,
+                                             const double* surface_call_prices,
+                                             const int32_t* steps, const int32_t* american_style,
+                                             int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, option_type, steps, american_style, out_prices);
+    if (!surface_strikes || !surface_maturities || !surface_call_prices) {
+        set_error_msg("null pointer in call-surface batch inputs");
+        return QK_ERR_NULL_PTR;
+    }
+    QK_BATCH_VALIDATE_N(n);
+    if (n_strikes <= 0 || n_maturities <= 0) {
+        set_error_msg("invalid call-surface dimensions");
+        return QK_ERR_INVALID_INPUT;
+    }
+
+    const std::size_t nk = static_cast<std::size_t>(n_strikes);
+    const std::size_t nt = static_cast<std::size_t>(n_maturities);
+    std::vector<double> strikes_vec(surface_strikes, surface_strikes + nk);
+    std::vector<double> maturities_vec(surface_maturities, surface_maturities + nt);
+    std::vector<double> calls_vec(surface_call_prices, surface_call_prices + nk * nt);
+
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::tlm::ImpliedTreeConfig cfg{};
+        cfg.steps = steps[i];
+        cfg.american_style = (american_style[i] != 0);
+        out_prices[i] = qk::tlm::derman_kani_implied_tree_price_from_call_surface(
+            spot[i], strike[i], t[i], r[i], q[i], option_type[i],
+            strikes_vec, maturities_vec, calls_vec, cfg
+        );
+    }
+    return QK_OK;
+}
+
 int32_t qk_tlm_jarrow_rudd_price_batch(const double* spot, const double* strike,
                                          const double* t, const double* vol,
                                          const double* r, const double* q,
