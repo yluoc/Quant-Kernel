@@ -14,7 +14,7 @@ QuantKernel provides:
 - Python package (`quantkernel`) with scalar and batch methods.
 - Optional Python-level accelerator (`QuantAccelerator`) for backend selection (`auto`, `cpu`, `gpu`).
 
-## Install
+## Install (Not available yet, more test needed)
 
 End users (recommended):
 
