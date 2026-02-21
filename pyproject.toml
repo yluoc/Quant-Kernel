@@ -17,7 +17,6 @@ classifiers = [
   "Intended Audience :: Financial and Insurance Industry",
   "Intended Audience :: Science/Research",
   "Operating System :: MacOS",
-  "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: C++",
   "Programming Language :: Python :: 3",
@@ -57,9 +56,6 @@ environment = { CMAKE_BUILD_PARALLEL_LEVEL = "2" }
 
 [tool.cibuildwheel.macos]
 environment = { CMAKE_BUILD_PARALLEL_LEVEL = "2", MACOSX_DEPLOYMENT_TARGET = "11.0" }
-
-[tool.cibuildwheel.windows]
-environment = { CMAKE_BUILD_PARALLEL_LEVEL = "2" }
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]

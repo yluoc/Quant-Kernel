@@ -39,11 +39,11 @@ def _search_dirs() -> list[Path]:
 
 
 def _kernel_names() -> list[str]:
-    if sys.platform == "win32":
-        return ["quantkernel.dll", "libquantkernel.dll"]
     if sys.platform == "darwin":
         return ["libquantkernel.dylib"]
-    return ["libquantkernel.so"]
+    if sys.platform.startswith("linux"):
+        return ["libquantkernel.so"]
+    raise OSError(f"Unsupported platform: {sys.platform}. quant-kernel wheels are published for Linux and macOS.")
 
 
 def _find_library(names: list[str], search_dirs: list[Path]) -> Path | None:
