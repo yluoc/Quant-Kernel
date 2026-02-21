@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <numeric>
 #include <random>
 #include <vector>
 
@@ -20,91 +19,110 @@ double deep_hedging_price(
         return detail::nan_value();
     }
 
-    const double bsm_call = detail::call_from_bsm(spot, strike, t, vol, r, q);
-    if (!is_finite_safe(bsm_call)) return detail::nan_value();
+    const double bsm_ref = detail::bsm_price(spot, strike, t, vol, r, q, option_type);
+    if (!is_finite_safe(bsm_ref)) return detail::nan_value();
 
     const int n_steps = std::min(params.rehedge_steps, 52);
     const int n_scenarios = std::min(params.scenarios, 4096);
     const double dt = t / static_cast<double>(n_steps);
     const double sqrt_dt = std::sqrt(dt);
-    const double disc = std::exp(-r * t);
+    const double growth = std::exp(r * dt);
+    const double growth_to_t = std::exp(r * t);
     constexpr int hid = 16;
-    const double lr = 0.005;
+    const double lr = 0.0025;
     const double risk_av = std::min(params.risk_aversion, 5.0);
 
     std::mt19937_64 rng(params.seed);
     std::normal_distribution<double> norm(0.0, 1.0);
 
-    // Hedging network: input=(S_norm, time_frac), output=hedge_ratio
     detail::SimpleMLP hedge_net;
     hedge_net.init(2, hid, 1, rng);
 
-    // Initialize V_0 with BSM
-    double V0 = bsm_call;
+    double V0 = bsm_ref;
 
-    // Training loop
-    constexpr int n_train_epochs = 20;
-    std::vector<double> input(2);
+    constexpr int n_train_epochs = 24;
+    constexpr double grad_clip = 50.0;
+
+    std::vector<double> S_path(static_cast<std::size_t>(n_steps + 1), spot);
+    std::vector<double> delta(static_cast<std::size_t>(n_steps), 0.0);
+    std::vector<double> dcash_ddelta(static_cast<std::size_t>(n_steps), 0.0);
 
     for (int epoch = 0; epoch < n_train_epochs; ++epoch) {
-        std::vector<double> pnl(n_scenarios);
+        double dV0 = 0.0;
 
         for (int sc = 0; sc < n_scenarios; ++sc) {
-            double S = spot;
-            double hedge_gains = 0.0;
+            for (int k = 0; k < n_steps; ++k) {
+                const double z = norm(rng);
+                S_path[static_cast<std::size_t>(k + 1)] =
+                    S_path[static_cast<std::size_t>(k)] *
+                    std::exp((r - q - 0.5 * vol * vol) * dt + vol * sqrt_dt * z);
+            }
 
             for (int k = 0; k < n_steps; ++k) {
                 const double time_frac = static_cast<double>(k) / static_cast<double>(n_steps);
-                input[0] = S / spot;
-                input[1] = time_frac;
-
-                const auto& out = hedge_net.forward(input);
-                const double delta_h = std::tanh(out[0]); // bound hedge ratio to [-1, 1]
-
-                const double dW = sqrt_dt * norm(rng);
-                const double S_new = S * std::exp((r - q - 0.5 * vol * vol) * dt + vol * dW);
-                hedge_gains += delta_h * (S_new - S) * disc;
-                S = S_new;
+                const std::vector<double> input = {S_path[static_cast<std::size_t>(k)] / spot, time_frac};
+                const double raw = hedge_net.forward(input)[0];
+                delta[static_cast<std::size_t>(k)] = std::tanh(raw);
             }
 
-            // Terminal payoff (call)
-            const double payoff = std::max(S - strike, 0.0) * disc;
-            // P&L = initial premium + hedge gains - payoff
-            pnl[sc] = V0 * disc + hedge_gains - payoff;
+            std::fill(dcash_ddelta.begin(), dcash_ddelta.end(), 0.0);
+            double cash = V0;
+            for (int k = 0; k < n_steps; ++k) {
+                const double S_k = S_path[static_cast<std::size_t>(k)];
+                const double d_k = delta[static_cast<std::size_t>(k)];
+                const double d_prev = (k == 0) ? 0.0 : delta[static_cast<std::size_t>(k - 1)];
+
+                cash -= (d_k - d_prev) * S_k;
+                if (k > 0) dcash_ddelta[static_cast<std::size_t>(k - 1)] += S_k;
+                dcash_ddelta[static_cast<std::size_t>(k)] -= S_k;
+
+                for (int j = 0; j <= k; ++j) {
+                    dcash_ddelta[static_cast<std::size_t>(j)] *= growth;
+                }
+                cash = cash * growth + d_k * S_k * q * dt;
+                dcash_ddelta[static_cast<std::size_t>(k)] += S_k * q * dt;
+            }
+
+            const double S_T = S_path[static_cast<std::size_t>(n_steps)];
+            const double portfolio = cash + delta[static_cast<std::size_t>(n_steps - 1)] * S_T;
+            dcash_ddelta[static_cast<std::size_t>(n_steps - 1)] += S_T;
+
+            const double payoff = (option_type == QK_CALL)
+                ? std::max(S_T - strike, 0.0)
+                : std::max(strike - S_T, 0.0);
+            const double pnl = portfolio - payoff;
+
+            // Shortfall risk: L = shortfall + 0.5 * risk_av * shortfall^2.
+            const double shortfall = std::max(-pnl, 0.0);
+            double dL_dpnl = 0.0;
+            if (shortfall > 0.0) {
+                dL_dpnl = -(1.0 + risk_av * shortfall);
+            }
+            dL_dpnl /= static_cast<double>(n_scenarios);
+
+            dV0 += dL_dpnl * growth_to_t;
+
+            for (int k = 0; k < n_steps; ++k) {
+                const double dL_ddelta = dL_dpnl * dcash_ddelta[static_cast<std::size_t>(k)];
+                double dL_dout = dL_ddelta * (1.0 - delta[static_cast<std::size_t>(k)] * delta[static_cast<std::size_t>(k)]);
+                dL_dout = std::max(-grad_clip, std::min(grad_clip, dL_dout));
+
+                const double time_frac = static_cast<double>(k) / static_cast<double>(n_steps);
+                const std::vector<double> input = {S_path[static_cast<std::size_t>(k)] / spot, time_frac};
+                hedge_net.forward(input);
+                std::vector<double> grad_out = {dL_dout};
+                hedge_net.backward(input, grad_out, lr);
+            }
+
+            S_path[0] = spot;
         }
 
-        // CVaR loss at 95th percentile
-        std::vector<double> sorted_pnl = pnl;
-        std::sort(sorted_pnl.begin(), sorted_pnl.end());
-        const int tail_start = static_cast<int>(0.05 * n_scenarios);
-        double cvar = 0.0;
-        const int tail_count = std::max(1, tail_start);
-        for (int i = 0; i < tail_count; ++i) {
-            cvar += sorted_pnl[i];
-        }
-        cvar /= static_cast<double>(tail_count);
-
-        // Mean P&L
-        const double mean_pnl = std::accumulate(pnl.begin(), pnl.end(), 0.0) / n_scenarios;
-
-        // Gradient of V0: increase V0 if mean P&L < 0 (underpriced)
-        const double dV0 = -mean_pnl + risk_av * std::min(0.0, cvar);
-        V0 += lr * dV0;
-        V0 = std::max(0.0, V0);
-
-        // Update hedge network with a simplified gradient
-        for (int sc = 0; sc < std::min(n_scenarios, 256); ++sc) {
-            const double grad_sign = (pnl[sc] < 0.0) ? 1.0 : -0.1;
-            input[0] = 1.0;
-            input[1] = 0.5;
-            hedge_net.forward(input);
-            std::vector<double> d_out = {grad_sign * lr * 0.1};
-            hedge_net.backward(input, d_out, lr);
-        }
+        V0 -= lr * dV0;
+        V0 = std::max(0.0, std::min(3.0 * std::max(1.0, bsm_ref), V0));
     }
 
-    const double approx_call = std::max(0.0, V0);
-    return detail::call_put_from_call_parity(approx_call, spot, strike, t, r, q, option_type);
+    if (!is_finite_safe(V0)) return detail::nan_value();
+    return std::max(0.0, V0);
 }
 
 } // namespace qk::mlm

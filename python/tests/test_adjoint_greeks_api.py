@@ -35,3 +35,14 @@ def test_put_delta_sign_is_negative(qk):
     assert pathwise < 0.0
     assert lr < 0.0
     assert aad < 0.0
+
+
+def test_aad_tape_steps_affects_regularized_delta(qk):
+    common = dict(spot=100.0, strike=100.0, t=1.0, vol=0.2, r=0.03, q=0.01, option_type=QK_CALL)
+
+    d_small_tape = qk.aad_delta(**common, tape_steps=4, regularization=0.5)
+    d_large_tape = qk.aad_delta(**common, tape_steps=1024, regularization=0.5)
+
+    assert math.isfinite(d_small_tape)
+    assert math.isfinite(d_large_tape)
+    assert abs(d_small_tape - d_large_tape) > 1e-4

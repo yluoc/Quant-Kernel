@@ -22,12 +22,11 @@ double crank_nicolson_price(double spot, double strike, double t, double vol,
     }
 
     double ds;
-    std::vector<double> S = detail::build_spot_grid(spot, vol, t, spot_steps, ds);
+    std::vector<double> S = detail::build_spot_grid(spot, strike, vol, t, spot_steps, ds);
     int32_t M = spot_steps;
     double dt = t / static_cast<double>(time_steps);
     double theta = 0.5; // Crank-Nicolson weight
 
-    // Terminal condition
     std::vector<double> V(M + 1);
     for (int32_t i = 0; i <= M; ++i) {
         V[i] = detail::intrinsic_value(S[i], strike, option_type);
@@ -36,14 +35,12 @@ double crank_nicolson_price(double spot, double strike, double t, double vol,
     int32_t n_interior = M - 1;
     std::vector<double> a_sub(n_interior), b_diag(n_interior), c_sup(n_interior), d_rhs(n_interior);
 
-    // March backward in time
     for (int32_t step = time_steps - 1; step >= 0; --step) {
         double tau = (time_steps - step) * dt;
 
-        double bc_lower = detail::lower_boundary(S[0], strike, r, tau, option_type);
+        double bc_lower = detail::lower_boundary(S[0], strike, r, q, tau, option_type);
         double bc_upper = detail::upper_boundary(S[M], strike, r, q, tau, option_type);
 
-        // Build LHS (implicit part) and RHS (explicit part)
         for (int32_t j = 0; j < n_interior; ++j) {
             int32_t i = j + 1;
             double Si = S[i];
@@ -54,12 +51,10 @@ double crank_nicolson_price(double spot, double strike, double t, double vol,
             double beta  = 0.5 * dt * (sigma2 / (ds * ds) + drift / ds);
             double gamma = dt * (sigma2 / (ds * ds) + r);
 
-            // LHS: (I + theta * A) V^n
             a_sub[j]  = -theta * alpha;
             b_diag[j] = 1.0 + theta * gamma;
             c_sup[j]  = -theta * beta;
 
-            // RHS: (I - (1-theta) * A) V^{n+1}
             double exp_alpha = (1.0 - theta) * alpha;
             double exp_beta  = (1.0 - theta) * beta;
             double exp_gamma = (1.0 - theta) * gamma;
@@ -67,7 +62,6 @@ double crank_nicolson_price(double spot, double strike, double t, double vol,
             d_rhs[j] = exp_alpha * V[i - 1] + (1.0 - exp_gamma) * V[i] + exp_beta * V[i + 1];
         }
 
-        // Boundary condition adjustments
         {
             double S1 = S[1];
             double sigma2 = vol * vol * S1 * S1;
@@ -83,7 +77,6 @@ double crank_nicolson_price(double spot, double strike, double t, double vol,
             d_rhs[n_interior - 1] += theta * beta * bc_upper;
         }
 
-        // Solve tridiagonal system
         detail::thomas_solve(a_sub.data(), b_diag.data(), c_sup.data(), d_rhs.data(), n_interior);
 
         V[0] = bc_lower;
@@ -92,7 +85,6 @@ double crank_nicolson_price(double spot, double strike, double t, double vol,
         }
         V[M] = bc_upper;
 
-        // American style: early exercise
         if (american_style) {
             for (int32_t i = 1; i < M; ++i) {
                 V[i] = std::max(V[i], detail::intrinsic_value(S[i], strike, option_type));

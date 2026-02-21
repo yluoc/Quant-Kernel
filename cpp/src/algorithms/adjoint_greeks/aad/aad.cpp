@@ -20,33 +20,49 @@ double aad_delta(
         return detail::deterministic_delta(spot, strike, t, r, q, option_type);
     }
 
-    // Forward pass: compute BSM price components
     const double sqrt_t = std::sqrt(t);
-    const double d1 = (std::log(spot / strike) + (r - q + 0.5 * vol * vol) * t) / (vol * sqrt_t);
-    const double d2 = d1 - vol * sqrt_t;
-
+    const double vol2 = vol * vol;
+    const double log_m = std::log(spot / strike);
+    const double num = log_m + (r - q + 0.5 * vol2) * t;
+    const double denom = vol * sqrt_t;
+    const double d1 = num / denom;
+    const double d2 = d1 - denom;
     const double Nd1 = norm_cdf(d1);
     const double Nd2 = norm_cdf(d2);
     const double qf = std::exp(-q * t);
     const double df = std::exp(-r * t);
+    const double call_price = spot * qf * Nd1 - strike * df * Nd2;
 
-    // Reverse sweep: d(price)/d(spot)
-    // Call: price = spot * qf * N(d1) - strike * df * N(d2)
-    // d(price)/d(spot) = qf * N(d1) + spot * qf * n(d1) * dd1/dS - strike * df * n(d2) * dd2/dS
-    // where dd1/dS = dd2/dS = 1/(spot * vol * sqrt_t)
-    // and spot * qf * n(d1) = strike * df * n(d2) (BSM identity)
-    // so the cross-terms cancel, giving delta = qf * N(d1) for call
+    double a_call = 1.0;
+    double a_term1 = a_call;
+    double a_term2 = -a_call;
 
-    double delta;
-    if (option_type == QK_CALL) {
-        delta = qf * Nd1;
-    } else {
-        delta = qf * (Nd1 - 1.0);
-    }
+    double a_spot = a_term1 * qf * Nd1;
+    double a_Nd1 = a_term1 * spot * qf;
+    double a_Nd2 = a_term2 * strike * df;
 
-    // Tikhonov regularization: smooth toward 0.5*qf (ATM prior)
-    // Strength scales with regularization parameter, effect diminishes with tape_steps
-    const double reg_strength = params.regularization / (1.0 + params.regularization);
+    double a_d1 = a_Nd1 * norm_pdf(d1);
+    double a_d2 = a_Nd2 * norm_pdf(d2);
+
+    a_d1 += a_d2;
+    double a_denom = -a_d2;
+
+    double inv_denom = 1.0 / denom;
+    a_denom += a_d1 * (-num) * inv_denom * inv_denom;
+    double a_num = a_d1 * inv_denom;
+
+    double a_log_m = a_num;
+    a_spot += a_log_m / spot;
+
+    double delta_call = a_spot;
+    if (!is_finite_safe(delta_call) || !is_finite_safe(call_price)) return detail::nan_value();
+
+    double delta = (option_type == QK_CALL) ? delta_call : (delta_call - qf);
+
+    // Tikhonov regularization toward ATM prior, weakened with larger tape depth.
+    const double tape_scale = 1.0 / std::sqrt(static_cast<double>(params.tape_steps));
+    const double lambda = params.regularization * tape_scale;
+    const double reg_strength = lambda / (1.0 + lambda);
     const double atm_prior = (option_type == QK_CALL) ? 0.5 * qf : -0.5 * qf;
     delta = delta * (1.0 - reg_strength) + atm_prior * reg_strength;
 

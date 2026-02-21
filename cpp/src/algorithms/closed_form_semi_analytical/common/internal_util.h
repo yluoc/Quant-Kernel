@@ -79,12 +79,15 @@ inline double integrate_gl_panels(const F& f, double a, double b, int32_t panels
 
 template <typename CfFn>
 inline void probability_p1p2(const CfFn& cf, double log_strike,
-                             int32_t /* steps */, double integration_limit,
+                             int32_t steps, double integration_limit,
                              double& p1_out, double& p2_out) {
     std::complex<double> phi_minus_i = cf(std::complex<double>(0.0, -1.0));
     double phi_mi_abs = std::abs(phi_minus_i);
 
-    int32_t panels = std::max(2, static_cast<int32_t>(integration_limit / 15.0));
+    // One panel evaluates 64 Gauss-Legendre nodes (32 positive/negative pairs).
+    // Map requested integration_steps to panel count so callers can control accuracy.
+    int32_t effective_steps = (steps > 0) ? steps : 256;
+    int32_t panels = std::max(1, (effective_steps + 63) / 64);
 
     double a = 1e-8;
     double b = integration_limit;

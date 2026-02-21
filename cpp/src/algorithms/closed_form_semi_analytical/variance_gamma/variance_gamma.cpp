@@ -18,6 +18,7 @@ double variance_gamma_price_cf(double spot, double strike, double t, double r, d
         return detail::nan_value();
     }
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
+    if (integration_steps < 16) return detail::nan_value();
     if (integration_limit <= 1e-6) return detail::nan_value();
 
     double sigma2 = params.sigma * params.sigma;

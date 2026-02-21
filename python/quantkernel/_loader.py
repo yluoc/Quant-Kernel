@@ -29,6 +29,8 @@ def _search_dirs() -> list[Path]:
     if env_path:
         search_dirs.append(Path(env_path))
 
+    search_dirs.append(Path(__file__).resolve().parent)
+
     root = _project_root()
     search_dirs.append(root / "build" / "cpp")
     search_dirs.append(root / "build")
@@ -61,11 +63,10 @@ def _find_library_or_raise(names: list[str], search_dirs: list[Path], purpose: s
     raise OSError(
         f"Cannot find {purpose} shared library. "
         f"Searched: {[str(d) for d in search_dirs]}. "
-        f"Set QK_LIB_PATH and build first."
+        "Install a wheel for your platform, or set QK_LIB_PATH to a built library directory."
     )
 
 
-# Common argtype patterns
 _cf_common = [D, D, D, D, D, D, I32]
 _cf_batch_base = [PD, PD, PD, PD, PD, PD, PI32]
 _ftm_common = [D, D, D, D, D, D, I32]
@@ -118,6 +119,8 @@ _FUNCTION_SIGNATURES = [
     ("qk_tlm_leisen_reimer_price", D, _tlm_argtypes),
     ("qk_tlm_trinomial_tree_price", D, _tlm_argtypes),
     ("qk_tlm_derman_kani_const_local_vol_price", D, _tlm_argtypes),
+    ("qk_tlm_derman_kani_call_surface_price", D,
+     [D, D, D, D, D, I32, PD, I32, PD, I32, PD, I32, I32]),
 
     ("qk_tlm_crr_price_batch", I32, _tlm_batch_argtypes),
     ("qk_tlm_jarrow_rudd_price_batch", I32, _tlm_batch_argtypes),

@@ -1,5 +1,6 @@
 #include "algorithms/fourier_transform_methods/carr_madan_fft/carr_madan_fft.h"
 
+#include "algorithms/closed_form_semi_analytical/black_scholes_merton/black_scholes_merton.h"
 #include "algorithms/fourier_transform_methods/common/internal_util.h"
 
 #include <cstddef>
@@ -19,6 +20,9 @@ double carr_madan_fft_price(double spot, double strike, double t, double vol,
     if (spot <= 0.0 || strike <= 0.0 || t < 0.0 || vol < 0.0) return detail::nan_value();
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
     if (vol <= detail::kEps) return detail::deterministic_price(spot, strike, t, r, q, option_type);
+    if (t < 2e-3 || vol * std::sqrt(t) < 1e-3) {
+        return qk::cfa::black_scholes_merton_price(spot, strike, t, vol, r, q, option_type);
+    }
 
     int32_t n = params.grid_size;
     if (n < 16 || !detail::is_power_of_two(n) || params.eta <= 0.0 || params.alpha <= 0.0) {
@@ -58,7 +62,12 @@ double carr_madan_fft_price(double spot, double strike, double t, double vol,
     }
 
     double call_price = detail::linear_interpolate(k_grid, call_grid, std::log(strike));
-    if (!is_finite_safe(call_price)) return detail::nan_value();
+    const double lower = std::max(spot * std::exp(-q * t) - strike * std::exp(-r * t), 0.0);
+    const double upper = spot * std::exp(-q * t);
+    if (!is_finite_safe(call_price) || call_price < lower - 1e-8 || call_price > upper + 1e-8) {
+        return qk::cfa::black_scholes_merton_price(spot, strike, t, vol, r, q, option_type);
+    }
+    call_price = std::max(lower, std::min(upper, call_price));
 
     return detail::call_put_from_call_parity(call_price, spot, strike, t, r, q, option_type);
 }

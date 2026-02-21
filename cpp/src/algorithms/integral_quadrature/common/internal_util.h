@@ -59,7 +59,7 @@ inline bool jacobi_eigendecompose(std::vector<double>& a,
                                   std::vector<double>& eigvals,
                                   std::vector<double>& eigvecs,
                                   int32_t n,
-                                  int32_t max_iter = 200,
+                                  int32_t max_iter = 2000,
                                   double tol = 1e-14) {
     eigvecs.assign(static_cast<std::size_t>(n) * static_cast<std::size_t>(n), 0.0);
     for (int32_t i = 0; i < n; ++i) {

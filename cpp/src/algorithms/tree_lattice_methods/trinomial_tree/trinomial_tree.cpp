@@ -15,9 +15,8 @@ double trinomial_tree_price(double spot, double strike, double t, double vol, do
         return detail::nan_value();
     }
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
-    if (vol <= detail::kEps) {
-        double fwd = spot * std::exp((r - q) * t);
-        return std::exp(-r * t) * detail::intrinsic_value(fwd, strike, option_type);
+    if (vol <= detail::kEps || vol * std::sqrt(t) <= 1e-3) {
+        return detail::deterministic_limit_price(spot, strike, t, r, q, option_type, american_style);
     }
 
     double dt = t / static_cast<double>(steps);
@@ -36,6 +35,9 @@ double trinomial_tree_price(double spot, double strike, double t, double vol, do
     double pd = pd_raw * pd_raw;
     double pm = std::max(0.0, 1.0 - pu - pd);
     double sum_p = pu + pm + pd;
+    if (!is_finite_safe(sum_p) || sum_p <= 0.0) {
+        return detail::deterministic_limit_price(spot, strike, t, r, q, option_type, american_style);
+    }
     pu /= sum_p;
     pm /= sum_p;
     pd /= sum_p;

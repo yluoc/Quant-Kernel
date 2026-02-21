@@ -20,7 +20,6 @@ double neural_sde_calibration_price(
         return detail::nan_value();
     }
 
-    // Small MLP: input=(moneyness, T, vol), output=vol_correction
     constexpr int hid = 8;
     const double lr = 0.01;
 
@@ -33,19 +32,16 @@ double neural_sde_calibration_price(
 
     std::vector<double> input = {moneyness, t, vol};
 
-    // Train to match target_implied_vol - vol
     for (int step = 0; step < params.calibration_steps; ++step) {
         const auto& out = net.forward(input);
         const double pred_correction = out[0];
         const double err = pred_correction - target_correction;
 
-        // L2 regularization on correction magnitude
         const double reg_grad = 2.0 * params.regularization * pred_correction;
         std::vector<double> d_out = {2.0 * err + reg_grad};
         net.backward(input, d_out, lr);
     }
 
-    // Get final correction
     const auto& final_out = net.forward(input);
     const double correction = final_out[0];
     const double effective_vol = std::max(0.01, vol + correction);

@@ -68,7 +68,6 @@ def test_bsm_batch_speed_and_accuracy_regression(qk):
     )
     assert np.allclose(bsm_batch, bsm_scalar, atol=1e-12, rtol=1e-12)
 
-    # Fail if batch paths regress to less than 5% faster than scalar.
     assert py_batch_ms < scalar_ms * 0.95
     assert native_batch_ms < scalar_ms * 0.95
 
@@ -166,6 +165,4 @@ def test_heston_batch_speed_regression(qk):
         lambda: qk.heston_price_cf_batch(spot, strike, tau, r, q, v0, kappa, theta, sigma, rho, ot, isteps, ilimit),
     )
 
-    # Heston CF work is dominated by per-sample integration, so Python-loop
-    # overhead removal yields a modest but consistent gain in CI.
     assert batch_ms < scalar_ms * 0.99

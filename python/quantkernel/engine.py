@@ -869,6 +869,56 @@ class QuantKernel:
             spot, strike, t, local_vol, r, q, option_type, steps, american_style
         )
 
+    def derman_kani_call_surface_price(
+        self,
+        spot: float,
+        strike: float,
+        t: float,
+        r: float,
+        q: float,
+        option_type: int,
+        surface_strikes,
+        surface_maturities,
+        surface_call_prices,
+        steps: int,
+        american_style: bool = False,
+    ) -> float:
+        ks = self._as_f64_array(surface_strikes, "surface_strikes")
+        ts = self._as_f64_array(surface_maturities, "surface_maturities")
+        if ks.size < 3:
+            raise ValueError("surface_strikes must have at least 3 points")
+        if ts.size < 2:
+            raise ValueError("surface_maturities must have at least 2 points")
+
+        cp = np.asarray(surface_call_prices, dtype=np.float64)
+        if cp.ndim == 2:
+            if cp.shape != (ts.size, ks.size):
+                raise ValueError(
+                    f"surface_call_prices shape mismatch: expected {(ts.size, ks.size)}, got {cp.shape}"
+                )
+            cp_flat = np.ascontiguousarray(cp.reshape(-1))
+        elif cp.ndim == 1:
+            expected = ts.size * ks.size
+            if cp.size != expected:
+                raise ValueError(
+                    f"surface_call_prices size mismatch: expected {expected}, got {cp.size}"
+                )
+            cp_flat = np.ascontiguousarray(cp)
+        else:
+            raise ValueError("surface_call_prices must be 1D or 2D array-like")
+
+        c_double_p = ct.POINTER(ct.c_double)
+        out = self._get_fn("qk_tlm_derman_kani_call_surface_price")(
+            spot, strike, t, r, q, option_type,
+            ks.ctypes.data_as(c_double_p), int(ks.size),
+            ts.ctypes.data_as(c_double_p), int(ts.size),
+            cp_flat.ctypes.data_as(c_double_p),
+            int(steps), 1 if american_style else 0,
+        )
+        if math.isnan(out):
+            raise ValueError("qk_tlm_derman_kani_call_surface_price returned NaN; check inputs.")
+        return out
+
     def _tree_price_batch(self, c_fn_name: str, native_fn_name: str,
                           spot, strike, t, vol, r, q, option_type, steps, american_style) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")

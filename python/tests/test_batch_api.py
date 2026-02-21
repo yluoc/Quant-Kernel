@@ -205,10 +205,9 @@ def test_dupire_local_vol_batch(qk):
     call_price = rng.uniform(5.0, 20.0, n)
     r = rng.uniform(0.01, 0.03, n)
     q = rng.uniform(0.0, 0.01, n)
-    # Ensure numerator 2*(dC_dT + q*C + (r-q)*K*dC_dK) > 0 and denominator K^2*d2C_dK2 > 0
     d2C_dK2 = rng.uniform(0.01, 0.05, n)
     dC_dK = rng.uniform(-0.05, -0.01, n)
-    dC_dT = rng.uniform(3.0, 8.0, n)  # large positive to dominate numerator
+    dC_dT = rng.uniform(3.0, 8.0, n)
     batch = qk.dupire_local_vol_batch(strike, tau, call_price, dC_dT, dC_dK, d2C_dK2, r, q)
     scalar = np.array([qk.dupire_local_vol(float(strike[i]), float(tau[i]), float(call_price[i]),
                        float(dC_dT[i]), float(dC_dK[i]), float(d2C_dK2[i]),

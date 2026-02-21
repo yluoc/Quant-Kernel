@@ -56,3 +56,21 @@ def test_quasi_monte_carlo_variants_are_close(qk):
     halton = qk.quasi_monte_carlo_halton_price(**common, paths=16384)
 
     assert abs(sobol - halton) < 0.75
+
+
+def test_antithetic_uses_all_requested_paths(qk):
+    common = dict(
+        spot=100.0,
+        strike=100.0,
+        t=1.0,
+        vol=0.2,
+        r=0.03,
+        q=0.01,
+        option_type=QK_CALL,
+        seed=123,
+    )
+
+    even = qk.antithetic_variates_price(**common, paths=2)
+    odd = qk.antithetic_variates_price(**common, paths=3)
+
+    assert abs(odd - even) > 1e-12

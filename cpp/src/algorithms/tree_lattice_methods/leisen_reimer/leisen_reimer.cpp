@@ -25,9 +25,8 @@ double leisen_reimer_price(double spot, double strike, double t, double vol, dou
     }
     if (steps % 2 == 0) ++steps;
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
-    if (vol <= detail::kEps) {
-        double fwd = spot * std::exp((r - q) * t);
-        return std::exp(-r * t) * detail::intrinsic_value(fwd, strike, option_type);
+    if (vol <= detail::kEps || vol * std::sqrt(t) <= 1e-3) {
+        return detail::deterministic_limit_price(spot, strike, t, r, q, option_type, american_style);
     }
 
     double sqrt_t = std::sqrt(t);
@@ -40,6 +39,9 @@ double leisen_reimer_price(double spot, double strike, double t, double vol, dou
     double growth = std::exp((r - q) * dt);
     double up = growth * (p_tilde / p);
     double down = (growth - p * up) / (1.0 - p);
+    if (!is_finite_safe(up) || !is_finite_safe(down) || up <= down || down <= 0.0) {
+        return detail::deterministic_limit_price(spot, strike, t, r, q, option_type, american_style);
+    }
 
     return detail::binomial_price(spot, strike, t, r, q, option_type, steps, american_style,
                                   up, down, p);

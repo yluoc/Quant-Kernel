@@ -26,7 +26,7 @@ def test_machine_learning_methods_are_callable_and_close_to_bsm(qk):
     assert all(abs(v - bsm) < 3.0 for v in vals)
 
 
-def test_deep_bsde_put_call_parity(qk):
+def test_deep_bsde_put_and_call_are_reasonable(qk):
     s = 105.0
     k = 100.0
     t = 0.8
@@ -36,8 +36,20 @@ def test_deep_bsde_put_call_parity(qk):
 
     call = qk.deep_bsde_price(s, k, t, vol, r, q, QK_CALL)
     put = qk.deep_bsde_price(s, k, t, vol, r, q, QK_PUT)
-    rhs = s * math.exp(-q * t) - k * math.exp(-r * t)
-    assert abs((call - put) - rhs) < 1e-9
+
+    bsm_call = qk.black_scholes_merton_price(s, k, t, vol, r, q, QK_CALL)
+    bsm_put = qk.black_scholes_merton_price(s, k, t, vol, r, q, QK_PUT)
+
+    assert call > 0.0 and put > 0.0
+    assert abs(call - bsm_call) < 3.0
+    assert abs(put - bsm_put) < 3.0
+
+
+def test_deep_hedging_respects_option_type(qk):
+    common = dict(spot=100.0, strike=110.0, t=1.0, vol=0.25, r=0.02, q=0.01)
+    call = qk.deep_hedging_price(**common, option_type=QK_CALL)
+    put = qk.deep_hedging_price(**common, option_type=QK_PUT)
+    assert call != put
 
 
 def test_neural_sde_calibration_price_increases_with_target_vol(qk):

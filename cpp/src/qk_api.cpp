@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <limits>
+#include <vector>
 
 #include "algorithms/closed_form_semi_analytical/closed_form_models.h"
 #include "algorithms/tree_lattice_methods/tree_lattice_models.h"
@@ -443,6 +445,35 @@ double qk_tlm_derman_kani_const_local_vol_price(double spot, double strike, doub
     cfg.steps = steps;
     cfg.american_style = (american_style != 0);
     return qk::tlm::derman_kani_implied_tree_price(spot, strike, t, r, q, option_type, surface, cfg);
+}
+
+double qk_tlm_derman_kani_call_surface_price(double spot, double strike, double t,
+                                             double r, double q, int32_t option_type,
+                                             const double* surface_strikes, int32_t n_strikes,
+                                             const double* surface_maturities, int32_t n_maturities,
+                                             const double* surface_call_prices,
+                                             int32_t steps, int32_t american_style) {
+    if (!surface_strikes || !surface_maturities || !surface_call_prices) {
+        set_error_msg("null pointer in call-surface inputs");
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    if (n_strikes <= 0 || n_maturities <= 0) {
+        set_error_msg("invalid call-surface dimensions");
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    const std::size_t nk = static_cast<std::size_t>(n_strikes);
+    const std::size_t nt = static_cast<std::size_t>(n_maturities);
+    std::vector<double> strikes(surface_strikes, surface_strikes + nk);
+    std::vector<double> maturities(surface_maturities, surface_maturities + nt);
+    std::vector<double> calls(surface_call_prices, surface_call_prices + nk * nt);
+
+    qk::tlm::ImpliedTreeConfig cfg{};
+    cfg.steps = steps;
+    cfg.american_style = (american_style != 0);
+    return qk::tlm::derman_kani_implied_tree_price_from_call_surface(
+        spot, strike, t, r, q, option_type, strikes, maturities, calls, cfg
+    );
 }
 
 int32_t qk_tlm_jarrow_rudd_price_batch(const double* spot, const double* strike,

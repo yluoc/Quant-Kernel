@@ -1,9 +1,11 @@
 build/
+cmake-build-*/
 __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
 dist/
+wheelhouse/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -12,6 +14,7 @@ target/
 rust/runtime/target/
 rust/runtime/target_local/
 rust/runtime/.tmp/
+third_party_source/
 
 fuzztest/fuzztest/
 # Editor / OS local files
@@ -26,6 +29,9 @@ claude_session.txt
 venv/
 .env
 .env.*
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
 .coverage
 coverage.xml
 htmlcov/

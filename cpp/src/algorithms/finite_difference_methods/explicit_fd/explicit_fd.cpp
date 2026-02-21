@@ -22,7 +22,7 @@ double explicit_fd_price(double spot, double strike, double t, double vol,
     }
 
     double ds;
-    std::vector<double> S = detail::build_spot_grid(spot, vol, t, spot_steps, ds);
+    std::vector<double> S = detail::build_spot_grid(spot, strike, vol, t, spot_steps, ds);
     int32_t M = spot_steps;
 
     // Enforce CFL stability: dt <= ds^2 / (vol^2 * S_max^2)
@@ -35,7 +35,6 @@ double explicit_fd_price(double spot, double strike, double t, double vol,
         dt = t / static_cast<double>(actual_time_steps);
     }
 
-    // Terminal condition
     std::vector<double> V(M + 1);
     for (int32_t i = 0; i <= M; ++i) {
         V[i] = detail::intrinsic_value(S[i], strike, option_type);
@@ -43,11 +42,9 @@ double explicit_fd_price(double spot, double strike, double t, double vol,
 
     std::vector<double> V_new(M + 1);
 
-    // March backward in time
     for (int32_t n = actual_time_steps - 1; n >= 0; --n) {
         double tau = (actual_time_steps - n) * dt;
 
-        // Interior points: explicit update
         for (int32_t i = 1; i < M; ++i) {
             double Si = S[i];
             double sigma2 = vol * vol * Si * Si;
@@ -60,11 +57,9 @@ double explicit_fd_price(double spot, double strike, double t, double vol,
             V_new[i] = a * V[i - 1] + b * V[i] + c * V[i + 1];
         }
 
-        // Boundary conditions
-        V_new[0] = detail::lower_boundary(S[0], strike, r, tau, option_type);
+        V_new[0] = detail::lower_boundary(S[0], strike, r, q, tau, option_type);
         V_new[M] = detail::upper_boundary(S[M], strike, r, q, tau, option_type);
 
-        // American style: early exercise
         if (american_style) {
             for (int32_t i = 1; i < M; ++i) {
                 V_new[i] = std::max(V_new[i], detail::intrinsic_value(S[i], strike, option_type));

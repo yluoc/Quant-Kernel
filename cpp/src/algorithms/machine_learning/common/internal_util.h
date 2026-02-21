@@ -27,6 +27,17 @@ inline double call_from_bsm(double spot, double strike, double t, double vol, do
     return qk::cfa::black_scholes_merton_price(spot, strike, t, vol, r, q, QK_CALL);
 }
 
+inline double bsm_price(double spot, double strike, double t, double vol,
+                        double r, double q, int32_t option_type) {
+    const double call = call_from_bsm(spot, strike, t, vol, r, q);
+    if (!is_finite_safe(call)) return nan_value();
+    if (option_type == QK_CALL) return call;
+    if (option_type == QK_PUT) {
+        return call - spot * std::exp(-q * t) + strike * std::exp(-r * t);
+    }
+    return nan_value();
+}
+
 inline double call_put_from_call_parity(double call_price, double spot, double strike,
                                         double t, double r, double q, int32_t option_type) {
     if (option_type == QK_CALL) return call_price;
@@ -42,7 +53,6 @@ inline double clamp01(double x) {
 
 inline double splitmix64_hash(uint64_t x) { return qk::splitmix64_hash(x); }
 
-// Simple 2-layer MLP for inline ML algorithms
 struct SimpleMLP {
     int input_dim;
     int hidden_dim;
@@ -52,7 +62,6 @@ struct SimpleMLP {
     std::vector<double> W2; // output_dim x hidden_dim
     std::vector<double> b2; // output_dim
 
-    // Intermediate storage for backward pass
     std::vector<double> h_pre;  // pre-activation hidden
     std::vector<double> h_post; // post-activation hidden (tanh)
     std::vector<double> out;    // output
@@ -70,7 +79,6 @@ struct SimpleMLP {
         h_post.resize(hidden_dim);
         out.resize(output_dim);
 
-        // Xavier initialization
         std::normal_distribution<double> dist1(0.0, std::sqrt(2.0 / (input_dim + hidden_dim)));
         std::normal_distribution<double> dist2(0.0, std::sqrt(2.0 / (hidden_dim + output_dim)));
 
@@ -79,7 +87,6 @@ struct SimpleMLP {
     }
 
     const std::vector<double>& forward(const std::vector<double>& x) {
-        // Hidden layer: tanh(W1 * x + b1)
         for (int i = 0; i < hidden_dim; ++i) {
             double sum = b1[i];
             for (int j = 0; j < input_dim; ++j) {
@@ -98,11 +105,9 @@ struct SimpleMLP {
         return out;
     }
 
-    // SGD update given dL/d(out). Returns dL/d(input) for chaining.
     std::vector<double> backward(const std::vector<double>& x,
                                  const std::vector<double>& d_out,
                                  double lr) {
-        // Gradient for W2, b2
         std::vector<double> d_h(hidden_dim, 0.0);
         for (int i = 0; i < output_dim; ++i) {
             for (int j = 0; j < hidden_dim; ++j) {
@@ -111,12 +116,10 @@ struct SimpleMLP {
             }
             b2[i] -= lr * d_out[i];
         }
-        // Through tanh
         std::vector<double> d_pre(hidden_dim);
         for (int i = 0; i < hidden_dim; ++i) {
             d_pre[i] = d_h[i] * (1.0 - h_post[i] * h_post[i]);
         }
-        // Gradient for W1, b1 and dL/d(input)
         std::vector<double> d_input(input_dim, 0.0);
         for (int i = 0; i < hidden_dim; ++i) {
             for (int j = 0; j < input_dim; ++j) {

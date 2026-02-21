@@ -43,13 +43,6 @@ jobs:
       - name: Run Python tests
         run: make test-py
 
-      - name: Build native batch Python extension (Cython)
-        env:
-          QK_LIB_PATH: ${{ github.workspace }}/build/cpp
-        run: |
-          cd python
-          python setup.py build_ext --inplace
-
       - name: Run deterministic batch/perf regression tests
         env:
           PYTHONPATH: python
@@ -80,7 +73,6 @@ jobs:
         timeout-minutes: 15
         shell: bash
         env:
-          # Make fuzz/property runs deterministic in CI to avoid random-seed flakes.
           FUZZTEST_PRNG_SEED: NNMQpT7FLDG9rOgxXhD87HtvjqCtE-6NHWnDn00xICI
         run: |
           set -euo pipefail
@@ -100,3 +92,37 @@ jobs:
             fi
             "${exe}"
           done
+
+      - name: Build wheel (packaging check)
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+
+      - name: Validate wheel metadata
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+
+      - name: Install built wheel and run end-user smoke test
+        run: |
+          python -m pip install --force-reinstall dist/*.whl
+          python - <<'PY'
+          import numpy as np
+          from quantkernel import QuantKernel, QK_CALL, QK_PUT
+
+          qk = QuantKernel()
+          bsm = qk.black_scholes_merton_price(100.0, 100.0, 1.0, 0.2, 0.03, 0.01, QK_CALL)
+          am = qk.crr_price(100.0, 100.0, 1.0, 0.2, 0.03, 0.01, QK_PUT, 200, 1)
+          heston = qk.heston_price_cf(100.0, 100.0, 1.0, 0.03, 0.01, 0.04, 2.0, 0.04, 0.5, -0.7, QK_CALL, 512, 100.0)
+          batch = qk.black_scholes_merton_price_batch(
+              np.array([100.0, 101.0]),
+              np.array([100.0, 100.0]),
+              np.array([1.0, 1.0]),
+              np.array([0.2, 0.2]),
+              np.array([0.03, 0.03]),
+              np.array([0.01, 0.01]),
+              np.array([QK_CALL, QK_PUT], dtype=np.int32),
+          )
+          assert bsm > 0.0 and am > 0.0 and heston > 0.0 and batch.shape == (2,)
+          print("Wheel smoke test passed.")
+          PY

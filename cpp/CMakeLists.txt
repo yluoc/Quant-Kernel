@@ -58,12 +58,11 @@ target_include_directories(quantkernel
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_compile_options(quantkernel PRIVATE
-    -Wall -Wextra -Wpedantic
-    -O3 -ffast-math -march=native -mtune=native
-    -funroll-loops -ftree-vectorize
-    -fopenmp-simd
-)
+if(MSVC)
+    target_compile_options(quantkernel PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(quantkernel PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(quantkernel PRIVATE OpenMP::OpenMP_CXX)
@@ -76,37 +75,58 @@ target_precompile_headers(quantkernel PRIVATE
 set_target_properties(quantkernel PROPERTIES
     OUTPUT_NAME "quantkernel"
     PREFIX "lib"
-    SOVERSION 1
-    INTERPROCEDURAL_OPTIMIZATION TRUE
+    INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
 )
 
-add_executable(qk_bench_bsm_batch
-    bench/benchmark_bsm_batch.cpp
+if(QK_BUILD_BENCHMARKS)
+    add_executable(qk_bench_bsm_batch
+        bench/benchmark_bsm_batch.cpp
+    )
+    target_link_libraries(qk_bench_bsm_batch PRIVATE quantkernel)
+    target_include_directories(qk_bench_bsm_batch PRIVATE include)
+
+    add_executable(qk_bench_all
+        bench/benchmark_all.cpp
+    )
+    target_link_libraries(qk_bench_all PRIVATE quantkernel)
+    target_include_directories(qk_bench_all PRIVATE include)
+endif()
+
+if(QK_BUILD_TESTS)
+    enable_testing()
+
+    set(QK_TEST_SOURCES
+        tests/test_closed_form.cpp
+        tests/test_tree_lattice.cpp
+        tests/test_monte_carlo.cpp
+        tests/test_fourier.cpp
+        tests/test_error_handling.cpp
+        tests/test_fdm_iqm_ram_agm_mlm.cpp
+    )
+
+    foreach(test_src ${QK_TEST_SOURCES})
+        get_filename_component(test_name ${test_src} NAME_WE)
+        add_executable(${test_name} ${test_src})
+        target_link_libraries(${test_name} PRIVATE quantkernel)
+        target_include_directories(${test_name} PRIVATE include ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
+endif()
+
+install(
+    TARGETS quantkernel
+    LIBRARY DESTINATION quantkernel
+    RUNTIME DESTINATION quantkernel
+    ARCHIVE DESTINATION quantkernel
 )
-target_link_libraries(qk_bench_bsm_batch PRIVATE quantkernel)
-target_include_directories(qk_bench_bsm_batch PRIVATE include)
 
-add_executable(qk_bench_all
-    bench/benchmark_all.cpp
-)
-target_link_libraries(qk_bench_all PRIVATE quantkernel)
-target_include_directories(qk_bench_all PRIVATE include)
-
-enable_testing()
-
-set(QK_TEST_SOURCES
-    tests/test_closed_form.cpp
-    tests/test_tree_lattice.cpp
-    tests/test_monte_carlo.cpp
-    tests/test_fourier.cpp
-    tests/test_error_handling.cpp
-    tests/test_fdm_iqm_ram_agm_mlm.cpp
+file(GLOB QK_PY_MODULES
+    "${CMAKE_SOURCE_DIR}/python/quantkernel/*.py"
+    "${CMAKE_SOURCE_DIR}/python/quantkernel/*.pyi"
+    "${CMAKE_SOURCE_DIR}/python/quantkernel/py.typed"
 )
 
-foreach(test_src ${QK_TEST_SOURCES})
-    get_filename_component(test_name ${test_src} NAME_WE)
-    add_executable(${test_name} ${test_src})
-    target_link_libraries(${test_name} PRIVATE quantkernel)
-    target_include_directories(${test_name} PRIVATE include ${CMAKE_CURRENT_SOURCE_DIR}/tests)
-    add_test(NAME ${test_name} COMMAND ${test_name})
-endforeach()
+install(
+    FILES ${QK_PY_MODULES}
+    DESTINATION quantkernel
+)

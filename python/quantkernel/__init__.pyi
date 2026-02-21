@@ -169,6 +169,11 @@ class QuantKernel:
         r: float, q: float, option_type: int, steps: int,
         american_style: bool = ...,
     ) -> float: ...
+    def derman_kani_call_surface_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        option_type: int, surface_strikes: ArrayLike, surface_maturities: ArrayLike,
+        surface_call_prices: ArrayLike, steps: int, american_style: bool = ...,
+    ) -> float: ...
     def derman_kani_const_local_vol_price_batch(
         self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
         local_vol: ArrayLike, r: ArrayLike, q: ArrayLike,

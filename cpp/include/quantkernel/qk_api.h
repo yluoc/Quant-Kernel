@@ -130,6 +130,12 @@ QK_EXPORT double qk_tlm_derman_kani_const_local_vol_price(double spot, double st
                                                           double local_vol, double r, double q,
                                                           int32_t option_type, int32_t steps,
                                                           int32_t american_style);
+QK_EXPORT double qk_tlm_derman_kani_call_surface_price(double spot, double strike, double t,
+                                                        double r, double q, int32_t option_type,
+                                                        const double* surface_strikes, int32_t n_strikes,
+                                                        const double* surface_maturities, int32_t n_maturities,
+                                                        const double* surface_call_prices,
+                                                        int32_t steps, int32_t american_style);
 QK_EXPORT int32_t qk_tlm_jarrow_rudd_price_batch(const double* spot, const double* strike,
                                                    const double* t, const double* vol,
                                                    const double* r, const double* q,

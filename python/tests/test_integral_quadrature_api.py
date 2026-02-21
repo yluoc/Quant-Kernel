@@ -42,3 +42,35 @@ def test_gauss_hermite_put_call_parity(qk):
     put = qk.gauss_hermite_price(s, k, t, vol, r, q, QK_PUT, n_points=40)
     rhs = s * math.exp(-q * t) - k * math.exp(-r * t)
     assert abs((call - put) - rhs) < 2e-2
+
+
+def test_gauss_laguerre_is_not_legendre_proxy(qk):
+    args = dict(spot=100.0, strike=100.0, t=1.0, vol=0.2, r=0.03, q=0.01, option_type=QK_CALL)
+
+    laguerre = qk.gauss_laguerre_price(**args, n_points=16)
+    mapped_legendre = qk.gauss_legendre_price(**args, n_points=64, integration_limit=200.0)
+
+    assert abs(laguerre - mapped_legendre) > 1e-5
+
+
+def test_adaptive_quadrature_controls_accuracy(qk):
+    args = dict(spot=100.0, strike=100.0, t=1.0, vol=0.2, r=0.03, q=0.01, option_type=QK_CALL)
+    bsm = qk.black_scholes_merton_price(**args)
+
+    loose = qk.adaptive_quadrature_price(
+        **args,
+        abs_tol=1e-3,
+        rel_tol=1e-3,
+        max_depth=6,
+        integration_limit=200.0,
+    )
+    tight = qk.adaptive_quadrature_price(
+        **args,
+        abs_tol=1e-10,
+        rel_tol=1e-10,
+        max_depth=20,
+        integration_limit=200.0,
+    )
+
+    assert abs(tight - bsm) < 5e-3
+    assert abs(loose - tight) > 1e-4

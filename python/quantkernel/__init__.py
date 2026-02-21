@@ -1,5 +1,12 @@
 """QuantKernel — high-performance derivative pricing engine."""
 
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("quant-kernel")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
 from .engine import QuantKernel, QKError, QKNullPointerError, QKBadSizeError, QKInvalidInputError
 from .accelerator import QuantAccelerator
 from ._abi import (

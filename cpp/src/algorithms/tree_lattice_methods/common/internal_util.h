@@ -38,6 +38,15 @@ inline double clamp_probability(double p) {
     return std::min(1.0 - 1e-12, std::max(1e-12, p));
 }
 
+inline double deterministic_limit_price(
+    double spot, double strike, double t, double r, double q, int32_t option_type, bool american_style
+) {
+    const double intrinsic_now = intrinsic_value(spot, strike, option_type);
+    const double fwd = spot * std::exp((r - q) * t);
+    const double terminal_pv = std::exp(-r * t) * intrinsic_value(fwd, strike, option_type);
+    return american_style ? std::max(intrinsic_now, terminal_pv) : terminal_pv;
+}
+
 inline double binomial_price(double spot, double strike, double t, double r, double q,
                              int32_t option_type, int32_t steps, bool american_style,
                              double up, double down, double prob_up) {
@@ -47,9 +56,10 @@ inline double binomial_price(double spot, double strike, double t, double r, dou
     }
     if (up <= 0.0 || down <= 0.0 || up <= down) return nan_value();
 
+    if (prob_up <= 0.0 || prob_up >= 1.0) return nan_value();
     double dt = t / static_cast<double>(steps);
     double disc = std::exp(-r * dt);
-    double p = clamp_probability(prob_up);
+    double p = prob_up;
 
     int32_t buf_sz = steps + 1;
     double stack_buf[kStackThreshold];

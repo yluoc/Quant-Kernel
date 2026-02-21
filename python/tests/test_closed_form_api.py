@@ -27,6 +27,42 @@ def test_heston_and_variance_gamma_are_callable(qk):
     assert vg > 0.0
 
 
+def test_heston_and_variance_gamma_respect_integration_steps(qk):
+    heston_args = dict(
+        spot=100.0,
+        strike=130.0,
+        t=2.0,
+        r=0.05,
+        q=0.01,
+        v0=0.09,
+        kappa=0.8,
+        theta=0.09,
+        sigma=1.0,
+        rho=-0.9,
+        option_type=QK_CALL,
+        integration_limit=300.0,
+    )
+    heston_low = qk.heston_price_cf(**heston_args, integration_steps=64)
+    heston_high = qk.heston_price_cf(**heston_args, integration_steps=512)
+    assert abs(heston_high - heston_low) > 1e-5
+
+    vg_args = dict(
+        spot=60.0,
+        strike=100.0,
+        t=3.0,
+        r=0.01,
+        q=0.0,
+        sigma=0.8,
+        theta=-0.5,
+        nu=0.7,
+        option_type=QK_CALL,
+        integration_limit=500.0,
+    )
+    vg_low = qk.variance_gamma_price_cf(**vg_args, integration_steps=64)
+    vg_high = qk.variance_gamma_price_cf(**vg_args, integration_steps=512)
+    assert abs(vg_high - vg_low) > 1e-5
+
+
 def test_merton_sabr_and_dupire_are_callable(qk):
     mjd = qk.merton_jump_diffusion_price(
         95.0, 100.0, 1.2, 0.22, 0.015, 0.005,

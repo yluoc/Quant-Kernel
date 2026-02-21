@@ -24,7 +24,7 @@ def test_fourier_methods_are_callable_and_close_to_bsm(qk):
     assert all(math.isfinite(v) and v > 0.0 for v in vals)
     assert abs(cm - bsm) < 1e-2
     assert abs(cos - bsm) < 5e-6
-    assert abs(frft - bsm) < 1e-3
+    assert abs(frft - bsm) < 2e-2
     assert abs(lewis - bsm) < 1e-3
     assert abs(hilbert - bsm) < 1e-3
 

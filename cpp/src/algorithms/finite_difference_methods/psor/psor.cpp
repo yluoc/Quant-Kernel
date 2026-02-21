@@ -24,17 +24,15 @@ double psor_price(double spot, double strike, double t, double vol,
     }
 
     double ds;
-    std::vector<double> S = detail::build_spot_grid(spot, vol, t, spot_steps, ds);
+    std::vector<double> S = detail::build_spot_grid(spot, strike, vol, t, spot_steps, ds);
     int32_t M = spot_steps;
     double dt = t / static_cast<double>(time_steps);
 
-    // Terminal condition
     std::vector<double> V(M + 1);
     for (int32_t i = 0; i <= M; ++i) {
         V[i] = detail::intrinsic_value(S[i], strike, option_type);
     }
 
-    // Precompute coefficients for the implicit system
     std::vector<double> a_coeff(M + 1), b_coeff(M + 1), c_coeff(M + 1);
     for (int32_t i = 1; i < M; ++i) {
         double Si = S[i];
@@ -46,29 +44,22 @@ double psor_price(double spot, double strike, double t, double vol,
         b_coeff[i] = 1.0 + dt * (sigma2 / (ds * ds) + r);
     }
 
-    // Payoff for early exercise projection
     std::vector<double> payoff(M + 1);
     for (int32_t i = 0; i <= M; ++i) {
         payoff[i] = detail::intrinsic_value(S[i], strike, option_type);
     }
 
-    // March backward in time
     for (int32_t step = time_steps - 1; step >= 0; --step) {
         double tau = (time_steps - step) * dt;
 
-        double bc_lower = detail::lower_boundary(S[0], strike, r, tau, option_type);
+        double bc_lower = detail::lower_boundary(S[0], strike, r, q, tau, option_type);
         double bc_upper = detail::upper_boundary(S[M], strike, r, q, tau, option_type);
 
-        // RHS is V from previous time step (already in V)
         std::vector<double> rhs(M + 1);
         for (int32_t i = 1; i < M; ++i) {
             rhs[i] = V[i];
         }
 
-        // Initial guess: current V values
-        // V already contains a good initial guess
-
-        // PSOR iterations
         for (int32_t iter = 0; iter < max_iter; ++iter) {
             double max_change = 0.0;
 
@@ -79,7 +70,6 @@ double psor_price(double spot, double strike, double t, double vol,
                 double gs = (rhs[i] - a_coeff[i] * V[i - 1] - c_coeff[i] * V[i + 1]) / b_coeff[i];
                 double v_new = V[i] + omega * (gs - V[i]);
 
-                // Project onto constraint: V >= payoff (always American)
                 v_new = std::max(v_new, payoff[i]);
 
                 double change = std::fabs(v_new - V[i]);

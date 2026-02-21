@@ -23,14 +23,19 @@ double merton_jump_diffusion_price(double spot, double strike, double t, double 
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
 
     int32_t max_terms = params.max_terms > 0 ? params.max_terms : 50;
-    double lambda_t = params.jump_intensity * t;
-    double kappa_j = std::exp(params.jump_mean + 0.5 * params.jump_vol * params.jump_vol) - 1.0;
+    double jump_vol2 = params.jump_vol * params.jump_vol;
+    double mu_plus_half_jump_var = params.jump_mean + 0.5 * jump_vol2;
+    double one_plus_k = std::exp(mu_plus_half_jump_var);
+    double kappa_j = one_plus_k - 1.0;
+
+    // Align with QuantLib JumpDiffusionEngine semantics:
+    // Poisson mixing uses lambda' = (1 + kappa_j) * lambda.
+    double lambda_t = params.jump_intensity * one_plus_k * t;
 
     double weight = std::exp(-lambda_t);
     double price = 0.0;
 
     double vol2 = vol * vol;
-    double jump_vol2 = params.jump_vol * params.jump_vol;
     double inv_t = 1.0 / t;
     double base_r = r - params.jump_intensity * kappa_j;
 
@@ -38,7 +43,7 @@ double merton_jump_diffusion_price(double spot, double strike, double t, double 
         double n_d = static_cast<double>(n);
         double var_n = vol2 + n_d * jump_vol2 * inv_t;
         double vol_n = std::sqrt(std::max(0.0, var_n));
-        double r_n = base_r + n_d * (params.jump_mean + 0.5 * jump_vol2) * inv_t;
+        double r_n = base_r + n_d * mu_plus_half_jump_var * inv_t;
 
         price += weight * black_scholes_merton_price(spot, strike, t, vol_n, r_n, q, option_type);
 

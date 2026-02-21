@@ -1,17 +1,65 @@
 [build-system]
-requires = ["setuptools>=68", "wheel", "cython>=3.0", "numpy>=1.24"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core==0.10.7"]
+build-backend = "scikit_build_core.build"
 
 [project]
-name = "quantkernel"
+name = "quant-kernel"
 version = "2.9.0"
 description = "High-performance derivative pricing engine with 40+ algorithms"
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
+authors = [{ name = "QuantKernel Contributors" }]
 dependencies = ["numpy>=1.24"]
+keywords = ["quant", "options", "pricing", "derivatives", "finance", "hpc"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.urls]
+Homepage = "https://github.com/yluoc/Quant-Kernel"
+Repository = "https://github.com/yluoc/Quant-Kernel"
+Issues = "https://github.com/yluoc/Quant-Kernel/issues"
 
 [project.optional-dependencies]
-dev = ["pytest", "cython>=3.0"]
+dev = ["build>=1.2.2", "cibuildwheel>=2.23.0", "pytest>=8.0"]
 gpu = ["cupy>=12.0"]
+
+[tool.scikit-build]
+cmake.version = ">=3.20,<4.0"
+cmake.build-type = "Release"
+cmake.define.QK_BUILD_TESTS = "OFF"
+cmake.define.QK_BUILD_BENCHMARKS = "OFF"
+wheel.install-dir = "."
+sdist.include = ["python/quantkernel/**", "cpp/**", "CMakeLists.txt", "README.md", "LICENSE"]
+
+[tool.cibuildwheel]
+build = ["cp311-*", "cp312-*", "cp313-*"]
+skip = ["*-musllinux_*", "pp*"]
+archs = ["auto64"]
+build-verbosity = 1
+test-command = "python -c \"import numpy as np; from quantkernel import QuantKernel,QK_CALL,QK_PUT; qk=QuantKernel(); bsm=qk.black_scholes_merton_price(100.0,100.0,1.0,0.2,0.03,0.01,QK_CALL); am=qk.crr_price(100.0,100.0,1.0,0.2,0.03,0.01,QK_PUT,200,1); h=qk.heston_price_cf(100.0,100.0,1.0,0.03,0.01,0.04,2.0,0.04,0.5,-0.7,QK_CALL,512,100.0); out=qk.black_scholes_merton_price_batch(np.array([100.0,101.0]),np.array([100.0,100.0]),np.array([1.0,1.0]),np.array([0.2,0.2]),np.array([0.03,0.03]),np.array([0.01,0.01]),np.array([QK_CALL,QK_PUT],dtype=np.int32)); assert bsm>0 and am>0 and h>0 and out.shape==(2,)\""
+
+[tool.cibuildwheel.linux]
+environment = { CMAKE_BUILD_PARALLEL_LEVEL = "2" }
+
+[tool.cibuildwheel.macos]
+environment = { CMAKE_BUILD_PARALLEL_LEVEL = "2", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+
+[tool.cibuildwheel.windows]
+environment = { CMAKE_BUILD_PARALLEL_LEVEL = "2" }
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]

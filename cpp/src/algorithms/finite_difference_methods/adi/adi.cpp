@@ -78,7 +78,6 @@ void apply_boundaries(std::vector<double>& U, const ADIGrid& g,
     }
 }
 
-// Compute F(U) = (A1 + A2 + A0)U, and optionally the separate A1*U and A2*U
 void compute_operators(const std::vector<double>& U,
                        std::vector<double>& FU,
                        std::vector<double>& A1U,
@@ -98,21 +97,18 @@ void compute_operators(const std::vector<double>& U,
         for (int32_t i = 1; i < g.Ns; ++i) {
             int32_t k = idx(i, j, Ns1);
 
-            // A1: x-direction + killing term (-rV)
             double diff_x = 0.5 * vj / dx2;
             double conv_x = (r - q - 0.5 * vj) / (2.0 * dx);
             double a1 = (diff_x - conv_x) * U[idx(i - 1, j, Ns1)]
                       + (-2.0 * diff_x - r) * U[k]
                       + (diff_x + conv_x) * U[idx(i + 1, j, Ns1)];
 
-            // A2: v-direction
             double diff_v = 0.5 * p.sigma * p.sigma * vj / dv2;
             double conv_v = p.kappa * (p.theta_v - vj) / (2.0 * dv);
             double a2 = (diff_v - conv_v) * U[idx(i, j - 1, Ns1)]
                       + (-2.0 * diff_v) * U[k]
                       + (diff_v + conv_v) * U[idx(i, j + 1, Ns1)];
 
-            // A0: mixed derivative
             double a0 = p.rho * p.sigma * vj / (4.0 * dx * dv)
                        * (U[idx(i + 1, j + 1, Ns1)] - U[idx(i - 1, j + 1, Ns1)]
                         - U[idx(i + 1, j - 1, Ns1)] + U[idx(i - 1, j - 1, Ns1)]);
@@ -124,7 +120,6 @@ void compute_operators(const std::vector<double>& U,
     }
 }
 
-// Solve (I - theta_dt*A1) Y = rhs for x-direction at fixed j
 void solve_x_implicit(std::vector<double>& Y, const std::vector<double>& rhs,
                       const ADIGrid& g, double r, double q,
                       double theta_dt, int32_t j) {
@@ -152,7 +147,6 @@ void solve_x_implicit(std::vector<double>& Y, const std::vector<double>& rhs,
         d[ii] = rhs[idx(ii + 1, j, Ns1)];
     }
 
-    // Boundary adjustments: move known boundary values to RHS
     {
         double diff = 0.5 * vj / dx2;
         double conv = (r - q - 0.5 * vj) / (2.0 * dx);
@@ -171,7 +165,6 @@ void solve_x_implicit(std::vector<double>& Y, const std::vector<double>& rhs,
     }
 }
 
-// Solve (I - theta_dt*A2) Y = rhs for v-direction at fixed i
 void solve_v_implicit(std::vector<double>& Y, const std::vector<double>& rhs,
                       const ADIGrid& g, const ADIHestonParams& p,
                       double theta_dt, int32_t i) {
@@ -294,7 +287,6 @@ double adi_douglas_price(double spot, double strike, double t, double r, double 
 
         compute_operators(U, FU, A1U, A2U, g, r, q, params);
 
-        // Y0 = U + dt*F(U)
         for (int32_t k = 0; k < total; ++k) {
             Y0[k] = U[k] + dt * FU[k];
         }
@@ -353,7 +345,6 @@ double adi_craig_sneyd_price(double spot, double strike, double t, double r, dou
 
         compute_operators(U, FU, A1U, A2U, g, r, q, params);
 
-        // Y0 = U + dt*F(U)
         for (int32_t k = 0; k < total; ++k) {
             Y0[k] = U[k] + dt * FU[k];
         }
@@ -376,7 +367,6 @@ double adi_craig_sneyd_price(double spot, double strike, double t, double r, dou
             solve_v_implicit(Ytilde, RHS, g, params, theta * dt, i);
         }
 
-        // Craig-Sneyd correction: Yhat = Y0 + 0.5*dt*(F(Ytilde) - F(U))
         compute_operators(Ytilde, FYtilde, A1Yt, A2Yt, g, r, q, params);
         for (int32_t k = 0; k < total; ++k) {
             Yhat[k] = Y0[k] + 0.5 * dt * (FYtilde[k] - FU[k]);

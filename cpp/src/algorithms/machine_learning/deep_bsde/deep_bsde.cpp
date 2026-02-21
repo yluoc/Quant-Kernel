@@ -19,8 +19,8 @@ double deep_bsde_price(
         return detail::nan_value();
     }
 
-    const double bsm_call = detail::call_from_bsm(spot, strike, t, vol, r, q);
-    if (!is_finite_safe(bsm_call)) return detail::nan_value();
+    const double bsm_ref = detail::bsm_price(spot, strike, t, vol, r, q, option_type);
+    if (!is_finite_safe(bsm_ref)) return detail::nan_value();
 
     const int N = params.time_steps;
     const int hid = std::min(params.hidden_width, 32);
@@ -28,11 +28,10 @@ double deep_bsde_price(
     const double dt = t / static_cast<double>(N);
     const double sqrt_dt = std::sqrt(dt);
     constexpr int batch_size = 64;
+    constexpr double grad_clip = 25.0;
 
-    // Initialize Y_0 with BSM estimate
-    double Y0 = bsm_call;
+    double Y0 = bsm_ref;
 
-    // One SimpleMLP per time step to approximate Z_t (gradient of value function)
     std::mt19937_64 rng(42);
     std::vector<detail::SimpleMLP> Z_nets(N);
     for (int k = 0; k < N; ++k) {
@@ -45,48 +44,56 @@ double deep_bsde_price(
         double dY0 = 0.0;
 
         for (int b = 0; b < batch_size; ++b) {
-            // Forward simulation of BSDE
             double S = spot;
             double Y = Y0;
-            std::vector<double> input(1);
+
+            std::vector<double> s_norms(static_cast<std::size_t>(N), 1.0);
+            std::vector<double> dWs(static_cast<std::size_t>(N), 0.0);
 
             for (int k = 0; k < N; ++k) {
-                const double dW = sqrt_dt * norm(rng);
-                input[0] = S / spot; // normalized spot
+                const double z = norm(rng);
+                const double dW = sqrt_dt * z;
+                const double s_norm = S / spot;
 
-                const auto& z_out = Z_nets[k].forward(input);
-                const double Z = z_out[0] * vol * S;
+                s_norms[static_cast<std::size_t>(k)] = s_norm;
+                dWs[static_cast<std::size_t>(k)] = dW;
 
-                // BSDE evolution: Y_{k+1} = Y_k + (r*Y_k - q*Z)*dt + Z*vol*S*dW/S... simplified
-                Y += (r * Y - q * S * Z / S) * dt + Z * dW;
+                const std::vector<double> input = {s_norm};
+                const double z_raw = Z_nets[static_cast<std::size_t>(k)].forward(input)[0];
+                const double Z = z_raw * spot;
+
+                // Discrete BSDE with linear driver f = rY.
+                Y = Y + r * Y * dt + Z * dW;
                 S *= std::exp((r - q - 0.5 * vol * vol) * dt + vol * dW);
             }
 
-            // Terminal payoff
-            const double payoff = std::max(S - strike, 0.0);
-            const double disc_payoff = std::exp(-r * t) * payoff;
+            const double payoff = (option_type == QK_CALL)
+                ? std::max(S - strike, 0.0)
+                : std::max(strike - S, 0.0);
+            const double err = Y - payoff;
 
-            // Loss = (Y - disc_payoff)^2
-            const double err = Y - disc_payoff;
-
-            // Update Y_0 via gradient descent
-            dY0 += 2.0 * err / static_cast<double>(batch_size);
-
-            // Update Z networks (simplified: backprop through last step)
+            double adj = 2.0 * err / static_cast<double>(batch_size); // dL / dY_N
             for (int k = N - 1; k >= 0; --k) {
-                std::vector<double> d_out = {2.0 * err * vol / static_cast<double>(batch_size)};
-                input[0] = spot / spot; // Use normalized spot ~ 1.0 for gradient
-                Z_nets[k].forward(input);
-                Z_nets[k].backward(input, d_out, lr);
+                const double dL_dZ = adj * dWs[static_cast<std::size_t>(k)];
+                double dL_dout = dL_dZ * spot;
+                dL_dout = std::max(-grad_clip, std::min(grad_clip, dL_dout));
+
+                const std::vector<double> input = {s_norms[static_cast<std::size_t>(k)]};
+                Z_nets[static_cast<std::size_t>(k)].forward(input);
+                std::vector<double> grad_out = {dL_dout};
+                Z_nets[static_cast<std::size_t>(k)].backward(input, grad_out, lr);
+
+                adj *= (1.0 + r * dt);
             }
+            dY0 += adj;
         }
 
         Y0 -= lr * dY0;
-        Y0 = std::max(0.0, Y0);
+        Y0 = std::max(0.0, std::min(3.0 * std::max(1.0, bsm_ref), Y0));
     }
 
-    const double approx_call = std::max(0.0, Y0);
-    return detail::call_put_from_call_parity(approx_call, spot, strike, t, r, q, option_type);
+    if (!is_finite_safe(Y0)) return detail::nan_value();
+    return std::max(0.0, Y0);
 }
 
 } // namespace qk::mlm

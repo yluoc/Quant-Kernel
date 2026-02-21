@@ -14,8 +14,7 @@ double tian_price(double spot, double strike, double t, double vol, double r, do
     }
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
     if (vol <= detail::kEps) {
-        double fwd = spot * std::exp((r - q) * t);
-        return std::exp(-r * t) * detail::intrinsic_value(fwd, strike, option_type);
+        return detail::deterministic_limit_price(spot, strike, t, r, q, option_type, american_style);
     }
 
     double dt = t / static_cast<double>(steps);
