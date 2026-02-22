@@ -286,10 +286,20 @@ class QuantAccelerator:
         self.backend = backend
         self.max_workers = max_workers or max(1, (os.cpu_count() or 1))
         self._cp = _load_cupy()
+        self._gpu_available_cache: bool | None = None
 
     @property
     def gpu_available(self) -> bool:
-        return self._cp is not None
+        if self._gpu_available_cache is not None:
+            return self._gpu_available_cache
+        if self._cp is None:
+            self._gpu_available_cache = False
+            return False
+        try:
+            self._gpu_available_cache = int(self._cp.cuda.runtime.getDeviceCount()) > 0
+        except Exception:
+            self._gpu_available_cache = False
+        return self._gpu_available_cache
 
     def suggest_strategy(self, method: str, batch_size: int) -> str:
         """Return chosen strategy for a method and batch size.
@@ -356,6 +366,8 @@ class QuantAccelerator:
 
         if strategy == "gpu_vectorized":
             out = self._vectorized_price(method, jobs, use_gpu=True)
+            if hasattr(out, 'get'):
+                out = out.get()
             return np.asarray(out, dtype=np.float64)
 
         if strategy == "cpu_vectorized":
