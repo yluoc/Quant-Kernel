@@ -1,9 +1,10 @@
 #include "algorithms/monte_carlo_methods/antithetic_variates/antithetic_variates.h"
 
 #include "algorithms/monte_carlo_methods/common/internal_util.h"
+#include "common/mc_engine.h"
+#include "common/model_concepts.h"
 
 #include <cmath>
-#include <random>
 
 namespace qk::mcm {
 
@@ -17,29 +18,14 @@ double antithetic_variates_price(double spot, double strike, double t, double vo
 
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
 
-    std::mt19937_64 rng(seed);
-    std::normal_distribution<double> normal(0.0, 1.0);
     const double disc = std::exp(-r * t);
-
-    int32_t pairs = paths / 2;
-    double sum = 0.0;
-
-    for (int32_t i = 0; i < pairs; ++i) {
-        double z = normal(rng);
-        double st1 = detail::gbm_terminal(spot, t, r, q, vol, z);
-        double st2 = detail::gbm_terminal(spot, t, r, q, vol, -z);
-        double p1 = detail::payoff(st1, strike, option_type);
-        double p2 = detail::payoff(st2, strike, option_type);
-        sum += (p1 + p2);
-    }
-
-    if ((paths & 1) != 0) {
-        double z = normal(rng);
-        double st = detail::gbm_terminal(spot, t, r, q, vol, z);
-        sum += detail::payoff(st, strike, option_type);
-    }
-
-    return disc * (sum / static_cast<double>(paths));
+    auto gen = mc::make_mt19937_normal(seed);
+    auto model = models::make_bsm_terminal(vol, r, q);
+    auto accum = [&](double S_T, double /*z*/, int) {
+        return detail::payoff(S_T, strike, option_type);
+    };
+    double mean = mc::estimate_terminal_antithetic(spot, t, paths, gen, model, accum);
+    return disc * mean;
 }
 
 } // namespace qk::mcm

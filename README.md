@@ -1,260 +1,223 @@
 # QuantKernel
 
-QuantKernel is a C++17 quantitative pricing kernel with Python bindings.
-It focuses on fast scalar and batch option analytics across closed-form, lattice,
-finite-difference, Monte Carlo, Fourier, quadrature, regression-approximation,
-Greek-estimation, and ML-inspired methods.
+QuantKernel is a C++17 quantitative option pricing kernel with Python bindings. It provides scalar and batch evaluation of European option prices and Greeks across 40+ algorithms spanning closed-form, lattice, finite difference, Monte Carlo, Fourier, quadrature, regression, and machine learning methods.
 
-Linux and macOS are supported.
+The core is a single shared library (`libquantkernel.so` / `.dylib`) with a flat C ABI. The Python package (`quantkernel`) loads this library via ctypes. There are no external C++ dependencies.
 
-## Scope
+QuantKernel is not a full term-structure framework, not a risk management system, and not a replacement for QuantLib. It is a focused, low-overhead pricing kernel.
 
-QuantKernel provides:
-- C++ shared library (`libquantkernel.so` / `libquantkernel.dylib` / `libquantkernel.dll`) with C ABI exports.
-- Python package (`quantkernel`) with scalar and batch methods.
-- Optional Python-level accelerator (`QuantAccelerator`) for backend selection (`auto`, `cpu`, `gpu`).
+## Architecture
 
-## Install
-
-End users (recommended):
-
-```bash
-python -m pip install --upgrade pip
-python -m pip install quant-kernel
+```
+Python (quantkernel)
+  |
+  | ctypes FFI
+  v
+C ABI boundary  (qk_api.h — flat extern "C" functions)
+  |
+  v
+C++17 internals
+  |-- Algorithm families  (closed-form, tree, FD, MC, Fourier, ...)
+  |-- Model layer         (model_concepts.h — callable factories)
+  |-- MC engine layer     (mc_engine.h — templated simulation loops)
+  |-- Common utilities    (math, payoff, validation)
 ```
 
-This installs a prebuilt wheel on supported platforms and does not require local C++ compilation.
+**Model layer.** Stochastic dynamics are expressed as callable factories that return lightweight lambdas. `make_bsm_terminal(vol, r, q)` returns a `(spot, t, z) -> S_T` functor implementing the GBM log-normal terminal distribution. Step models (`make_bsm_euler_step`, `make_bsm_milstein_step`) return `(s, dt, dw) -> s_next` functors. Sensitivity callables (`make_bsm_pathwise_dST_dSpot`, `make_bsm_lr_score`) are similarly factored. All callables are validated at compile time via `static_assert` traits.
 
-## Implemented Algorithm Families
+**Engine layer.** The shared Monte Carlo engine (`mc_engine.h`) provides templated simulation loops — `estimate_terminal`, `estimate_terminal_antithetic`, and `estimate_stepwise` — parameterized over a normal-variate generator, a model callable, and an accumulator. The engine owns no RNG state; callers inject a generator via `mc::make_mt19937_normal(seed)` or any `() -> double` callable. This permits future substitution of Sobol, Philox, or other RNG strategies without modifying the engine.
 
-### Closed-form / Semi-analytical
-- Black-Scholes-Merton
-- Black-76
-- Bachelier
-- Heston characteristic-function pricing
-- Merton jump-diffusion
-- Variance-Gamma characteristic-function pricing
-- SABR (Hagan lognormal IV + Black-76 pricing)
-- Dupire local volatility inversion
+**C ABI boundary.** All public functions are `extern "C"` with `QK_EXPORT` visibility. Scalar functions return `double` (NaN on error). Batch functions return `int32_t` error codes (`QK_OK`, `QK_ERR_NULL_PTR`, `QK_ERR_BAD_SIZE`, `QK_ERR_INVALID_INPUT`). Thread-local error detail is available via `qk_get_last_error()`. ABI versioning is enforced at load time.
+
+**Python wrapper.** The `QuantKernel` class exposes every C function as a Python method. Batch methods accept NumPy arrays. An optional `QuantAccelerator` class provides CuPy-based GPU vectorization for large batches.
+
+## Supported Models
+
+The stochastic dynamics layer currently implements **Black-Scholes-Merton (geometric Brownian motion)** only. The model-factory pattern is designed so that additional models (Heston, local volatility, rough volatility) can be added as new callable factories without modifying the engine or algorithm code.
+
+## Supported Payoffs
+
+All Monte Carlo and adjoint Greek estimators evaluate **vanilla European payoffs** only: `max(S_T - K, 0)` for calls, `max(K - S_T, 0)` for puts. Tree and FD methods support American exercise. Barrier, Asian, and other exotic payoffs are not implemented.
+
+## Algorithm Families
+
+### Closed-Form / Semi-Analytical
+Black-Scholes-Merton, Black-76, Bachelier, Heston (characteristic function), Merton jump-diffusion, Variance-Gamma (characteristic function), SABR (Hagan lognormal IV + Black-76), Dupire local volatility inversion.
 
 ### Tree / Lattice
-- CRR
-- Jarrow-Rudd
-- Tian
-- Leisen-Reimer
-- Trinomial tree
-- Derman-Kani style local-vol tree entrypoints:
-  - Constant local vol surface (`derman_kani_const_local_vol_price`)
-  - Vanilla call-surface driven entrypoint (`derman_kani_call_surface_price`)
+CRR, Jarrow-Rudd, Tian, Leisen-Reimer, trinomial tree, Derman-Kani implied tree (constant local vol and call-surface-driven variants).
 
 ### Finite Difference
-- Explicit FD
-- Implicit FD
-- Crank-Nicolson
-- ADI (Douglas, Craig-Sneyd, Hundsdorfer-Verwer)
-- PSOR
+Explicit FD, implicit FD, Crank-Nicolson, ADI (Douglas, Craig-Sneyd, Hundsdorfer-Verwer), PSOR (American exercise).
 
 ### Monte Carlo
-- Standard Monte Carlo
-- Euler-Maruyama
-- Milstein
-- Longstaff-Schwartz
-- Quasi Monte Carlo (Sobol, Halton)
-- Multilevel Monte Carlo
-- Importance Sampling
-- Control Variates
-- Antithetic Variates
-- Stratified Sampling
+Standard MC (antithetic), Euler-Maruyama, Milstein, Longstaff-Schwartz (American), quasi-MC (Sobol, Halton), multilevel MC, importance sampling, control variates, antithetic variates, stratified sampling.
 
-### Fourier Transform Methods
-- Carr-Madan FFT
-- COS (Fang-Oosterlee)
-- Fractional FFT
-- Lewis Fourier inversion
-- Hilbert transform pricing
+### Fourier Transform
+Carr-Madan FFT, COS (Fang-Oosterlee), fractional FFT, Lewis Fourier inversion, Hilbert transform.
 
 ### Integral Quadrature
-- Gauss-Hermite
-- Gauss-Laguerre
-- Gauss-Legendre
-- Adaptive quadrature
+Gauss-Hermite, Gauss-Laguerre, Gauss-Legendre, adaptive quadrature.
 
 ### Regression Approximation
-- Polynomial Chaos Expansion
-- Radial Basis Functions
-- Sparse Grid Collocation
-- Proper Orthogonal Decomposition
+Polynomial chaos expansion, radial basis functions, sparse grid collocation, proper orthogonal decomposition.
 
-### Greeks / Adjoint Methods
-- Pathwise derivative delta
-- Likelihood ratio delta
-- AAD delta
+### Greeks (Adjoint Methods)
+Pathwise derivative delta, likelihood-ratio delta, BSM adjoint analytic delta (regularized).
 
-### Machine-learning Inspired Pricing
-- Deep BSDE
-- PINNs
-- Deep Hedging
-- Neural SDE calibration
+### Machine Learning
+Deep BSDE, PINNs, deep hedging, neural SDE calibration.
 
-## Repository Layout
+## Monte Carlo Design
 
-- `cpp/`
-  - `include/quantkernel/qk_api.h`: C API declarations
-  - `src/`: implementations and API bridge (`qk_api.cpp`)
-  - `tests/`: C++ test executables
-- `python/`
-  - `quantkernel/`: Python API (`QuantKernel`, `QuantAccelerator`)
-  - `tests/`: pytest suite
-  - `examples/`: usage and benchmark scripts
-- `Makefile`: common build/test commands
+The MC subsystem is structured as three independent layers:
 
-## Requirements
+1. **RNG policy.** The caller constructs a generator — typically `mc::make_mt19937_normal(seed)` — and passes it into the engine. The engine calls `gen()` to draw standard-normal variates. This decouples the RNG from the simulation loop.
 
-- CMake >= 3.14
-- C++17 compiler
-- Python >= 3.11
-- NumPy
+2. **Model callable.** A functor mapping variates to asset prices. Terminal models map `(spot, t, z) -> S_T`. Step models map `(s, dt, dw) -> s_next`.
 
-Optional:
-- CuPy (for GPU backend in accelerator paths)
+3. **Engine loop.** `estimate_terminal` runs a simple forward loop. `estimate_terminal_antithetic` pairs `+z` and `-z` draws for variance reduction. `estimate_stepwise` runs multi-step Euler/Milstein paths. All are header-only templates that inline through the callable indirection under any reasonable optimization level.
 
-## Build
+The accumulator receives `(S_T, z, path_index)` for terminal engines and `(S_T, path_index)` for stepwise engines, providing the metadata needed for variance reduction and sensitivity estimation.
 
-From project root:
+## Greeks
+
+**Pathwise derivative.** Differentiates the payoff indicator directly. For GBM, `dS_T / dSpot = S_T / spot`. Requires the payoff to be almost-everywhere differentiable (digital options are excluded).
+
+**Likelihood ratio.** Differentiates the log-density instead of the payoff. Uses the score function `z / (vol * sqrt(t) * spot)` with configurable weight clipping. Works with discontinuous payoffs but has higher variance. Uses antithetic pairing.
+
+**BSM adjoint delta.** Despite the `aad_delta` function name, this is a closed-form BSM delta computed via hand-written reverse-mode differentiation of the Black-Scholes formula, with Tikhonov regularization toward the ATM delta prior. It is not a general-purpose tape-based automatic differentiation engine. The function name is preserved for ABI compatibility. Internal C++ code can use the alias `bsm_adjoint_delta()`.
+
+## Performance
+
+- No virtual dispatch in hot paths. Model callables are monomorphized templates.
+- No heap allocation in simulation loops. RNG state is stack-local.
+- Header-only engine and model layers. Under LTO (enabled in Release builds), all lambda indirection is eliminated.
+- Batch C API functions iterate over input arrays with no per-call overhead beyond the computation itself.
+- OpenMP support is linked when available.
+
+## Reproducibility
+
+All Monte Carlo estimators produce deterministic, bit-reproducible results for a given seed on the same platform. The RNG is `std::mt19937_64` seeded by the caller. Draw order is fixed by the engine loop structure. Golden-seed regression tests pin absolute numerical outputs at 1e-12 tolerance to detect any changes in draw order, antithetic pairing, or accumulation behavior.
+
+## Installation
+
+From PyPI (recommended):
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install --upgrade pip
-python3 -m pip install -r requirements.txt
+pip install quant-kernel
+```
 
+This installs a prebuilt wheel on supported platforms (Linux, macOS). No local C++ compilation required.
+
+Python >= 3.11 and NumPy >= 1.24 are required. CuPy >= 12.0 is optional (GPU acceleration).
+
+## Build from Source
+
+```bash
 cmake -S . -B build
 cmake --build build -j
 ```
 
-## Python Setup (from source checkout)
+Requires CMake >= 3.20 and a C++17 compiler.
 
-Point Python to the package and shared library:
+```bash
+make quick        # configure + build + C++ tests + Python tests
+make test-cpp     # C++ tests only
+make test-py      # Python tests only
+make bench        # benchmark (50k samples)
+```
+
+For development use, point Python to the local build:
 
 ```bash
 export PYTHONPATH=$PWD/python
 export QK_LIB_PATH=$PWD/build/cpp
 ```
 
-Then use:
+## Python Usage
 
 ```python
-from quantkernel import QuantKernel, QK_CALL
-
-qk = QuantKernel()
-price = qk.black_scholes_merton_price(
-    100.0, 100.0, 1.0, 0.2, 0.03, 0.01, QK_CALL
-)
-print(price)
-```
-
-## Batch Usage
-
-```python
-import numpy as np
 from quantkernel import QuantKernel, QK_CALL, QK_PUT
 
 qk = QuantKernel()
-n = 100_000
-rng = np.random.default_rng(42)
 
-spot = rng.uniform(80.0, 120.0, n)
-strike = rng.uniform(80.0, 120.0, n)
-t = rng.uniform(0.25, 2.0, n)
-vol = rng.uniform(0.1, 0.6, n)
-r = rng.uniform(0.0, 0.08, n)
-q = rng.uniform(0.0, 0.04, n)
-option_type = np.where((np.arange(n) & 1) == 0, QK_CALL, QK_PUT).astype(np.int32)
+# Scalar pricing
+price = qk.black_scholes_merton_price(100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL)
 
-prices = qk.black_scholes_merton_price_batch(spot, strike, t, vol, r, q, option_type)
-print(prices[:3])
+# Batch pricing
+import numpy as np
+spot = np.array([100.0, 105.0, 95.0])
+strike = np.full(3, 100.0)
+t = np.full(3, 1.0)
+vol = np.full(3, 0.2)
+r = np.full(3, 0.05)
+q = np.full(3, 0.0)
+ot = np.full(3, QK_CALL, dtype=np.int32)
+
+prices = qk.black_scholes_merton_price_batch(spot, strike, t, vol, r, q, ot)
+
+# Monte Carlo
+mc_price = qk.standard_monte_carlo_price(100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL, 100000, 42)
+
+# Greeks
+delta = qk.pathwise_derivative_delta(100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL, 50000, 42)
 ```
 
-## Derman-Kani Call-Surface API (Python)
+## C Usage
 
-`derman_kani_call_surface_price` accepts:
-- `surface_strikes`: 1D strikes
-- `surface_maturities`: 1D maturities
-- `surface_call_prices`:
-  - 2D array with shape `(len(surface_maturities), len(surface_strikes))`, or
-  - flattened 1D array of that size
+```c
+#include <quantkernel/qk_api.h>
+#include <stdio.h>
 
-Example:
+int main() {
+    double price = qk_cf_black_scholes_merton_price(100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL);
+    printf("BSM call price: %.6f\n", price);
 
-```python
-from quantkernel import QuantKernel, QK_CALL
+    double mc = qk_mcm_standard_monte_carlo_price(100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL, 100000, 42);
+    printf("MC call price:  %.6f\n", mc);
 
-qk = QuantKernel()
-spot, r, q = 100.0, 0.03, 0.01
-surface_strikes = [80, 90, 100, 110, 120]
-surface_maturities = [0.5, 1.0, 1.5]
+    double delta = qk_agm_pathwise_derivative_delta(100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL, 50000, 42);
+    printf("Pathwise delta: %.6f\n", delta);
 
-# Synthetic surface here; in production use observed call prices.
-surface_call_prices = [
-    [qk.black_scholes_merton_price(spot, k, tau, 0.2, r, q, QK_CALL) for k in surface_strikes]
-    for tau in surface_maturities
-]
-
-price = qk.derman_kani_call_surface_price(
-    spot=spot,
-    strike=100.0,
-    t=1.0,
-    r=r,
-    q=q,
-    option_type=QK_CALL,
-    surface_strikes=surface_strikes,
-    surface_maturities=surface_maturities,
-    surface_call_prices=surface_call_prices,
-    steps=20,
-)
-print(price)
+    return 0;
+}
 ```
 
-If `QK_LIB_PATH` is unset, the package also searches for a bundled shared library from an installed wheel.
+Link against `-lquantkernel`.
 
-## Testing
+## Cautions
 
-From project root:
+- **BSM dynamics only.** The Monte Carlo model layer currently implements geometric Brownian motion. Heston, local vol, and other stochastic volatility models are not yet available through the shared engine.
 
-```bash
-make test-cpp
-make test-py
-# or
-make quick
-```
+- **`aad_delta` is not general AAD.** The function named `qk_agm_aad_delta` computes BSM delta via hand-differentiated closed-form Black-Scholes with regularization. It does not implement a computational tape, operator overloading, or any general-purpose automatic differentiation framework.
 
-Direct commands:
+- **Vanilla European payoffs only** in the MC and adjoint Greek subsystems. Barrier, Asian, lookback, and other path-dependent payoffs are not supported. Longstaff-Schwartz supports American exercise as a special case.
 
-```bash
-ctest --test-dir build --output-on-failure
-PYTHONPATH=python QK_LIB_PATH=build/cpp pytest -q python/tests
-```
+- **Not a term-structure framework.** There is no yield curve construction, no vol surface interpolation infrastructure, no calendar/day-count conventions. Input rates and volatilities are flat scalars.
 
-## Benchmark
-
-```bash
-PYTHONPATH=python QK_LIB_PATH=build/cpp \
-python3 python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3
-```
+- **Platform-dependent reproducibility.** Bit-exact MC outputs are guaranteed for a given seed on the same platform and compiler. Cross-platform reproducibility (e.g., Linux vs macOS, GCC vs Clang) is not guaranteed due to differences in `std::normal_distribution` implementations.
 
 ## Error Handling
 
-### C API
-- Batch functions return ABI error codes (`QK_OK`, `QK_ERR_NULL_PTR`, `QK_ERR_BAD_SIZE`, `QK_ERR_INVALID_INPUT`, etc.).
-- Use `qk_get_last_error()` for thread-local error detail.
+**C API.** Scalar functions return NaN on invalid input. Batch functions return error codes: `QK_OK` (0), `QK_ERR_NULL_PTR` (-1), `QK_ERR_BAD_SIZE` (-2), `QK_ERR_INVALID_INPUT` (-5). Call `qk_get_last_error()` for a human-readable error string.
 
-### Python API
-- Raises typed exceptions:
-  - `QKError`
-  - `QKNullPointerError`
-  - `QKBadSizeError`
-  - `QKInvalidInputError`
+**Python API.** Raises typed exceptions: `QKError`, `QKNullPointerError`, `QKBadSizeError`, `QKInvalidInputError`.
+
+## Goals
+
+- Fast, correct scalar and batch European option pricing.
+- Minimal-dependency C++ core suitable for embedding.
+- Stable C ABI for language-agnostic integration.
+- Extensible internal architecture for future multi-model support.
+
+## Non-Goals
+
+- General-purpose risk engine or portfolio management.
+- Exotic payoff coverage.
+- Term-structure or vol surface construction.
+- Real-time market data integration.
 
 ## License
 
-`LICENSE` (WTFPL).
+WTFPL v2. See `LICENSE`.

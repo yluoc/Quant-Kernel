@@ -1,9 +1,10 @@
 #include "algorithms/monte_carlo_methods/standard_monte_carlo/standard_monte_carlo.h"
 
 #include "algorithms/monte_carlo_methods/common/internal_util.h"
+#include "common/mc_engine.h"
+#include "common/model_concepts.h"
 
 #include <cmath>
-#include <random>
 
 namespace qk::mcm {
 
@@ -21,26 +22,14 @@ double standard_monte_carlo_price(double spot, double strike, double t, double v
         return std::exp(-r * t) * detail::intrinsic_value(fwd, strike, option_type);
     }
 
-    std::mt19937_64 rng(seed);
-    std::normal_distribution<double> normal(0.0, 1.0);
     const double disc = std::exp(-r * t);
-
-    double sum = 0.0;
-    const int32_t n_pairs = paths / 2;
-    for (int32_t i = 0; i < n_pairs; ++i) {
-        const double z = normal(rng);
-        const double st_up = detail::gbm_terminal(spot, t, r, q, vol, z);
-        const double st_dn = detail::gbm_terminal(spot, t, r, q, vol, -z);
-        sum += detail::payoff(st_up, strike, option_type);
-        sum += detail::payoff(st_dn, strike, option_type);
-    }
-    if ((paths & 1) != 0) {
-        const double z = normal(rng);
-        const double st = detail::gbm_terminal(spot, t, r, q, vol, z);
-        sum += detail::payoff(st, strike, option_type);
-    }
-
-    return disc * (sum / static_cast<double>(paths));
+    auto gen = mc::make_mt19937_normal(seed);
+    auto model = models::make_bsm_terminal(vol, r, q);
+    auto accum = [&](double S_T, double /*z*/, int) {
+        return detail::payoff(S_T, strike, option_type);
+    };
+    double mean = mc::estimate_terminal_antithetic(spot, t, paths, gen, model, accum);
+    return disc * mean;
 }
 
 } // namespace qk::mcm

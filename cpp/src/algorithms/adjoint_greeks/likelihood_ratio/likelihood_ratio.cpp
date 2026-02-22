@@ -1,10 +1,11 @@
 #include "algorithms/adjoint_greeks/likelihood_ratio/likelihood_ratio.h"
 
 #include "algorithms/adjoint_greeks/common/internal_util.h"
+#include "common/mc_engine.h"
+#include "common/model_concepts.h"
 
 #include <algorithm>
 #include <cmath>
-#include <random>
 
 namespace qk::agm {
 
@@ -22,37 +23,22 @@ double likelihood_ratio_delta(
     }
 
     const int n_paths = params.paths;
-    const double sqrt_t = std::sqrt(t);
-    const double drift = (r - q - 0.5 * vol * vol) * t;
     const double disc = std::exp(-r * t);
 
-    std::mt19937_64 rng(params.seed);
-    std::normal_distribution<double> norm(0.0, 1.0);
-
-    auto sample_term = [&](double z) {
-        const double S_T = spot * std::exp(drift + vol * sqrt_t * z);
+    auto gen = mc::make_mt19937_normal(params.seed);
+    auto model = models::make_bsm_terminal(vol, r, q);
+    auto score_fn = models::make_bsm_lr_score(vol);
+    auto accum = [&](double S_T, double z, int) -> double {
         const double payoff = (option_type == QK_CALL)
             ? std::max(S_T - strike, 0.0)
             : std::max(strike - S_T, 0.0);
-        double score = z / (vol * sqrt_t * spot);
+        double score = score_fn(spot, t, z);
         score = std::max(-params.weight_clip, std::min(params.weight_clip, score));
         return payoff * score;
     };
 
-    // Antithetic pairing materially reduces LR variance in tail-heavy regimes.
-    double sum = 0.0;
-    const int n_pairs = n_paths / 2;
-    for (int i = 0; i < n_pairs; ++i) {
-        const double z = norm(rng);
-        sum += sample_term(z);
-        sum += sample_term(-z);
-    }
-    if ((n_paths & 1) != 0) {
-        sum += sample_term(norm(rng));
-    }
-
-    const double delta = disc * sum / static_cast<double>(n_paths);
-    return detail::clamp_delta(delta, t, q);
+    double mean = mc::estimate_terminal_antithetic(spot, t, n_paths, gen, model, accum);
+    return detail::clamp_delta(disc * mean, t, q);
 }
 
 } // namespace qk::agm

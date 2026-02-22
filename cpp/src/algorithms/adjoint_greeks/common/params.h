@@ -16,8 +16,17 @@ struct LikelihoodRatioParams {
     double weight_clip;
 };
 
+// Runtime configuration for the BSM hand-adjoint delta estimator.
+//
+// NOTE: Despite the "Aad" prefix, the current implementation is a
+// hand-differentiated BSM closed-form delta with Tikhonov regularization,
+// not a tape-based AAD engine.  Field names are preserved for ABI stability.
 struct AadParams {
+    // Controls regularization decay: lambda_eff = regularization / sqrt(tape_steps).
+    // Higher values weaken regularization.  Must be >= 4.
     int32_t tape_steps;
+    // Tikhonov regularization strength toward the ATM delta prior.
+    // Set to 0.0 to disable regularization.  Must be >= 0.
     double regularization;
 };
 

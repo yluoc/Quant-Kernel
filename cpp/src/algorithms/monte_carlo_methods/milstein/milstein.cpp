@@ -1,31 +1,12 @@
 #include "algorithms/monte_carlo_methods/milstein/milstein.h"
 
 #include "algorithms/monte_carlo_methods/common/internal_util.h"
+#include "common/mc_engine.h"
+#include "common/model_concepts.h"
 
 #include <cmath>
-#include <random>
 
 namespace qk::mcm {
-
-namespace {
-
-double simulate_milstein_path(double spot, double t, double vol, double drift,
-                              int32_t steps, std::mt19937_64& rng) {
-    const double dt = t / static_cast<double>(steps);
-    const double sqrt_dt = std::sqrt(dt);
-    std::normal_distribution<double> normal(0.0, 1.0);
-
-    double s = spot;
-    for (int32_t j = 0; j < steps; ++j) {
-        double z = normal(rng);
-        double dw = sqrt_dt * z;
-        s += drift * s * dt + vol * s * dw + 0.5 * vol * vol * s * (dw * dw - dt);
-        s = std::max(1e-12, s);
-    }
-    return s;
-}
-
-} // namespace
 
 double milstein_price(double spot, double strike, double t, double vol,
                       double r, double q, int32_t option_type,
@@ -37,17 +18,13 @@ double milstein_price(double spot, double strike, double t, double vol,
 
     if (t <= detail::kEps) return detail::intrinsic_value(spot, strike, option_type);
 
-    std::mt19937_64 rng(seed);
     const double disc = std::exp(-r * t);
     const double drift = r - q;
-    double sum = 0.0;
-
-    for (int32_t i = 0; i < paths; ++i) {
-        double st = simulate_milstein_path(spot, t, vol, drift, steps, rng);
-        sum += detail::payoff(st, strike, option_type);
-    }
-
-    return disc * (sum / static_cast<double>(paths));
+    auto gen = mc::make_mt19937_normal(seed);
+    auto step = models::make_bsm_milstein_step(vol, drift);
+    auto accum = [&](double S_T, int) { return detail::payoff(S_T, strike, option_type); };
+    double mean = mc::estimate_stepwise(spot, t, paths, steps, gen, step, accum);
+    return disc * mean;
 }
 
 } // namespace qk::mcm

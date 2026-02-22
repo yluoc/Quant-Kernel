@@ -197,4 +197,20 @@ QK_TEST(batch_null_ptr_returns_error) {
     QK_ASSERT_EQ(rc, QK_ERR_NULL_PTR);
 }
 
+// ---------------------------------------------------------------------------
+// Golden-seed regression tests for adjoint Greek estimators.
+// See test_monte_carlo.cpp header comment for tolerance rationale.
+// ---------------------------------------------------------------------------
+QK_TEST(golden_pathwise_delta_call) {
+    double delta = qk_agm_pathwise_derivative_delta(
+        100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL, 50000, 12345);
+    QK_ASSERT_NEAR(delta, 0.63559188066751005, 1e-12);
+}
+
+QK_TEST(golden_likelihood_ratio_delta_call) {
+    double delta = qk_agm_likelihood_ratio_delta(
+        100.0, 100.0, 1.0, 0.2, 0.05, 0.0, QK_CALL, 50000, 12345, 10.0);
+    QK_ASSERT_NEAR(delta, 0.64537180232018476, 1e-12);
+}
+
 QK_TEST_MAIN()

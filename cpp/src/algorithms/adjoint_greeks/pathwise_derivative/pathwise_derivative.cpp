@@ -1,10 +1,10 @@
 #include "algorithms/adjoint_greeks/pathwise_derivative/pathwise_derivative.h"
 
 #include "algorithms/adjoint_greeks/common/internal_util.h"
+#include "common/mc_engine.h"
+#include "common/model_concepts.h"
 
-#include <algorithm>
 #include <cmath>
-#include <random>
 
 namespace qk::agm {
 
@@ -22,31 +22,21 @@ double pathwise_derivative_delta(
     }
 
     const int n_paths = params.paths;
-    const double sqrt_t = std::sqrt(t);
-    const double drift = (r - q - 0.5 * vol * vol) * t;
     const double disc = std::exp(-r * t);
 
-    std::mt19937_64 rng(params.seed);
-    std::normal_distribution<double> norm(0.0, 1.0);
-
-    double sum = 0.0;
-    for (int i = 0; i < n_paths; ++i) {
-        const double z = norm(rng);
-        const double S_T = spot * std::exp(drift + vol * sqrt_t * z);
-
+    auto gen = mc::make_mt19937_normal(params.seed);
+    auto model = models::make_bsm_terminal(vol, r, q);
+    auto dST_dS0 = models::make_bsm_pathwise_dST_dSpot();
+    auto accum = [&](double S_T, double z, int) -> double {
         if (option_type == QK_CALL) {
-            if (S_T > strike) {
-                sum += S_T / spot;
-            }
+            return (S_T > strike) ? dST_dS0(spot, S_T, t, z) : 0.0;
         } else {
-            if (S_T < strike) {
-                sum -= S_T / spot;
-            }
+            return (S_T < strike) ? -dST_dS0(spot, S_T, t, z) : 0.0;
         }
-    }
+    };
 
-    const double delta = disc * sum / static_cast<double>(n_paths);
-    return detail::clamp_delta(delta, t, q);
+    double mean = mc::estimate_terminal(spot, t, n_paths, gen, model, accum);
+    return detail::clamp_delta(disc * mean, t, q);
 }
 
 } // namespace qk::agm
