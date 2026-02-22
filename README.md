@@ -198,6 +198,8 @@ Link against `-lquantkernel`.
 
 - **Platform-dependent reproducibility.** Bit-exact MC outputs are guaranteed for a given seed on the same platform and compiler. Cross-platform reproducibility (e.g., Linux vs macOS, GCC vs Clang) is not guaranteed due to differences in `std::normal_distribution` implementations.
 
+- **Sample Option data source download** To run `examples/validate_.../py` files, download sample options pricing data source from this url: [optionsDX](https://www.optionsdx.com/option-chain-field-definitions/)
+
 ## Error Handling
 
 **C API.** Scalar functions return NaN on invalid input. Batch functions return error codes: `QK_OK` (0), `QK_ERR_NULL_PTR` (-1), `QK_ERR_BAD_SIZE` (-2), `QK_ERR_INVALID_INPUT` (-5). Call `qk_get_last_error()` for a human-readable error string.
