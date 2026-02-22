@@ -190,9 +190,12 @@ class QuantKernel:
         self, fn_name: str, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, steps: int, american_style: bool = False
     ) -> float:
-        return self._get_fn(fn_name)(
+        out = self._get_fn(fn_name)(
             spot, strike, t, vol, r, q, option_type, steps, 1 if american_style else 0
         )
+        if math.isnan(out):
+            raise ValueError(f"{fn_name} returned NaN; check inputs.")
+        return out
 
     def black_scholes_merton_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float, option_type: int
@@ -221,7 +224,8 @@ class QuantKernel:
         float
             The BSM option price.
         """
-        return self._get_fn("qk_cf_black_scholes_merton_price")(
+        return self._call_checked(
+            "qk_cf_black_scholes_merton_price",
             spot, strike, t, vol, r, q, option_type
         )
 
@@ -239,7 +243,7 @@ class QuantKernel:
         option_type : int
             ``QK_CALL`` or ``QK_PUT``.
         """
-        return self._get_fn("qk_cf_black76_price")(forward, strike, t, vol, r, option_type)
+        return self._call_checked("qk_cf_black76_price", forward, strike, t, vol, r, option_type)
 
     def bachelier_price(
         self, forward: float, strike: float, t: float, normal_vol: float, r: float, option_type: int
@@ -259,7 +263,7 @@ class QuantKernel:
         option_type : int
             ``QK_CALL`` or ``QK_PUT``.
         """
-        return self._get_fn("qk_cf_bachelier_price")(forward, strike, t, normal_vol, r, option_type)
+        return self._call_checked("qk_cf_bachelier_price", forward, strike, t, normal_vol, r, option_type)
 
     def black_scholes_merton_price_batch(
         self, spot, strike, t, vol, r, q, option_type
@@ -1027,10 +1031,13 @@ class QuantKernel:
         r: float, q: float, option_type: int, time_steps: int, spot_steps: int,
         american_style: bool = False
     ) -> float:
-        return self._get_fn(fn_name)(
+        out = self._get_fn(fn_name)(
             spot, strike, t, vol, r, q, option_type,
             time_steps, spot_steps, 1 if american_style else 0
         )
+        if math.isnan(out):
+            raise ValueError(f"{fn_name} returned NaN; check inputs.")
+        return out
 
     def explicit_fd_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,
@@ -1100,10 +1107,13 @@ class QuantKernel:
         option_type: int, time_steps: int, spot_steps: int,
         omega: float = 1.2, tol: float = 1e-8, max_iter: int = 10000
     ) -> float:
-        return self._get_fn("qk_fdm_psor_price")(
+        out = self._get_fn("qk_fdm_psor_price")(
             spot, strike, t, vol, r, q, option_type,
             time_steps, spot_steps, omega, tol, max_iter
         )
+        if math.isnan(out):
+            raise ValueError("qk_fdm_psor_price returned NaN; check inputs.")
+        return out
 
 
     def _mc_price(
