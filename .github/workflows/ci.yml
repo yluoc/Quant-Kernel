@@ -64,7 +64,7 @@ jobs:
           OMP_NUM_THREADS: "1"
         run: |
           cmake --build build -j 4 --target qk_bench_bsm_batch
-          python python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3 | tee benchmark_table.md
+          python examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3 | tee benchmark_table.md
           cat benchmark_table.md >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Build wheel (packaging check)

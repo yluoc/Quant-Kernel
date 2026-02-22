@@ -7,10 +7,10 @@ It compares:
 - GPU path: ``qk.price_batch(..., backend='gpu')`` (uses CuPy when available)
 
 Run:
-    PYTHONPATH=python python3 python/examples/run_all_algos.py
+    PYTHONPATH=python python3 examples/run_all_algos.py
 
 Optional:
-    PYTHONPATH=python python3 python/examples/run_all_algos.py --repeats 5 --profile full
+    PYTHONPATH=python python3 examples/run_all_algos.py --repeats 5 --profile full
 """
 
 from __future__ import annotations

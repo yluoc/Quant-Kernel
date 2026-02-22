@@ -34,7 +34,7 @@ build-wheel:
 	$(PYTHON) -m pip wheel . --no-deps -w dist
 
 bench: build
-	PYTHONPATH=python QK_LIB_PATH="$(CURDIR)/$(BUILD_DIR)/cpp" $(PYTHON) python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3
+	PYTHONPATH=python QK_LIB_PATH="$(CURDIR)/$(BUILD_DIR)/cpp" $(PYTHON) examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3
 
 test-cpp: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
@@ -45,7 +45,7 @@ test-py: build
 test: test-cpp test-py
 
 demo: build
-	PYTHONPATH=python $(PYTHON) python/examples/demo_pricing.py
+	PYTHONPATH=python $(PYTHON) examples/demo_pricing.py
 
 quick: test
 

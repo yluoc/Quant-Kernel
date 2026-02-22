@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 PYTHON_DIR = ROOT / "python"
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
@@ -26,7 +26,7 @@ from quantkernel import QuantKernel  # noqa: E402
 
 
 def _load_batch_module():
-    path = ROOT / "python" / "examples" / "validate_historical_batch.py"
+    path = ROOT / "examples" / "validate_historical_batch.py"
     spec = importlib.util.spec_from_file_location("qk_hist_batch", str(path))
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -235,7 +235,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--quantlib-source-root", type=Path, default=ROOT / "third_party_source" / "quantlib_copy" / "QuantLib")
     parser.add_argument("--quantlib-build-dir", type=Path, default=ROOT / "third_party_source" / "quantlib_copy" / "build")
-    parser.add_argument("--quantlib-wrapper-src", type=Path, default=ROOT / "python" / "examples" / "quantlib_american_ref.cpp")
+    parser.add_argument("--quantlib-wrapper-src", type=Path, default=ROOT / "examples" / "quantlib_american_ref.cpp")
     parser.add_argument("--quantlib-wrapper-lib", type=Path, default=ROOT / "third_party_source" / "quantlib_copy" / "build" / "libql_ref_american.so")
     parser.add_argument("--quantlib-t-grid", type=int, default=300)
     parser.add_argument("--quantlib-x-grid", type=int, default=200)

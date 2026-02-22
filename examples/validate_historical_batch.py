@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import openpyxl
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 PYTHON_DIR = ROOT / "python"
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
@@ -464,7 +464,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--quantlib-wrapper-src",
         type=Path,
-        default=ROOT / "python" / "examples" / "quantlib_bsm_ref.cpp",
+        default=ROOT / "examples" / "quantlib_bsm_ref.cpp",
         help="C++ source for QuantLib wrapper.",
     )
     parser.add_argument(

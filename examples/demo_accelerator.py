@@ -1,7 +1,7 @@
 """QuantAccelerator demo: rule-based batch pricing.
 
 Run after building the shared library:
-    PYTHONPATH=python python3 python/examples/demo_accelerator.py
+    PYTHONPATH=python python3 examples/demo_accelerator.py
 """
 
 from quantkernel import QK_CALL, QuantAccelerator, QuantKernel
