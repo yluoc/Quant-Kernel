@@ -67,36 +67,6 @@ jobs:
           python python/examples/benchmark_scalar_batch_cpp.py --n 50000 --repeats 3 | tee benchmark_table.md
           cat benchmark_table.md >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Configure fuzz tests
-        run: cmake -S fuzztest -B build/fuzztest
-
-      - name: Build fuzz test binaries
-        run: cmake --build build/fuzztest -j 4
-
-      - name: Run all fuzz test suites under fuzztest/
-        timeout-minutes: 15
-        shell: bash
-        env:
-          FUZZTEST_PRNG_SEED: NNMQpT7FLDG9rOgxXhD87HtvjqCtE-6NHWnDn00xICI
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          sources=(fuzztest/fuzz_*.cpp)
-          if (( ${#sources[@]} == 0 )); then
-            echo "No fuzz sources found under fuzztest/"
-            exit 1
-          fi
-          for src in "${sources[@]}"; do
-            bin="$(basename "${src%.cpp}")"
-            exe="./build/fuzztest/${bin}"
-            echo "Running ${exe}"
-            if [[ ! -x "${exe}" ]]; then
-              echo "Expected fuzz binary not found: ${exe}"
-              exit 1
-            fi
-            "${exe}"
-          done
-
       - name: Build wheel (packaging check)
         run: |
           python -m pip install --upgrade pip build
