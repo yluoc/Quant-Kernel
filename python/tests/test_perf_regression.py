@@ -135,7 +135,7 @@ def test_tree_batch_speed_regression(qk):
 def test_heston_batch_speed_regression(qk):
     """Heston batch must beat scalar loop by >5%."""
     rng = np.random.default_rng(17)
-    n = 200
+    n = 1000
     spot = rng.uniform(90.0, 110.0, n).astype(np.float64)
     strike = rng.uniform(90.0, 110.0, n).astype(np.float64)
     tau = rng.uniform(0.25, 1.0, n).astype(np.float64)
@@ -165,4 +165,4 @@ def test_heston_batch_speed_regression(qk):
         lambda: qk.heston_price_cf_batch(spot, strike, tau, r, q, v0, kappa, theta, sigma, rho, ot, isteps, ilimit),
     )
 
-    assert batch_ms < scalar_ms * 0.99
+    assert batch_ms < scalar_ms * 0.95

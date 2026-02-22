@@ -41,7 +41,11 @@ jobs:
         run: make test-cpp
 
       - name: Run Python tests
-        run: make test-py
+        env:
+          PYTHONPATH: python
+          QK_LIB_PATH: ${{ github.workspace }}/build/cpp
+        run: |
+          python -m pytest -q python/tests --ignore=python/tests/test_perf_regression.py --ignore=python/tests/test_batch_api.py
 
       - name: Run deterministic batch/perf regression tests
         env:
