@@ -658,6 +658,191 @@ class QuantKernel:
             return self._native_batch.hilbert_transform_price_batch(s, k, tau, sigma, rr, qq, ot, _is, _il)
         return self._call_batch_ctypes("qk_ftm_hilbert_transform_price_batch", s, k, tau, sigma, rr, qq, ot, _is, _il)
 
+    # --- Heston Fourier methods ---
+
+    def carr_madan_fft_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, grid_size: int = 4096, eta: float = 0.25, alpha: float = 1.5
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_carr_madan_fft_heston_price",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, grid_size, eta, alpha
+        )
+
+    def carr_madan_fft_heston_price_batch(
+        self, spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+        option_type, grid_size, eta, alpha
+    ) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta, "theta")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        gs = self._as_i32_array(grid_size, "grid_size")
+        ee = self._as_f64_array(eta, "eta")
+        aa = self._as_f64_array(alpha, "alpha")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq,
+            v0=_v0, kappa=_kappa, theta=_theta, sigma=_sigma, rho=_rho,
+            option_type=ot, grid_size=gs, eta=ee, alpha=aa)
+        return self._call_batch_ctypes(
+            "qk_ftm_carr_madan_fft_heston_price_batch",
+            s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, gs, ee, aa
+        )
+
+    def cos_method_fang_oosterlee_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, n_terms: int = 256, truncation_width: float = 10.0
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_cos_fang_oosterlee_heston_price",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, n_terms, truncation_width
+        )
+
+    def cos_method_fang_oosterlee_heston_price_batch(
+        self, spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+        option_type, n_terms, truncation_width
+    ) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta, "theta")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        nt = self._as_i32_array(n_terms, "n_terms")
+        tw = self._as_f64_array(truncation_width, "truncation_width")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq,
+            v0=_v0, kappa=_kappa, theta=_theta, sigma=_sigma, rho=_rho,
+            option_type=ot, n_terms=nt, truncation_width=tw)
+        return self._call_batch_ctypes(
+            "qk_ftm_cos_fang_oosterlee_heston_price_batch",
+            s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, nt, tw
+        )
+
+    def fractional_fft_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, grid_size: int = 256, eta: float = 0.25,
+        lambda_: float = 0.05, alpha: float = 1.5
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_fractional_fft_heston_price",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, grid_size, eta, lambda_, alpha
+        )
+
+    def fractional_fft_heston_price_batch(
+        self, spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+        option_type, grid_size, eta, lambda_, alpha
+    ) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta, "theta")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        gs = self._as_i32_array(grid_size, "grid_size")
+        ee = self._as_f64_array(eta, "eta")
+        ll = self._as_f64_array(lambda_, "lambda_")
+        aa = self._as_f64_array(alpha, "alpha")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq,
+            v0=_v0, kappa=_kappa, theta=_theta, sigma=_sigma, rho=_rho,
+            option_type=ot, grid_size=gs, eta=ee, lambda_=ll, alpha=aa)
+        return self._call_batch_ctypes(
+            "qk_ftm_fractional_fft_heston_price_batch",
+            s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, gs, ee, ll, aa
+        )
+
+    def lewis_fourier_inversion_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, integration_steps: int = 4096, integration_limit: float = 300.0
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_lewis_fourier_inversion_heston_price",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, integration_steps, integration_limit
+        )
+
+    def lewis_fourier_inversion_heston_price_batch(
+        self, spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+        option_type, integration_steps, integration_limit
+    ) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta, "theta")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        _is = self._as_i32_array(integration_steps, "integration_steps")
+        _il = self._as_f64_array(integration_limit, "integration_limit")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq,
+            v0=_v0, kappa=_kappa, theta=_theta, sigma=_sigma, rho=_rho,
+            option_type=ot, integration_steps=_is, integration_limit=_il)
+        return self._call_batch_ctypes(
+            "qk_ftm_lewis_fourier_inversion_heston_price_batch",
+            s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _is, _il
+        )
+
+    def hilbert_transform_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, integration_steps: int = 4096, integration_limit: float = 300.0
+    ) -> float:
+        return self._call_checked(
+            "qk_ftm_hilbert_transform_heston_price",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, integration_steps, integration_limit
+        )
+
+    def hilbert_transform_heston_price_batch(
+        self, spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+        option_type, integration_steps, integration_limit
+    ) -> np.ndarray:
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        _v0 = self._as_f64_array(v0, "v0")
+        _kappa = self._as_f64_array(kappa, "kappa")
+        _theta = self._as_f64_array(theta, "theta")
+        _sigma = self._as_f64_array(sigma, "sigma")
+        _rho = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        _is = self._as_i32_array(integration_steps, "integration_steps")
+        _il = self._as_f64_array(integration_limit, "integration_limit")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, r=rr, q=qq,
+            v0=_v0, kappa=_kappa, theta=_theta, sigma=_sigma, rho=_rho,
+            option_type=ot, integration_steps=_is, integration_limit=_il)
+        return self._call_batch_ctypes(
+            "qk_ftm_hilbert_transform_heston_price_batch",
+            s, k, tau, rr, qq, _v0, _kappa, _theta, _sigma, _rho, ot, _is, _il
+        )
 
     def gauss_hermite_price(
         self, spot: float, strike: float, t: float, vol: float, r: float, q: float,

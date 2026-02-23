@@ -1392,6 +1392,184 @@ int32_t qk_ftm_hilbert_transform_price_batch(const double* spot, const double* s
 }
 
 
+double qk_ftm_carr_madan_fft_heston_price(double spot, double strike, double t,
+                                           double r, double q,
+                                           double v0, double kappa, double theta,
+                                           double sigma, double rho,
+                                           int32_t option_type,
+                                           int32_t grid_size, double eta, double alpha) {
+    qk::ftm::CarrMadanFFTParams params{};
+    params.grid_size = grid_size;
+    params.eta = eta;
+    params.alpha = alpha;
+    return qk::ftm::carr_madan_fft_heston_price(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, params);
+}
+
+double qk_ftm_cos_fang_oosterlee_heston_price(double spot, double strike, double t,
+                                               double r, double q,
+                                               double v0, double kappa, double theta,
+                                               double sigma, double rho,
+                                               int32_t option_type,
+                                               int32_t n_terms, double truncation_width) {
+    qk::ftm::COSMethodParams params{};
+    params.n_terms = n_terms;
+    params.truncation_width = truncation_width;
+    return qk::ftm::cos_method_fang_oosterlee_heston_price(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, params);
+}
+
+double qk_ftm_fractional_fft_heston_price(double spot, double strike, double t,
+                                           double r, double q,
+                                           double v0, double kappa, double theta,
+                                           double sigma, double rho,
+                                           int32_t option_type,
+                                           int32_t grid_size, double eta,
+                                           double lambda, double alpha) {
+    qk::ftm::FractionalFFTParams params{};
+    params.grid_size = grid_size;
+    params.eta = eta;
+    params.lambda = lambda;
+    params.alpha = alpha;
+    return qk::ftm::fractional_fft_heston_price(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, params);
+}
+
+double qk_ftm_lewis_fourier_inversion_heston_price(double spot, double strike, double t,
+                                                    double r, double q,
+                                                    double v0, double kappa, double theta,
+                                                    double sigma, double rho,
+                                                    int32_t option_type,
+                                                    int32_t integration_steps,
+                                                    double integration_limit) {
+    qk::ftm::LewisFourierInversionParams params{};
+    params.integration_steps = integration_steps;
+    params.integration_limit = integration_limit;
+    return qk::ftm::lewis_fourier_inversion_heston_price(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, params);
+}
+
+double qk_ftm_hilbert_transform_heston_price(double spot, double strike, double t,
+                                              double r, double q,
+                                              double v0, double kappa, double theta,
+                                              double sigma, double rho,
+                                              int32_t option_type,
+                                              int32_t integration_steps,
+                                              double integration_limit) {
+    qk::ftm::HilbertTransformParams params{};
+    params.integration_steps = integration_steps;
+    params.integration_limit = integration_limit;
+    return qk::ftm::hilbert_transform_heston_price(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, params);
+}
+
+int32_t qk_ftm_carr_madan_fft_heston_price_batch(const double* spot, const double* strike,
+                                                  const double* t, const double* r, const double* q,
+                                                  const double* v0, const double* kappa,
+                                                  const double* theta, const double* sigma,
+                                                  const double* rho, const int32_t* option_type,
+                                                  const int32_t* grid_size, const double* eta,
+                                                  const double* alpha,
+                                                  int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, grid_size, eta, alpha, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::CarrMadanFFTParams params{};
+        params.grid_size = grid_size[i]; params.eta = eta[i]; params.alpha = alpha[i];
+        out_prices[i] = qk::ftm::carr_madan_fft_heston_price(
+            spot[i], strike[i], t[i], r[i], q[i],
+            v0[i], kappa[i], theta[i], sigma[i], rho[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_cos_fang_oosterlee_heston_price_batch(const double* spot, const double* strike,
+                                                      const double* t, const double* r, const double* q,
+                                                      const double* v0, const double* kappa,
+                                                      const double* theta, const double* sigma,
+                                                      const double* rho, const int32_t* option_type,
+                                                      const int32_t* n_terms,
+                                                      const double* truncation_width,
+                                                      int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, n_terms, truncation_width, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::COSMethodParams params{};
+        params.n_terms = n_terms[i]; params.truncation_width = truncation_width[i];
+        out_prices[i] = qk::ftm::cos_method_fang_oosterlee_heston_price(
+            spot[i], strike[i], t[i], r[i], q[i],
+            v0[i], kappa[i], theta[i], sigma[i], rho[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_fractional_fft_heston_price_batch(const double* spot, const double* strike,
+                                                  const double* t, const double* r, const double* q,
+                                                  const double* v0, const double* kappa,
+                                                  const double* theta, const double* sigma,
+                                                  const double* rho, const int32_t* option_type,
+                                                  const int32_t* grid_size, const double* eta,
+                                                  const double* lambda_, const double* alpha,
+                                                  int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, grid_size, eta, lambda_, alpha, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::FractionalFFTParams params{};
+        params.grid_size = grid_size[i]; params.eta = eta[i];
+        params.lambda = lambda_[i]; params.alpha = alpha[i];
+        out_prices[i] = qk::ftm::fractional_fft_heston_price(
+            spot[i], strike[i], t[i], r[i], q[i],
+            v0[i], kappa[i], theta[i], sigma[i], rho[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_lewis_fourier_inversion_heston_price_batch(const double* spot, const double* strike,
+                                                           const double* t, const double* r, const double* q,
+                                                           const double* v0, const double* kappa,
+                                                           const double* theta, const double* sigma,
+                                                           const double* rho, const int32_t* option_type,
+                                                           const int32_t* integration_steps,
+                                                           const double* integration_limit,
+                                                           int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, integration_steps, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::LewisFourierInversionParams params{};
+        params.integration_steps = integration_steps[i]; params.integration_limit = integration_limit[i];
+        out_prices[i] = qk::ftm::lewis_fourier_inversion_heston_price(
+            spot[i], strike[i], t[i], r[i], q[i],
+            v0[i], kappa[i], theta[i], sigma[i], rho[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+int32_t qk_ftm_hilbert_transform_heston_price_batch(const double* spot, const double* strike,
+                                                     const double* t, const double* r, const double* q,
+                                                     const double* v0, const double* kappa,
+                                                     const double* theta, const double* sigma,
+                                                     const double* rho, const int32_t* option_type,
+                                                     const int32_t* integration_steps,
+                                                     const double* integration_limit,
+                                                     int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, integration_steps, integration_limit, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        qk::ftm::HilbertTransformParams params{};
+        params.integration_steps = integration_steps[i]; params.integration_limit = integration_limit[i];
+        out_prices[i] = qk::ftm::hilbert_transform_heston_price(
+            spot[i], strike[i], t[i], r[i], q[i],
+            v0[i], kappa[i], theta[i], sigma[i], rho[i], option_type[i], params
+        );
+    }
+    return QK_OK;
+}
+
+
 double qk_iqm_gauss_hermite_price(double spot, double strike, double t, double vol,
                                   double r, double q, int32_t option_type,
                                   int32_t n_points) {

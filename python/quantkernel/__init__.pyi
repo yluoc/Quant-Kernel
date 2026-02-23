@@ -435,6 +435,68 @@ class QuantKernel:
         integration_limit: ArrayLike,
     ) -> np.ndarray: ...
 
+    def carr_madan_fft_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, grid_size: int = ..., eta: float = ..., alpha: float = ...,
+    ) -> float: ...
+    def carr_madan_fft_heston_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, grid_size: ArrayLike, eta: ArrayLike,
+        alpha: ArrayLike,
+    ) -> np.ndarray: ...
+    def cos_method_fang_oosterlee_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, n_terms: int = ..., truncation_width: float = ...,
+    ) -> float: ...
+    def cos_method_fang_oosterlee_heston_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, n_terms: ArrayLike,
+        truncation_width: ArrayLike,
+    ) -> np.ndarray: ...
+    def fractional_fft_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, grid_size: int = ..., eta: float = ...,
+        lambda_: float = ..., alpha: float = ...,
+    ) -> float: ...
+    def fractional_fft_heston_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, grid_size: ArrayLike, eta: ArrayLike,
+        lambda_: ArrayLike, alpha: ArrayLike,
+    ) -> np.ndarray: ...
+    def lewis_fourier_inversion_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, integration_steps: int = ..., integration_limit: float = ...,
+    ) -> float: ...
+    def lewis_fourier_inversion_heston_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, integration_steps: ArrayLike,
+        integration_limit: ArrayLike,
+    ) -> np.ndarray: ...
+    def hilbert_transform_heston_price(
+        self, spot: float, strike: float, t: float, r: float, q: float,
+        v0: float, kappa: float, theta: float, sigma: float, rho: float,
+        option_type: int, integration_steps: int = ..., integration_limit: float = ...,
+    ) -> float: ...
+    def hilbert_transform_heston_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike, v0: ArrayLike, kappa: ArrayLike,
+        theta: ArrayLike, sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, integration_steps: ArrayLike,
+        integration_limit: ArrayLike,
+    ) -> np.ndarray: ...
+
     def gauss_hermite_price(
         self, spot: float, strike: float, t: float, vol: float,
         r: float, q: float, option_type: int, n_points: int = ...,

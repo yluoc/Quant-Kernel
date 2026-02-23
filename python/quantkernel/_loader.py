@@ -205,6 +205,30 @@ _FUNCTION_SIGNATURES = [
     ("qk_ftm_hilbert_transform_price_batch", I32,
      _ftm_batch_base + [PI32, PD, I32, PD]),
 
+    # Heston Fourier scalars: (spot, strike, t, r, q, v0, kappa, theta, sigma, rho, option_type, ...method-params)
+    ("qk_ftm_carr_madan_fft_heston_price", D,
+     [D, D, D, D, D, D, D, D, D, D, I32, I32, D, D]),
+    ("qk_ftm_cos_fang_oosterlee_heston_price", D,
+     [D, D, D, D, D, D, D, D, D, D, I32, I32, D]),
+    ("qk_ftm_fractional_fft_heston_price", D,
+     [D, D, D, D, D, D, D, D, D, D, I32, I32, D, D, D]),
+    ("qk_ftm_lewis_fourier_inversion_heston_price", D,
+     [D, D, D, D, D, D, D, D, D, D, I32, I32, D]),
+    ("qk_ftm_hilbert_transform_heston_price", D,
+     [D, D, D, D, D, D, D, D, D, D, I32, I32, D]),
+
+    # Heston Fourier batches
+    ("qk_ftm_carr_madan_fft_heston_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PD, PD, I32, PD]),
+    ("qk_ftm_cos_fang_oosterlee_heston_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PD, I32, PD]),
+    ("qk_ftm_fractional_fft_heston_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PD, PD, PD, I32, PD]),
+    ("qk_ftm_lewis_fourier_inversion_heston_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PD, I32, PD]),
+    ("qk_ftm_hilbert_transform_heston_price_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PD, I32, PD]),
+
     ("qk_iqm_gauss_hermite_price", D, _cf_common + [I32]),
     ("qk_iqm_gauss_laguerre_price", D, _cf_common + [I32]),
     ("qk_iqm_gauss_legendre_price", D, _cf_common + [I32, D]),
