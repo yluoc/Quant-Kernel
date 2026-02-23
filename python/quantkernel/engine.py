@@ -1490,6 +1490,111 @@ class QuantKernel:
             s, k, tau, rr, qq, v0a, ka, th, si, rh, ot, pp, st, sd
         )
 
+    def heston_lr_delta(
+        self, spot: float, strike: float, t: float,
+        r: float, q: float,
+        v0: float, kappa: float, theta: float,
+        sigma: float, rho: float,
+        option_type: int, paths: int, steps: int, seed: int = 42,
+        weight_clip: float = 6.0
+    ) -> float:
+        """Likelihood-ratio delta estimator for Heston stochastic volatility.
+
+        Uses the score function d/dS_0(log p) = z1_0 / (sqrt(v0) * sqrt(dt) * S_0)
+        where z1_0 is the first spot-driving normal draw.  Antithetic pairing is
+        used for variance reduction.
+
+        Parameters
+        ----------
+        weight_clip : float
+            Symmetric clipping bound for the LR weight (default 6.0).
+        """
+        return self._call_checked(
+            "qk_mcm_heston_lr_delta",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+            option_type, paths, steps, seed, weight_clip
+        )
+
+    def heston_lr_delta_batch(
+        self, spot, strike, t, r, q,
+        v0, kappa, theta, sigma, rho,
+        option_type, paths, steps, seed, weight_clip
+    ) -> np.ndarray:
+        """Vectorized native batch call (C++ core) for Heston LR delta."""
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        v0a = self._as_f64_array(v0, "v0")
+        ka = self._as_f64_array(kappa, "kappa")
+        th = self._as_f64_array(theta, "theta")
+        si = self._as_f64_array(sigma, "sigma")
+        rh = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        pp = self._as_i32_array(paths, "paths")
+        st = self._as_i32_array(steps, "steps")
+        sd = self._as_u64_array(seed, "seed")
+        wc = self._as_f64_array(weight_clip, "weight_clip")
+        n = s.shape[0]
+        self._check_same_length(
+            n, strike=k, t=tau, r=rr, q=qq, v0=v0a, kappa=ka,
+            theta=th, sigma=si, rho=rh, option_type=ot,
+            paths=pp, steps=st, seed=sd, weight_clip=wc
+        )
+        return self._call_batch_ctypes(
+            "qk_mcm_heston_lr_delta_batch",
+            s, k, tau, rr, qq, v0a, ka, th, si, rh, ot, pp, st, sd, wc
+        )
+
+    def local_vol_monte_carlo_price(
+        self, spot: float, strike: float, t: float, vol: float,
+        r: float, q: float, option_type: int,
+        paths: int, steps: int, seed: int = 42
+    ) -> float:
+        """Price a European option under local volatility via Monte Carlo.
+
+        Uses Euler discretization with a constant local volatility surface.
+        When vol is constant, results match euler_maruyama_price() statistically.
+
+        Parameters
+        ----------
+        vol : float
+            Constant local volatility (sigma_fn(S,t) = vol for all S, t).
+        paths : int
+            Number of simulated price paths.
+        steps : int
+            Number of time steps per path.
+        seed : int
+            Random number generator seed for reproducibility.
+        """
+        return self._call_checked(
+            "qk_mcm_local_vol_monte_carlo_price",
+            spot, strike, t, vol, r, q, option_type, paths, steps, seed
+        )
+
+    def local_vol_monte_carlo_price_batch(
+        self, spot, strike, t, vol, r, q, option_type, paths, steps, seed
+    ) -> np.ndarray:
+        """Vectorized native batch call (C++ core) for local vol Monte Carlo."""
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        sigma = self._as_f64_array(vol, "vol")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        ot = self._as_i32_array(option_type, "option_type")
+        pp = self._as_i32_array(paths, "paths")
+        st = self._as_i32_array(steps, "steps")
+        sd = self._as_u64_array(seed, "seed")
+        n = s.shape[0]
+        self._check_same_length(n, strike=k, t=tau, vol=sigma, r=rr, q=qq,
+                                option_type=ot, paths=pp, steps=st, seed=sd)
+        return self._call_batch_ctypes(
+            "qk_mcm_local_vol_monte_carlo_price_batch",
+            s, k, tau, sigma, rr, qq, ot, pp, st, sd
+        )
+
     def explicit_fd_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")
         k = self._as_f64_array(strike, "strike")

@@ -179,6 +179,15 @@ _FUNCTION_SIGNATURES = [
     ("qk_mcm_heston_monte_carlo_price_batch", I32,
      [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PU64, I32, PD]),
 
+    ("qk_mcm_heston_lr_delta", D,
+     [D, D, D, D, D, D, D, D, D, D, I32, I32, I32, U64, D]),
+    ("qk_mcm_heston_lr_delta_batch", I32,
+     [PD, PD, PD, PD, PD, PD, PD, PD, PD, PD, PI32, PI32, PI32, PU64, PD, I32, PD]),
+
+    ("qk_mcm_local_vol_monte_carlo_price", D, _mc_common + [I32, I32, U64]),
+    ("qk_mcm_local_vol_monte_carlo_price_batch", I32,
+     _mc_batch_base + [PI32, PI32, PU64, I32, PD]),
+
     ("qk_ftm_carr_madan_fft_price", D, _ftm_common + [I32, D, D]),
     ("qk_ftm_cos_fang_oosterlee_price", D, _ftm_common + [I32, D]),
     ("qk_ftm_fractional_fft_price", D, _ftm_common + [I32, D, D, D]),

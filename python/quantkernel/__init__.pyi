@@ -351,6 +351,33 @@ class QuantKernel:
         option_type: ArrayLike, paths: ArrayLike, steps: ArrayLike,
         seed: ArrayLike,
     ) -> np.ndarray: ...
+    def heston_lr_delta(
+        self, spot: float, strike: float, t: float,
+        r: float, q: float,
+        v0: float, kappa: float, theta: float,
+        sigma: float, rho: float,
+        option_type: int, paths: int, steps: int, seed: int = ...,
+        weight_clip: float = ...,
+    ) -> float: ...
+    def heston_lr_delta_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        r: ArrayLike, q: ArrayLike,
+        v0: ArrayLike, kappa: ArrayLike, theta: ArrayLike,
+        sigma: ArrayLike, rho: ArrayLike,
+        option_type: ArrayLike, paths: ArrayLike, steps: ArrayLike,
+        seed: ArrayLike, weight_clip: ArrayLike,
+    ) -> np.ndarray: ...
+    def local_vol_monte_carlo_price(
+        self, spot: float, strike: float, t: float, vol: float,
+        r: float, q: float, option_type: int,
+        paths: int, steps: int, seed: int = ...,
+    ) -> float: ...
+    def local_vol_monte_carlo_price_batch(
+        self, spot: ArrayLike, strike: ArrayLike, t: ArrayLike,
+        vol: ArrayLike, r: ArrayLike, q: ArrayLike,
+        option_type: ArrayLike, paths: ArrayLike, steps: ArrayLike,
+        seed: ArrayLike,
+    ) -> np.ndarray: ...
 
     def carr_madan_fft_price(
         self, spot: float, strike: float, t: float, vol: float,

@@ -1160,6 +1160,72 @@ int32_t qk_mcm_heston_monte_carlo_price_batch(const double* spot, const double* 
     return QK_OK;
 }
 
+double qk_mcm_heston_lr_delta(double spot, double strike, double t,
+                               double r, double q,
+                               double v0, double kappa, double theta,
+                               double sigma, double rho,
+                               int32_t option_type,
+                               int32_t paths, int32_t steps, uint64_t seed,
+                               double weight_clip) {
+    return qk::mcm::heston_likelihood_ratio_delta(
+        spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+        option_type, paths, steps, seed, weight_clip
+    );
+}
+
+int32_t qk_mcm_heston_lr_delta_batch(const double* spot, const double* strike,
+                                       const double* t,
+                                       const double* r, const double* q,
+                                       const double* v0, const double* kappa,
+                                       const double* theta, const double* sigma,
+                                       const double* rho,
+                                       const int32_t* option_type,
+                                       const int32_t* paths, const int32_t* steps,
+                                       const uint64_t* seed,
+                                       const double* weight_clip,
+                                       int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+                        option_type, paths, steps, seed, weight_clip, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::heston_likelihood_ratio_delta(
+            spot[i], strike[i], t[i], r[i], q[i],
+            v0[i], kappa[i], theta[i], sigma[i], rho[i],
+            option_type[i], paths[i], steps[i], seed[i], weight_clip[i]
+        );
+    }
+    return QK_OK;
+}
+
+double qk_mcm_local_vol_monte_carlo_price(double spot, double strike, double t,
+                                           double vol, double r, double q,
+                                           int32_t option_type,
+                                           int32_t paths, int32_t steps, uint64_t seed) {
+    return qk::mcm::local_vol_monte_carlo_price(
+        spot, strike, t, vol, r, q, option_type, paths, steps, seed
+    );
+}
+
+int32_t qk_mcm_local_vol_monte_carlo_price_batch(const double* spot, const double* strike,
+                                                   const double* t, const double* vol,
+                                                   const double* r, const double* q,
+                                                   const int32_t* option_type,
+                                                   const int32_t* paths, const int32_t* steps,
+                                                   const uint64_t* seed,
+                                                   int32_t n, double* out_prices) {
+    QK_BATCH_NULL_CHECK(spot, strike, t, vol, r, q, option_type, paths, steps, seed, out_prices);
+    QK_BATCH_VALIDATE_N(n);
+    #pragma omp parallel for schedule(dynamic)
+    for (int32_t i = 0; i < n; ++i) {
+        out_prices[i] = qk::mcm::local_vol_monte_carlo_price(
+            spot[i], strike[i], t[i], vol[i], r[i], q[i],
+            option_type[i], paths[i], steps[i], seed[i]
+        );
+    }
+    return QK_OK;
+}
+
 
 double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
                                    double r, double q, int32_t option_type,

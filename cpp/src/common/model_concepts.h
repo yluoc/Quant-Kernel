@@ -225,6 +225,46 @@ inline auto make_heston_euler_step(double r, double q,
     return f;
 }
 
+// ===========================================================================
+// Local volatility model factories.
+//
+// The local vol step uses a callable sigma_fn(s, t) to determine volatility
+// at each point in the (spot, time) plane.  The factory is a template so
+// that the callable inlines fully under LTO — no std::function overhead.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Constant local vol wrapper.  When injected into the local vol pricer,
+// produces results identical to BSM Euler discretization.
+// ---------------------------------------------------------------------------
+inline auto make_local_vol_constant(double vol) {
+    return [vol](double /*s*/, double /*t*/) -> double { return vol; };
+}
+
+// ---------------------------------------------------------------------------
+// Local vol Euler step factory.
+//
+// Returns a callable with signature:
+//   (double s, double t, double dt, double dw) -> double s_next
+//
+// Note: this is NOT a StepModel (which takes (s, dt, dw)).  The extra `t`
+// parameter lets sigma_fn depend on calendar time.  The local vol pricer
+// manages the time counter and calls this step directly.
+//
+// Euler discretization:
+//   s_next = s + (r - q) * s * dt + sigma_fn(s, t) * s * dw
+// ---------------------------------------------------------------------------
+template<typename SigmaFn>
+auto make_local_vol_euler_step(double r, double q, SigmaFn sigma_fn) {
+    auto f = [r, q, sigma_fn = std::move(sigma_fn)](
+        double s, double t, double dt, double dw) -> double
+    {
+        const double sig = sigma_fn(s, t);
+        return std::max(1e-12, s + (r - q) * s * dt + sig * s * dw);
+    };
+    return f;
+}
+
 } // namespace qk::models
 
 #endif /* QK_MODEL_CONCEPTS_H */

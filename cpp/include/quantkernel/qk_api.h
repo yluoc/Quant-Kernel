@@ -372,6 +372,35 @@ QK_EXPORT int32_t qk_mcm_heston_monte_carlo_price_batch(const double* spot, cons
                                                          const int32_t* paths, const int32_t* steps,
                                                          const uint64_t* seed,
                                                          int32_t n, double* out_prices);
+QK_EXPORT double qk_mcm_heston_lr_delta(double spot, double strike, double t,
+                                         double r, double q,
+                                         double v0, double kappa, double theta,
+                                         double sigma, double rho,
+                                         int32_t option_type,
+                                         int32_t paths, int32_t steps, uint64_t seed,
+                                         double weight_clip);
+QK_EXPORT int32_t qk_mcm_heston_lr_delta_batch(const double* spot, const double* strike,
+                                                 const double* t,
+                                                 const double* r, const double* q,
+                                                 const double* v0, const double* kappa,
+                                                 const double* theta, const double* sigma,
+                                                 const double* rho,
+                                                 const int32_t* option_type,
+                                                 const int32_t* paths, const int32_t* steps,
+                                                 const uint64_t* seed,
+                                                 const double* weight_clip,
+                                                 int32_t n, double* out_prices);
+QK_EXPORT double qk_mcm_local_vol_monte_carlo_price(double spot, double strike, double t,
+                                                      double vol, double r, double q,
+                                                      int32_t option_type,
+                                                      int32_t paths, int32_t steps, uint64_t seed);
+QK_EXPORT int32_t qk_mcm_local_vol_monte_carlo_price_batch(const double* spot, const double* strike,
+                                                             const double* t, const double* vol,
+                                                             const double* r, const double* q,
+                                                             const int32_t* option_type,
+                                                             const int32_t* paths, const int32_t* steps,
+                                                             const uint64_t* seed,
+                                                             int32_t n, double* out_prices);
 QK_EXPORT double qk_ftm_carr_madan_fft_price(double spot, double strike, double t, double vol,
                                              double r, double q, int32_t option_type,
                                              int32_t grid_size, double eta, double alpha);

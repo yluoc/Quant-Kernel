@@ -13,5 +13,7 @@
 #include "algorithms/monte_carlo_methods/antithetic_variates/antithetic_variates.h"
 #include "algorithms/monte_carlo_methods/stratified_sampling/stratified_sampling.h"
 #include "algorithms/monte_carlo_methods/heston_monte_carlo/heston_monte_carlo.h"
+#include "algorithms/monte_carlo_methods/heston_monte_carlo/heston_lr_delta.h"
+#include "algorithms/monte_carlo_methods/local_vol_monte_carlo/local_vol_monte_carlo.h"
 
 #endif /* QK_MONTE_CARLO_MODELS_H */

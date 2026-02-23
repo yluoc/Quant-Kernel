@@ -259,6 +259,8 @@ class QuantAccelerator:
         "antithetic_variates_price": "antithetic_variates_price_batch",
         "stratified_sampling_price": "stratified_sampling_price_batch",
         "heston_monte_carlo_price": "heston_monte_carlo_price_batch",
+        "heston_lr_delta": "heston_lr_delta_batch",
+        "local_vol_monte_carlo_price": "local_vol_monte_carlo_price_batch",
         "carr_madan_fft_price": "carr_madan_fft_price_batch",
         "cos_method_fang_oosterlee_price": "cos_method_fang_oosterlee_price_batch",
         "fractional_fft_price": "fractional_fft_price_batch",
