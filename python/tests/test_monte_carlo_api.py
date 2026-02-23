@@ -58,6 +58,55 @@ def test_quasi_monte_carlo_variants_are_close(qk):
     assert abs(sobol - halton) < 0.75
 
 
+def test_heston_monte_carlo_price_is_finite_and_close_to_cf(qk):
+    """Heston MC should produce a finite price reasonably close to Heston CF."""
+    heston_params = dict(
+        spot=100.0, strike=100.0, t=1.0, r=0.05, q=0.02,
+        v0=0.04, kappa=2.0, theta=0.04, sigma=0.3, rho=-0.7,
+        option_type=QK_CALL,
+    )
+    mc_price = qk.heston_monte_carlo_price(**heston_params, paths=50000, steps=100, seed=42)
+    cf_price = qk.heston_price_cf(**heston_params)
+
+    assert math.isfinite(mc_price) and mc_price > 0.0
+    assert math.isfinite(cf_price) and cf_price > 0.0
+    # MC with 50k paths, 100 steps should be within ~1.0 of CF
+    assert abs(mc_price - cf_price) < 1.5, (
+        f"Heston MC ({mc_price:.4f}) too far from CF ({cf_price:.4f})"
+    )
+
+
+def test_heston_monte_carlo_price_batch_matches_scalar(qk):
+    """Heston MC batch should produce identical results to scalar calls."""
+    import numpy as np
+    params = [
+        dict(spot=100.0, strike=100.0, t=1.0, r=0.05, q=0.02,
+             v0=0.04, kappa=2.0, theta=0.04, sigma=0.3, rho=-0.7,
+             option_type=QK_CALL, paths=5000, steps=50, seed=42),
+        dict(spot=110.0, strike=100.0, t=0.5, r=0.03, q=0.01,
+             v0=0.09, kappa=1.5, theta=0.06, sigma=0.4, rho=-0.5,
+             option_type=QK_PUT, paths=5000, steps=50, seed=99),
+    ]
+    scalars = [qk.heston_monte_carlo_price(**p) for p in params]
+    batch = qk.heston_monte_carlo_price_batch(
+        **{k: [p[k] for p in params] for k in params[0]}
+    )
+    for i, s in enumerate(scalars):
+        assert abs(batch[i] - s) < 1e-12, f"batch[{i}]={batch[i]}, scalar={s}"
+
+
+def test_heston_monte_carlo_deterministic_seed(qk):
+    """Same seed must produce bit-identical results."""
+    common = dict(
+        spot=100.0, strike=100.0, t=1.0, r=0.05, q=0.02,
+        v0=0.04, kappa=2.0, theta=0.04, sigma=0.3, rho=-0.7,
+        option_type=QK_CALL, paths=10000, steps=50, seed=777,
+    )
+    p1 = qk.heston_monte_carlo_price(**common)
+    p2 = qk.heston_monte_carlo_price(**common)
+    assert p1 == p2
+
+
 def test_antithetic_uses_all_requested_paths(qk):
     common = dict(
         spot=100.0,

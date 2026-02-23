@@ -31,6 +31,7 @@ add_library(quantkernel SHARED
     src/algorithms/monte_carlo_methods/control_variates/control_variates.cpp
     src/algorithms/monte_carlo_methods/antithetic_variates/antithetic_variates.cpp
     src/algorithms/monte_carlo_methods/stratified_sampling/stratified_sampling.cpp
+    src/algorithms/monte_carlo_methods/heston_monte_carlo/heston_monte_carlo.cpp
     src/algorithms/fourier_transform_methods/carr_madan_fft/carr_madan_fft.cpp
     src/algorithms/fourier_transform_methods/cos_method/cos_method.cpp
     src/algorithms/fourier_transform_methods/fractional_fft/fractional_fft.cpp

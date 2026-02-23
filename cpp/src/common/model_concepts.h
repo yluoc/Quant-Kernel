@@ -157,6 +157,74 @@ inline auto make_bsm_milstein_step(double vol, double drift) {
     return f;
 }
 
+// ===========================================================================
+// Two-dimensional state for stochastic volatility models (e.g. Heston).
+// ===========================================================================
+
+struct StepResult2D {
+    double s;
+    double v;
+};
+
+// ---------------------------------------------------------------------------
+// Compile-time trait: StepModel2D must be callable as
+//   (double s, double v, double dt, double sqrt_dt, double z1, double z2)
+//     -> StepResult2D
+// ---------------------------------------------------------------------------
+namespace detail {
+
+template<typename F, typename = void>
+struct is_step_model_2d : std::false_type {};
+
+template<typename F>
+struct is_step_model_2d<F, std::void_t<decltype(
+    static_cast<StepResult2D>(std::declval<F&>()(
+        std::declval<double>(), std::declval<double>(),
+        std::declval<double>(), std::declval<double>(),
+        std::declval<double>(), std::declval<double>())))>>
+    : std::true_type {};
+
+} // namespace detail
+
+template<typename F>
+inline constexpr bool is_step_model_2d_v = detail::is_step_model_2d<std::decay_t<F>>::value;
+
+// ---------------------------------------------------------------------------
+// Heston Euler step with full truncation (log-Euler for spot, Euler for var).
+//
+//   v_pos   = max(v, 0)                          // full truncation
+//   sqrt_v  = sqrt(v_pos)
+//   dw1     = sqrt_dt * z1
+//   dw2     = sqrt_dt * (rho * z1 + sqrt(1 - rho^2) * z2)
+//   s_next  = s * exp((r - q - 0.5 * v_pos) * dt + sqrt_v * dw1)
+//   v_next  = max(0, v + kappa * (theta - v_pos) * dt + sigma * sqrt_v * dw2)
+//
+// Parameters: r (risk-free), q (dividend), kappa (mean-reversion speed),
+//             theta (long-run variance), sigma (vol-of-vol), rho (correlation).
+// ---------------------------------------------------------------------------
+inline auto make_heston_euler_step(double r, double q,
+                                   double kappa, double theta,
+                                   double sigma, double rho) {
+    const double rho_comp = std::sqrt(std::max(1.0 - rho * rho, 0.0));
+    auto f = [r, q, kappa, theta, sigma, rho, rho_comp](
+        double s, double v, double dt, double sqrt_dt,
+        double z1, double z2) -> StepResult2D
+    {
+        const double v_pos  = std::max(v, 0.0);
+        const double sqrt_v = std::sqrt(v_pos);
+        const double dw1 = sqrt_dt * z1;
+        const double dw2 = sqrt_dt * (rho * z1 + rho_comp * z2);
+        const double s_next = s * std::exp((r - q - 0.5 * v_pos) * dt + sqrt_v * dw1);
+        const double v_next = std::max(0.0, v + kappa * (theta - v_pos) * dt
+                                             + sigma * sqrt_v * dw2);
+        return {std::max(s_next, 1e-12), v_next};
+    };
+    static_assert(is_step_model_2d_v<decltype(f)>,
+        "make_heston_euler_step must return a callable matching "
+        "(double, double, double, double, double, double) -> StepResult2D");
+    return f;
+}
+
 } // namespace qk::models
 
 #endif /* QK_MODEL_CONCEPTS_H */

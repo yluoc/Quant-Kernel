@@ -1418,6 +1418,77 @@ class QuantKernel:
             return self._native_batch.stratified_sampling_price_batch(s, k, tau, sigma, rr, qq, ot, pp, sd)
         return self._call_batch_ctypes("qk_mcm_stratified_sampling_price_batch", s, k, tau, sigma, rr, qq, ot, pp, sd)
 
+    def heston_monte_carlo_price(
+        self, spot: float, strike: float, t: float,
+        r: float, q: float,
+        v0: float, kappa: float, theta: float,
+        sigma: float, rho: float,
+        option_type: int, paths: int, steps: int, seed: int = 42
+    ) -> float:
+        """Price a European option under Heston stochastic volatility via Monte Carlo.
+
+        Uses Euler discretization with full truncation for the variance process
+        and log-Euler for the spot process.
+
+        Parameters
+        ----------
+        v0 : float
+            Initial variance.
+        kappa : float
+            Mean-reversion speed.
+        theta : float
+            Long-run variance.
+        sigma : float
+            Vol-of-vol.
+        rho : float
+            Spot-vol correlation (must be in [-1, 1]).
+        paths : int
+            Number of simulated price paths.
+        steps : int
+            Number of time steps per path.
+        seed : int
+            Random number generator seed for reproducibility.
+        """
+        return self._call_checked(
+            "qk_mcm_heston_monte_carlo_price",
+            spot, strike, t, r, q, v0, kappa, theta, sigma, rho,
+            option_type, paths, steps, seed
+        )
+
+    def heston_monte_carlo_price_batch(
+        self, spot, strike, t, r, q,
+        v0, kappa, theta, sigma, rho,
+        option_type, paths, steps, seed
+    ) -> np.ndarray:
+        """Vectorized native batch call (C++ core) for Heston Monte Carlo."""
+        s = self._as_f64_array(spot, "spot")
+        k = self._as_f64_array(strike, "strike")
+        tau = self._as_f64_array(t, "t")
+        rr = self._as_f64_array(r, "r")
+        qq = self._as_f64_array(q, "q")
+        v0a = self._as_f64_array(v0, "v0")
+        ka = self._as_f64_array(kappa, "kappa")
+        th = self._as_f64_array(theta, "theta")
+        si = self._as_f64_array(sigma, "sigma")
+        rh = self._as_f64_array(rho, "rho")
+        ot = self._as_i32_array(option_type, "option_type")
+        pp = self._as_i32_array(paths, "paths")
+        st = self._as_i32_array(steps, "steps")
+        sd = self._as_u64_array(seed, "seed")
+        n = s.shape[0]
+        self._check_same_length(
+            n, strike=k, t=tau, r=rr, q=qq, v0=v0a, kappa=ka,
+            theta=th, sigma=si, rho=rh, option_type=ot,
+            paths=pp, steps=st, seed=sd
+        )
+        if self._native_batch is not None and hasattr(self._native_batch, "heston_monte_carlo_price_batch"):
+            return self._native_batch.heston_monte_carlo_price_batch(
+                s, k, tau, rr, qq, v0a, ka, th, si, rh, ot, pp, st, sd
+            )
+        return self._call_batch_ctypes(
+            "qk_mcm_heston_monte_carlo_price_batch",
+            s, k, tau, rr, qq, v0a, ka, th, si, rh, ot, pp, st, sd
+        )
 
     def explicit_fd_price_batch(self, spot, strike, t, vol, r, q, option_type, time_steps, spot_steps, american_style) -> np.ndarray:
         s = self._as_f64_array(spot, "spot")
