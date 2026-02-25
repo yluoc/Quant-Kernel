@@ -5,8 +5,17 @@ import math
 
 import numpy as np
 
-from ._abi import QK_CALL, QK_PUT, QK_ERR_NULL_PTR, QK_ERR_BAD_SIZE, QK_ERR_INVALID_INPUT
-from ._loader import load_library
+from ._abi import (
+    ABI_MAJOR,
+    ABI_MINOR,
+    QK_CALL,
+    QK_PUT,
+    QK_OK,
+    QK_ERR_NULL_PTR,
+    QK_ERR_BAD_SIZE,
+    QK_ERR_INVALID_INPUT,
+)
+from ._loader import QKPluginAPI, load_library
 
 
 class QKError(RuntimeError):
@@ -117,6 +126,39 @@ class QuantKernel:
     @property
     def native_batch_available(self) -> bool:
         return self._native_batch is not None
+
+    def abi_version(self) -> tuple[int, int]:
+        """Return library ABI version as (major, minor)."""
+        major = ct.c_int32(-1)
+        minor = ct.c_int32(-1)
+        self._get_fn("qk_abi_version")(ct.byref(major), ct.byref(minor))
+        return int(major.value), int(minor.value)
+
+    def plugin_get_api(
+        self, host_abi_major: int = ABI_MAJOR, host_abi_minor: int = ABI_MINOR
+    ) -> tuple[int, int, str]:
+        """Negotiate and return plugin API metadata: (abi_major, abi_minor, plugin_name)."""
+        out_api = ct.POINTER(QKPluginAPI)()
+        rc = self._get_fn("qk_plugin_get_api")(int(host_abi_major), int(host_abi_minor), ct.byref(out_api))
+        if rc != QK_OK:
+            raise QKError(
+                f"qk_plugin_get_api failed (rc={rc}, host_abi={host_abi_major}.{host_abi_minor})"
+            )
+        if not out_api:
+            raise QKError("qk_plugin_get_api returned null API pointer")
+
+        info = out_api.contents
+        name = info.plugin_name.decode("utf-8", errors="replace") if info.plugin_name else ""
+        return int(info.abi_major), int(info.abi_minor), name
+
+    def get_last_error(self) -> str:
+        """Return thread-local C error string (empty string if none)."""
+        raw = self._get_fn("qk_get_last_error")()
+        return raw.decode("utf-8", errors="replace") if raw else ""
+
+    def clear_last_error(self) -> None:
+        """Clear thread-local C error string."""
+        self._get_fn("qk_clear_last_error")()
 
     def _call_batch_ctypes(self, fn_name: str, *arrays) -> np.ndarray:
         n = arrays[0].shape[0]

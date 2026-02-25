@@ -21,6 +21,7 @@ ACCEL_PATH = ROOT / "python/quantkernel/accelerator.py"
 H_PATH = ROOT / "cpp/include/quantkernel/qk_api.h"
 CPP_PATH = ROOT / "cpp/src/qk_api.cpp"
 TESTS_DIR = ROOT / "python/tests"
+_ENGINE_NON_BATCH_METHODS = {"abi_version", "plugin_get_api", "get_last_error", "clear_last_error"}
 
 
 def _read(path: Path) -> str:
@@ -92,7 +93,7 @@ def _all_python_test_text() -> str:
 def test_engine_scalar_batch_pairs_are_complete() -> None:
     scalars, batches = _engine_public_methods()
     batch_set = set(batches)
-    missing = [m for m in scalars if f"{m}_batch" not in batch_set]
+    missing = [m for m in scalars if m not in _ENGINE_NON_BATCH_METHODS and f"{m}_batch" not in batch_set]
     assert not missing, f"Engine scalar APIs missing *_batch: {missing}"
 
 
@@ -110,9 +111,10 @@ def test_engine_and_stub_signatures_stay_in_sync() -> None:
 def test_accelerator_native_batch_map_covers_all_scalar_methods() -> None:
     engine_scalars, _ = _engine_public_methods()
     native_map = _accelerator_native_map()
+    routed_scalars = [m for m in engine_scalars if m not in _ENGINE_NON_BATCH_METHODS]
 
-    missing = sorted([m for m in engine_scalars if m not in native_map])
-    wrong_target = sorted([m for m in engine_scalars if native_map.get(m) != f"{m}_batch"])
+    missing = sorted([m for m in routed_scalars if m not in native_map])
+    wrong_target = sorted([m for m in routed_scalars if native_map.get(m) != f"{m}_batch"])
 
     assert not missing, f"Accelerator _NATIVE_BATCH_METHODS missing scalar APIs: {missing}"
     assert not wrong_target, f"Accelerator _NATIVE_BATCH_METHODS has wrong batch target(s): {wrong_target}"

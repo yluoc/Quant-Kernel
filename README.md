@@ -24,7 +24,7 @@ C++17 internals
   |-- Common utilities    (math, payoff, validation)
 ```
 
-**Model layer (MC).** Stochastic dynamics for Monte Carlo are expressed as callable factories that return lightweight lambdas. `make_bsm_terminal(vol, r, q)` returns a `(spot, t, z) -> S_T` functor implementing the GBM log-normal terminal distribution. Step models (`make_bsm_euler_step`, `make_bsm_milstein_step`) return `(s, dt, dw) -> s_next` functors. Two-dimensional step models (`make_heston_euler_step_2d`) return `(s, v, dt, dw1, dw2) -> (s_next, v_next)` for correlated multi-factor dynamics. Local volatility step models (`make_local_vol_euler_step`) accept a callable `sigma(s, t)` and produce `(s, t, dt, dw) -> s_next` functors with time-dependent diffusion. Sensitivity callables (`make_bsm_pathwise_dST_dSpot`, `make_bsm_lr_score`) are similarly factored. All callables are validated at compile time via `static_assert` traits (`is_terminal_model_v`, `is_step_model_v`, `is_step_model_2d_v`).
+**Model layer (MC).** Stochastic dynamics for Monte Carlo are expressed as callable factories that return lightweight lambdas. `make_bsm_terminal(vol, r, q)` returns a `(spot, t, z) -> S_T` functor implementing the GBM log-normal terminal distribution. Step models (`make_bsm_euler_step`, `make_bsm_milstein_step`) return `(s, dt, dw) -> s_next` functors. Two-dimensional step models (`make_heston_euler_step`) return `(s, v, dt, sqrt_dt, z1, z2) -> (s_next, v_next)` for correlated multi-factor dynamics. Local volatility step models (`make_local_vol_euler_step`) accept a callable `sigma(s, t)` and produce `(s, t, dt, dw) -> s_next` functors with time-dependent diffusion. Sensitivity callables (`make_bsm_pathwise_dST_dSpot`, `make_bsm_lr_score`) are similarly factored. All callables are validated at compile time via `static_assert` traits (`is_terminal_model_v`, `is_step_model_v`, `is_step_model_2d_v`).
 
 **CharFn layer (Fourier).** Characteristic functions for Fourier pricing are expressed as callable factories returning `(complex<double> u, double t) -> complex<double>` lambdas, validated by the `is_charfn_v<F>` trait. Each Fourier method has a template `_impl` function parameterized on a `CharFn` type. BSM and Heston factories (`make_bsm_log_charfn`, `make_heston_log_charfn`, and their log-return variants) capture model parameters at construction, keeping the hot-loop call to `phi(u, t)` only. Since `CharFn` is a template parameter, the compiler inlines the characteristic function into the integration loop — no `std::function`, no vtable, no heap allocation.
 
@@ -32,7 +32,7 @@ C++17 internals
 
 **C ABI boundary.** All public functions are `extern "C"` with `QK_EXPORT` visibility. Scalar functions return `double` (NaN on error). Batch functions return `int32_t` error codes (`QK_OK`, `QK_ERR_NULL_PTR`, `QK_ERR_BAD_SIZE`, `QK_ERR_INVALID_INPUT`). Thread-local error detail is available via `qk_get_last_error()`. ABI versioning is enforced at load time. The current ABI version is 2.12. Minor bumps are additive only; existing function signatures are never changed or removed within a major version.
 
-**Python wrapper.** The `QuantKernel` class exposes every C function as a Python method. Batch methods accept NumPy arrays. An optional `QuantAccelerator` class provides CuPy-based GPU vectorization for large batches.
+**Python wrapper.** The `QuantKernel` class exposes the pricing and Greeks C APIs as Python methods. Batch methods accept NumPy arrays. An optional `QuantAccelerator` class provides CuPy-based GPU vectorization for large batches.
 
 ## Supported Models
 
@@ -116,7 +116,7 @@ The MC subsystem is structured as three independent layers:
 
 1. **RNG policy.** The caller constructs a generator — typically `mc::make_mt19937_normal(seed)` — and passes it into the engine. The engine calls `gen()` to draw standard-normal variates. This decouples the RNG from the simulation loop.
 
-2. **Model callable.** A functor mapping variates to asset prices. Terminal models map `(spot, t, z) -> S_T`. Step models map `(s, dt, dw) -> s_next`. Two-dimensional step models map `(s, v, dt, dw1, dw2) -> (s_next, v_next)` for correlated multi-factor processes (e.g., Heston). Local volatility step models map `(s, t, dt, dw) -> s_next` with time-dependent diffusion.
+2. **Model callable.** A functor mapping variates to asset prices. Terminal models map `(spot, t, z) -> S_T`. Step models map `(s, dt, dw) -> s_next`. Two-dimensional step models map `(s, v, dt, sqrt_dt, z1, z2) -> (s_next, v_next)` for correlated multi-factor processes (e.g., Heston). Local volatility step models map `(s, t, dt, dw) -> s_next` with time-dependent diffusion.
 
 3. **Engine loop.** `estimate_terminal` runs a simple forward loop. `estimate_terminal_antithetic` pairs `+z` and `-z` draws for variance reduction. `estimate_stepwise` runs multi-step Euler/Milstein paths. `estimate_stepwise_2d` runs correlated 2D paths (Heston). All are header-only templates that inline through the callable indirection under any reasonable optimization level.
 
@@ -277,13 +277,3 @@ The C ABI version is defined in `qk_abi.h` as `QK_ABI_MAJOR.QK_ABI_MINOR` (curre
 ## License
 
 WTFPL v2. See `LICENSE`.
-
-## Changelog (Unreleased)
-
-- Added Heston Monte Carlo pricing via 2D correlated Euler step engine (`estimate_stepwise_2d`).
-- Added Heston likelihood-ratio delta with antithetic variance reduction.
-- Added local volatility Monte Carlo pricing with callable diffusion (`make_local_vol_euler_step`).
-- Introduced CharFn concept (`charfn_concepts.h`) — pluggable characteristic function factories for Fourier methods.
-- Added Heston Fourier pricing for all five transform methods (Carr-Madan FFT, COS, fractional FFT, Lewis, Hilbert) via CharFn.
-- Refactored all five Fourier method implementations to template `_impl` functions parameterized on CharFn.
-- ABI minor bump (additive, backward-compatible).

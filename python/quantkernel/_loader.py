@@ -8,6 +8,7 @@ from pathlib import Path
 from ._abi import (
     ABI_MAJOR,
     ABI_MINOR,
+    QK_OK,
 )
 
 D = ct.c_double
@@ -16,6 +17,14 @@ U64 = ct.c_uint64
 PD = ct.POINTER(ct.c_double)
 PI32 = ct.POINTER(ct.c_int32)
 PU64 = ct.POINTER(ct.c_uint64)
+
+
+class QKPluginAPI(ct.Structure):
+    _fields_ = [
+        ("abi_major", I32),
+        ("abi_minor", I32),
+        ("plugin_name", ct.c_char_p),
+    ]
 
 
 def _project_root() -> Path:
@@ -81,6 +90,7 @@ _mlm_common = [D, D, D, D, D, D, I32]
 
 _FUNCTION_SIGNATURES = [
     ("qk_abi_version", None, [ct.POINTER(I32), ct.POINTER(I32)]),
+    ("qk_plugin_get_api", I32, [I32, I32, ct.POINTER(ct.POINTER(QKPluginAPI))]),
     ("qk_get_last_error", ct.c_char_p, []),
     ("qk_clear_last_error", None, []),
 
@@ -318,6 +328,26 @@ def _verify_abi(lib: ct.CDLL) -> None:
     if minor.value < ABI_MINOR:
         raise RuntimeError(
             f"ABI minor version too old: library={minor.value}, expected>={ABI_MINOR}"
+        )
+
+    # Also verify plugin API negotiation and metadata are ABI-consistent.
+    plugin_api = ct.POINTER(QKPluginAPI)()
+    rc = lib.qk_plugin_get_api(ABI_MAJOR, ABI_MINOR, ct.byref(plugin_api))
+    if rc != QK_OK:
+        raise RuntimeError(
+            f"qk_plugin_get_api failed: rc={rc}, host_abi={ABI_MAJOR}.{ABI_MINOR}"
+        )
+    if not plugin_api:
+        raise RuntimeError("qk_plugin_get_api returned null API pointer")
+    if plugin_api.contents.abi_major != ABI_MAJOR:
+        raise RuntimeError(
+            "Plugin API major mismatch: "
+            f"plugin={plugin_api.contents.abi_major}, expected={ABI_MAJOR}"
+        )
+    if plugin_api.contents.abi_minor < ABI_MINOR:
+        raise RuntimeError(
+            "Plugin API minor too old: "
+            f"plugin={plugin_api.contents.abi_minor}, expected>={ABI_MINOR}"
         )
 
 
