@@ -32,7 +32,7 @@ C++17 internals
 
 **C ABI boundary.** All public functions are `extern "C"` with `QK_EXPORT` visibility. Scalar functions return `double` (NaN on error). Batch functions return `int32_t` error codes (`QK_OK`, `QK_ERR_NULL_PTR`, `QK_ERR_BAD_SIZE`, `QK_ERR_INVALID_INPUT`). Thread-local error detail is available via `qk_get_last_error()`. ABI versioning is enforced at load time. The current ABI version is 2.12. Minor bumps are additive only; existing function signatures are never changed or removed within a major version.
 
-**Python wrapper.** The `QuantKernel` class exposes the pricing and Greeks C APIs as Python methods. Batch methods accept NumPy arrays. An optional `QuantAccelerator` class provides CuPy-based GPU vectorization for large batches.
+**Python wrapper.** The `QuantKernel` class exposes the C API as Python methods, including pricing/Greeks plus low-level ABI and error helpers (`abi_version`, `plugin_get_api`, `get_last_error`, `clear_last_error`). Batch methods accept NumPy arrays. An optional `QuantAccelerator` class provides CuPy-based GPU vectorization for large batches.
 
 ## Supported Models
 
