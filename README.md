@@ -93,7 +93,7 @@ CRR, Jarrow-Rudd, Tian, Leisen-Reimer, trinomial tree, Derman-Kani implied tree 
 Explicit FD, implicit FD, Crank-Nicolson, ADI (Douglas, Craig-Sneyd, Hundsdorfer-Verwer), PSOR (American exercise).
 
 ### Monte Carlo
-Standard MC (antithetic), Euler-Maruyama, Milstein, Longstaff-Schwartz (American), quasi-MC (Sobol, Halton), multilevel MC, importance sampling, control variates, antithetic variates, stratified sampling, Heston MC (2D correlated Euler with QE/truncation variance floor), local volatility MC (Euler with callable diffusion).
+Standard MC (antithetic), Euler-Maruyama, Milstein, Longstaff-Schwartz (American), quasi-MC (Sobol, Halton), multilevel MC, importance sampling, control variates, antithetic variates, stratified sampling, Heston MC (2D correlated full-truncation Euler), local volatility MC (Euler with callable diffusion).
 
 ### Fourier Transform
 Carr-Madan FFT, COS (Fang-Oosterlee), fractional FFT, Lewis Fourier inversion, Hilbert transform. All five methods support both BSM and Heston dynamics via the pluggable CharFn concept.
