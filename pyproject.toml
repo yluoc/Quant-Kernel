@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "quant-kernel"
-version = "2.9.2"
+version = "2.9.3"
 description = "High-performance derivative pricing engine with 40+ algorithms"
 readme = "README.md"
 license = { file = "LICENSE" }
